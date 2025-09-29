@@ -13,6 +13,7 @@ class Settings(BaseSettings):
 
     # File Upload Settings
     max_upload_size: int = 10 * 1024 * 1024  # 10MB
+    max_file_size: int = 10 * 1024 * 1024  # 10MB (alias for compatibility)
     allowed_extensions: list = [".pdf", ".doc", ".docx"]
     upload_dir: str = "uploads"
 

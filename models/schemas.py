@@ -29,6 +29,9 @@ class MatchingScore(BaseModel):
     experience_match: float = Field(..., ge=0, le=100)
     education_match: float = Field(..., ge=0, le=100)
     keyword_matches: List[SkillMatch] = Field(default_factory=list)
+    matched_skills: List[str] = Field(default_factory=list)
+    missing_skills: List[str] = Field(default_factory=list)
+    details: List[str] = Field(default_factory=list)
 
 class ResumeAnalysis(BaseModel):
     id: Optional[str] = None

@@ -28,7 +28,7 @@ class DocumentProcessor:
             return f"Error processing document: {str(e)}"
 
     def _extract_from_pdf(self, file_path: str) -> str:
-        """Extract text from PDF using multiple methods"""
+        """Extract text from PDF using multiple methods including OCR"""
         try:
             # Try PyMuPDF first
             try:
@@ -39,7 +39,12 @@ class DocumentProcessor:
                     text_content.append(page.get_text())
                 doc.close()
                 if text_content and any(text.strip() for text in text_content):
-                    return "\n".join(text_content)
+                    extracted_text = "\n".join(text_content)
+                    # Check if we got meaningful text (more than just whitespace/special chars)
+                    if len(extracted_text.strip()) > 50:
+                        return extracted_text
+                    else:
+                        logger.info("PyMuPDF extracted minimal text, trying OCR fallback")
             except ImportError:
                 logger.warning("PyMuPDF not available, trying pdfplumber")
             except Exception as e:
@@ -53,16 +58,82 @@ class DocumentProcessor:
                     for page in pdf.pages:
                         text_content.append(page.extract_text() or "")
                     if text_content and any(text.strip() for text in text_content):
-                        return "\n".join(text_content)
+                        extracted_text = "\n".join(text_content)
+                        if len(extracted_text.strip()) > 50:
+                            return extracted_text
+                        else:
+                            logger.info("pdfplumber extracted minimal text, trying OCR fallback")
             except ImportError:
                 logger.warning("pdfplumber not available")
             except Exception as e:
                 logger.warning(f"pdfplumber extraction failed: {str(e)}")
 
+            # If text extraction failed or returned minimal text, try OCR
+            logger.info("Attempting OCR extraction as fallback")
+            ocr_text = self._extract_with_ocr(file_path)
+            if ocr_text and len(ocr_text.strip()) > 50:
+                return ocr_text
+
         except Exception as e:
             logger.error(f"PDF extraction failed: {str(e)}")
 
         return "PDF text extraction not available - install PyMuPDF or pdfplumber"
+
+    def _extract_with_ocr(self, file_path: str) -> str:
+        """Extract text from PDF using OCR (for image-based PDFs)"""
+        try:
+            import fitz  # PyMuPDF for PDF to image conversion
+            import pytesseract
+            from PIL import Image
+            import io
+            
+            logger.info(f"Starting OCR extraction for {file_path}")
+            
+            doc = fitz.open(file_path)
+            text_content = []
+            
+            # Process each page (limit to first 5 pages for performance)
+            max_pages = min(5, doc.page_count)
+            
+            for page_num in range(max_pages):
+                try:
+                    page = doc.load_page(page_num)
+                    
+                    # Convert page to image at higher resolution for better OCR
+                    mat = fitz.Matrix(2.0, 2.0)  # 2x zoom for better quality
+                    pix = page.get_pixmap(matrix=mat)
+                    
+                    # Convert to PIL Image
+                    img_data = pix.tobytes("png")
+                    image = Image.open(io.BytesIO(img_data))
+                    
+                    # Perform OCR
+                    page_text = pytesseract.image_to_string(image, lang='eng')
+                    
+                    if page_text.strip():
+                        text_content.append(page_text)
+                        logger.info(f"OCR extracted {len(page_text)} characters from page {page_num + 1}")
+                    
+                except Exception as e:
+                    logger.warning(f"OCR failed for page {page_num + 1}: {str(e)}")
+                    continue
+            
+            doc.close()
+            
+            if text_content:
+                full_text = "\n\n".join(text_content)
+                logger.info(f"OCR extraction completed: {len(full_text)} total characters")
+                return full_text
+            else:
+                logger.warning("OCR extraction returned no text")
+                return ""
+                
+        except ImportError as e:
+            logger.warning(f"OCR libraries not available: {str(e)}")
+            return ""
+        except Exception as e:
+            logger.error(f"OCR extraction failed: {str(e)}")
+            return ""
 
     def _extract_from_docx(self, file_path: str) -> str:
         """Extract text from DOCX files"""

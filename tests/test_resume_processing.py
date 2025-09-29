@@ -30,11 +30,21 @@ class TestDocumentProcessor:
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
 
-    def test_extract_text_from_docx(self):
         """Test DOCX text extraction"""
         # Test with non-existent file
         result = self.processor.extract_text("nonexistent.docx")
         assert "Error processing document" in result or "not available" in result
+
+    def test_ocr_fallback(self):
+        """Test OCR fallback mechanism"""
+        # This tests that OCR method exists and handles errors gracefully
+        try:
+            result = self.processor._extract_with_ocr("nonexistent.pdf")
+            # Should return empty string or handle gracefully
+            assert isinstance(result, str)
+        except Exception as e:
+            # OCR libraries might not be installed, which is okay
+            assert "not available" in str(e).lower() or "not found" in str(e).lower()
 
     def test_extract_text_unsupported_format(self):
         """Test unsupported file format handling"""
@@ -42,7 +52,6 @@ class TestDocumentProcessor:
         assert "Unsupported file format" in result
 
     def test_analyze_document_structure_pdf(self):
-        """Test PDF structure analysis"""
         result = self.processor.analyze_document_structure("nonexistent.pdf")
 
         # Should return default structure even for non-existent files

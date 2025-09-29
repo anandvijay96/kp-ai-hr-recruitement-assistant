@@ -171,13 +171,53 @@
                     body: formData
                 });
 
+                // Handle HTTP errors
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || `Server error: ${response.status}`);
+                }
+
                 const result = await response.json();
 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('results').style.display = 'block';
+                
+                // Handle batch results differently
+                if (type === 'batch') {
+                    displayBatchResults(result);
+                } else {
+                    displaySingleResult(result);
+                }
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                
+                let errorMessage = 'An unexpected error occurred. Please try again.';
+                if (error.message) {
+                    errorMessage = error.message;
+                }
+                
                 document.getElementById('resultsContent').innerHTML = `
-                    <h6>Analysis Complete</h6>
-                    <div class="row">
+                    <div class="alert alert-danger">
+                        <h6 class="alert-heading">❌ Upload Failed</h6>
+                        <p class="mb-0">${errorMessage}</p>
+                        <hr>
+                        <small class="mb-0">
+                            <strong>Troubleshooting tips:</strong><br>
+                            • Ensure file is a valid PDF, DOC, or DOCX<br>
+                            • Check file size is under 10MB<br>
+                            • Make sure file is not password-protected<br>
+                            • Try a different file if problem persists
+                        </small>
+                    </div>
+                `;
+                document.getElementById('results').style.display = 'block';
+            }
+        }
+
+        function displaySingleResult(result) {
+            document.getElementById('resultsContent').innerHTML = `
+                <h6>Analysis Complete</h6>
+                <div class="row">
                         <div class="col-md-6">
                             <h6>📊 Authenticity Score</h6>
                             <div class="mb-3">
@@ -214,24 +254,113 @@
                             <h6>📋 Analysis Details</h6>
                             <p><strong>File:</strong> ${result.filename}</p>
                             <p><strong>File Size:</strong> ${(result.file_size / 1024).toFixed(1)} KB</p>
+                            
                             ${result.matching_score ? `
-                                <p><strong>JD Match:</strong> ${Math.round(result.matching_score.overall_match)}%</p>
+                                <div class="mt-3">
+                                    <h6>🎯 JD Match: ${Math.round(result.matching_score.overall_match)}%</h6>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-${getScoreColor(result.matching_score.overall_match)}"
+                                             style="width: ${result.matching_score.overall_match}%">
+                                            ${Math.round(result.matching_score.overall_match)}%
+                                        </div>
+                                    </div>
+                                    <small>
+                                        <strong>Skills:</strong> ${Math.round(result.matching_score.skills_match)}% | 
+                                        <strong>Experience:</strong> ${Math.round(result.matching_score.experience_match)}% | 
+                                        <strong>Education:</strong> ${Math.round(result.matching_score.education_match)}%
+                                    </small>
+                                    ${result.matching_score.matched_skills && result.matching_score.matched_skills.length > 0 ? `
+                                        <div class="mt-2">
+                                            <small><strong>✓ Matched Skills:</strong> ${result.matching_score.matched_skills.join(', ')}</small>
+                                        </div>
+                                    ` : ''}
+                                    ${result.matching_score.missing_skills && result.matching_score.missing_skills.length > 0 ? `
+                                        <div class="mt-1">
+                                            <small class="text-warning"><strong>✗ Missing Skills:</strong> ${result.matching_score.missing_skills.join(', ')}</small>
+                                        </div>
+                                    ` : ''}
+                                </div>
                             ` : ''}
+                            
                             <div class="mt-3">
                                 <small class="text-muted">${(result.authenticity_score?.details || []).join('<br>')}</small>
                             </div>
                         </div>
                     </div>
                 `;
-            } catch (error) {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('resultsContent').innerHTML = `
-                    <div class="alert alert-danger">
-                        <strong>Error:</strong> ${error.message}
+        }
+
+        function displayBatchResults(batchResult) {
+            const { total_processed, successful, failed, results, errors } = batchResult;
+            
+            let html = `
+                <h6>Batch Analysis Complete</h6>
+                <div class="alert alert-info mb-3">
+                    <strong>Summary:</strong> Processed ${total_processed} files | 
+                    ✓ ${successful} successful | 
+                    ${failed > 0 ? `✗ ${failed} failed` : 'All successful'}
+                </div>
+            `;
+
+            // Display errors if any
+            if (errors && errors.length > 0) {
+                html += `
+                    <div class="alert alert-warning mb-3">
+                        <h6 class="alert-heading">⚠️ Some files failed:</h6>
+                        <ul class="mb-0">
+                            ${errors.map(err => `<li>${err}</li>`).join('')}
+                        </ul>
                     </div>
                 `;
-                document.getElementById('results').style.display = 'block';
             }
+
+            // Display successful results
+            if (results && results.length > 0) {
+                html += `<div class="accordion" id="batchResultsAccordion">`;
+                
+                results.forEach((result, index) => {
+                    const avgScore = result.authenticity_score?.overall_score || 0;
+                    const scoreColor = avgScore >= 80 ? 'success' : avgScore >= 60 ? 'warning' : 'danger';
+                    
+                    html += `
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading${index}">
+                                <button class="accordion-button ${index > 0 ? 'collapsed' : ''}" type="button" 
+                                        data-bs-toggle="collapse" data-bs-target="#collapse${index}">
+                                    <span class="badge bg-${scoreColor} me-2">${Math.round(avgScore)}%</span>
+                                    ${result.filename}
+                                </button>
+                            </h2>
+                            <div id="collapse${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" 
+                                 data-bs-parent="#batchResultsAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>📊 Authenticity Scores</h6>
+                                            <p><strong>Overall:</strong> ${Math.round(result.authenticity_score?.overall_score || 0)}%</p>
+                                            <p><strong>Font:</strong> ${Math.round(result.authenticity_score?.font_consistency || 0)}%</p>
+                                            <p><strong>Grammar:</strong> ${Math.round(result.authenticity_score?.grammar_score || 0)}%</p>
+                                            <p><strong>Formatting:</strong> ${Math.round(result.authenticity_score?.formatting_score || 0)}%</p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>📋 Details</h6>
+                                            <p><strong>Size:</strong> ${(result.file_size / 1024).toFixed(1)} KB</p>
+                                            ${result.matching_score ? `
+                                                <p><strong>JD Match:</strong> ${Math.round(result.matching_score.overall_match)}%</p>
+                                            ` : ''}
+                                            <small class="text-muted">${(result.authenticity_score?.details || []).join('<br>')}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `</div>`;
+            }
+
+            document.getElementById('resultsContent').innerHTML = html;
         }
     </script>
 </body>

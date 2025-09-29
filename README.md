@@ -13,9 +13,10 @@ An intelligent HR assistant that analyzes resume authenticity and matches candid
   
 - **📋 Document Processing**: 
   - Support for PDF, DOC, and DOCX formats
-  - Automatic text extraction with fallback methods
-  - Font metadata extraction (no OCR needed for fonts)
-  - Structure and layout analysis
+  - Automatic text extraction with multiple fallback methods
+  - OCR support for image-based PDFs (using Tesseract)
+  - Font metadata extraction from document structure
+  - Layout and formatting analysis
 
 - **🌐 Web Interface**: 
   - Beautiful, responsive UI built with Bootstrap
@@ -35,6 +36,10 @@ An intelligent HR assistant that analyzes resume authenticity and matches candid
 - **Python 3.10 or higher** (Python 3.10, 3.11, or 3.12 recommended)
 - **Git** (for cloning the repository)
 - **UV Package Manager** (recommended) or pip
+- **Tesseract OCR** (optional, for image-based PDF processing)
+  - Windows: Download from [GitHub](https://github.com/UB-Mannheim/tesseract/wiki)
+  - macOS: `brew install tesseract`
+  - Linux: `sudo apt-get install tesseract-ocr`
 
 ### Installation
 
@@ -108,6 +113,20 @@ uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
 http://localhost:8000
 ```
+
+## 🚀 Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions to:
+- **Render** (Free tier available - Recommended for MVP)
+- **Railway** ($5 free credit/month)
+- **Heroku** (Paid)
+- **Docker** (Any platform)
+
+**Quick Deploy to Render:**
+1. Push code to GitHub
+2. Connect repository to Render
+3. Render auto-detects `Aptfile` and installs Tesseract
+4. App deploys automatically!
 
 ## 🧪 Running Tests
 
@@ -253,6 +272,31 @@ Download required NLTK data:
 ```bash
 python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
 ```
+
+### Tesseract OCR Not Found
+
+If you get OCR-related errors:
+
+**Windows:**
+1. Download Tesseract from [GitHub](https://github.com/UB-Mannheim/tesseract/wiki)
+2. Install to default location (usually `C:\Program Files\Tesseract-OCR`)
+3. Add to PATH or configure in code:
+```python
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+```
+
+**Linux/WSL:**
+```bash
+sudo apt-get update
+sudo apt-get install tesseract-ocr
+```
+
+**macOS:**
+```bash
+brew install tesseract
+```
+
+**Note:** OCR is optional. The app will work without it but won't be able to process image-based PDFs.
 
 ## 🤝 Contributing
 
