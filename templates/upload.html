@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Resume - AI HR Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+        .badge {
+            font-size: 0.75em;
+        }
+        .text-sm {
+            font-size: 0.875em;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">🤖 AI HR Assistant</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">Home</a>
+                <a class="nav-link active" href="/upload">Upload Resume</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <h2 class="text-center mb-4">Upload Resume for Analysis</h2>
+
+                <!-- Single Resume Upload -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>Single Resume Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="singleUploadForm" enctype="multipart/form-data" action="javascript:void(0);">
+                            <div class="mb-3">
+                                <label for="resumeFile" class="form-label">Select Resume File</label>
+                                <input type="file" class="form-control" id="resumeFile" name="file" accept=".pdf,.doc,.docx" required>
+                                <div class="form-text">Supported formats: PDF, DOC, DOCX</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="jobDescription" class="form-label">Job Description (Optional)</label>
+                                <textarea class="form-control" id="jobDescription" name="job_description" rows="4" placeholder="Paste job description here for matching analysis..."></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">Analyze Resume</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Batch Upload -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Batch Resume Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="batchUploadForm" enctype="multipart/form-data" action="javascript:void(0);">
+                            <div class="mb-3">
+                                <label for="resumeFiles" class="form-label">Select Multiple Resume Files</label>
+                                <input type="file" class="form-control" id="resumeFiles" name="files" accept=".pdf,.doc,.docx" multiple required>
+                                <div class="form-text">You can select multiple files at once</div>
+                            </div>
+
+                            <button type="submit" class="btn btn-secondary">Analyze Multiple Resumes</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Results Area -->
+                <div id="results" class="mt-4" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Analysis Results</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="resultsContent"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading Spinner -->
+                <div id="loading" class="text-center mt-4" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Analyzing resume(s)... Please wait.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Drag and drop functionality (only if upload area exists)
+        const uploadArea = document.querySelector('.upload-area');
+        if (uploadArea) {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight(e) {
+                uploadArea.classList.add('dragover');
+            }
+
+            function unhighlight(e) {
+                uploadArea.classList.remove('dragover');
+            }
+        }
+
+        function getScoreColor(score) {
+            if (score >= 80) return 'success';
+            if (score >= 60) return 'warning';
+            return 'danger';
+        }
+
+        // Handle form submissions
+        document.getElementById('singleUploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            await submitAnalysis(formData, 'single');
+        });
+
+        document.getElementById('batchUploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            await submitAnalysis(formData, 'batch');
+        });
+
+        async function submitAnalysis(formData, type) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+
+            try {
+                const endpoint = type === 'single' ? '/api/scan-resume' : '/api/batch-scan';
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('results').style.display = 'block';
+                document.getElementById('resultsContent').innerHTML = `
+                    <h6>Analysis Complete</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>📊 Authenticity Score</h6>
+                            <div class="mb-3">
+                                <div class="progress">
+                                    <div class="progress-bar bg-${getScoreColor(result.authenticity_score?.overall_score || 0)}"
+                                         role="progressbar"
+                                         style="width: ${result.authenticity_score?.overall_score || 0}%">
+                                        ${Math.round(result.authenticity_score?.overall_score || 0)}%
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row text-sm">
+                                <div class="col-6">
+                                    <small><strong>Font Consistency:</strong></small><br>
+                                    <span class="badge bg-${getScoreColor(result.authenticity_score?.font_consistency || 0)}">${Math.round(result.authenticity_score?.font_consistency || 0)}%</span>
+                                </div>
+                                <div class="col-6">
+                                    <small><strong>Grammar Quality:</strong></small><br>
+                                    <span class="badge bg-${getScoreColor(result.authenticity_score?.grammar_score || 0)}">${Math.round(result.authenticity_score?.grammar_score || 0)}%</span>
+                                </div>
+                            </div>
+                            <div class="row text-sm mt-2">
+                                <div class="col-6">
+                                    <small><strong>Formatting:</strong></small><br>
+                                    <span class="badge bg-${getScoreColor(result.authenticity_score?.formatting_score || 0)}">${Math.round(result.authenticity_score?.formatting_score || 0)}%</span>
+                                </div>
+                                <div class="col-6">
+                                    <small><strong>Structure:</strong></small><br>
+                                    <span class="badge bg-${getScoreColor(result.authenticity_score?.visual_consistency || 0)}">${Math.round(result.authenticity_score?.visual_consistency || 0)}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>📋 Analysis Details</h6>
+                            <p><strong>File:</strong> ${result.filename}</p>
+                            <p><strong>File Size:</strong> ${(result.file_size / 1024).toFixed(1)} KB</p>
+                            ${result.matching_score ? `
+                                <p><strong>JD Match:</strong> ${Math.round(result.matching_score.overall_match)}%</p>
+                            ` : ''}
+                            <div class="mt-3">
+                                <small class="text-muted">${(result.authenticity_score?.details || []).join('<br>')}</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('resultsContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+                document.getElementById('results').style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
