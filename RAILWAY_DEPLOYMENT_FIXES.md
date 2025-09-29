@@ -128,32 +128,50 @@ OSError: No such file or directory: '/root/nltk_data/tokenizers/punkt/PY3_tab'
 ```
 
 ### 🔍 Root Cause:
-NLTK requires data files to be downloaded before use. These aren't included in the pip package.
+NLTK requires data files to be downloaded before use. These aren't included in the pip package. The issue occurs because NLTK checks for data at import/initialization time, before build-time downloads can complete.
 
-### ✅ Solution:
+### ✅ Solution (BEST - Runtime Download with Error Handling):
 
-Add NLTK data download to build phase in `nixpacks.toml`:
+**In your service classes (`services/resume_analyzer.py`, `services/jd_matcher.py`):**
 
+```python
+def __init__(self):
+    try:
+        import nltk
+        # Download required NLTK data if not available
+        for resource in ['punkt', 'punkt_tab']:
+            try:
+                nltk.data.find(f'tokenizers/{resource}')
+            except (LookupError, OSError):  # Catch BOTH exceptions
+                try:
+                    nltk.download(resource, quiet=True)
+                except Exception as e:
+                    logger.warning(f"Could not download NLTK {resource}: {e}")
+    except ImportError:
+        logger.warning("NLTK not available for grammar analysis")
+```
+
+**Key Points:**
+- ✅ Catches **both** `LookupError` AND `OSError`
+- ✅ Downloads at runtime when service initializes
+- ✅ Handles download failures gracefully with warnings
+- ✅ Won't crash if NLTK data unavailable
+- ✅ Works in all deployment environments
+
+### ❌ What Doesn't Work:
+
+**Build-time download in `nixpacks.toml`:**
 ```toml
+# This doesn't work reliably because services check at import time
 [phases.install]
 cmds = [
     "pip install -r requirements.txt",
-    "python -c \"import nltk; nltk.download('punkt', quiet=True); nltk.download('punkt_tab', quiet=True)\""
+    "python -c \"import nltk; nltk.download('punkt', quiet=True)\""
 ]
 ```
 
-**Alternative: Download on first run (not recommended for production):**
-
-```python
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt', quiet=True)
-    nltk.download('punkt_tab', quiet=True)
-```
-
 ### 📝 Key Takeaway:
-**Download NLTK data during build phase, not at runtime, for faster startup and reliability.**
+**Download NLTK data at runtime in service `__init__` methods with proper exception handling (LookupError AND OSError). This ensures data is available when needed and handles failures gracefully.**
 
 ---
 
@@ -166,14 +184,13 @@ except LookupError:
 aptPkgs = ["tesseract-ocr", "tesseract-ocr-eng"]
 
 [phases.install]
-cmds = [
-    "pip install -r requirements.txt",
-    "python -c \"import nltk; nltk.download('punkt', quiet=True); nltk.download('punkt_tab', quiet=True)\""
-]
+cmds = ["pip install -r requirements.txt"]
 
 [start]
 cmd = "python -c \"import os; import uvicorn; uvicorn.run('main:app', host='0.0.0.0', port=int(os.environ.get('PORT', 8000)))\""
 ```
+
+**Note:** NLTK data is downloaded at runtime in service classes, not during build.
 
 ### 📄 `railway.toml` (Optional but Recommended)
 
@@ -199,6 +216,7 @@ class Settings(BaseSettings):
     @field_validator('max_file_size', 'max_upload_size', mode='before')
     @classmethod
     def parse_int_with_strip(cls, v):
+        """Strip whitespace from environment variables"""
         if isinstance(v, str):
             return int(v.strip())
         return v
@@ -206,6 +224,30 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+```
+
+### 📄 `services/resume_analyzer.py` & `services/jd_matcher.py` (NLTK Handling)
+
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+class ResumeAuthenticityAnalyzer:  # or JDMatcher
+    def __init__(self):
+        try:
+            import nltk
+            # Download required NLTK data if not available
+            for resource in ['punkt', 'punkt_tab']:
+                try:
+                    nltk.data.find(f'tokenizers/{resource}')
+                except (LookupError, OSError):  # CRITICAL: Catch both!
+                    try:
+                        nltk.download(resource, quiet=True)
+                    except Exception as e:
+                        logger.warning(f"Could not download NLTK {resource}: {e}")
+        except ImportError:
+            logger.warning("NLTK not available for grammar analysis")
 ```
 
 ### 📄 `main.py` (Key Sections)
@@ -294,7 +336,7 @@ git push origin main
 | `$PORT is not a valid integer` | Use Python to read PORT from os.environ |
 | `ValidationError: unable to parse string as integer` | Add field_validator with .strip() |
 | `Directory 'static' does not exist` | Make mount conditional or add .gitkeep |
-| `OSError: No such file or directory: nltk_data` | Download NLTK data in build phase |
+| `OSError: No such file or directory: nltk_data` | Download at runtime in `__init__` with try/except (LookupError, OSError) |
 | `ModuleNotFoundError` | Add missing package to requirements.txt |
 | `tesseract: command not found` | Add to aptPkgs in nixpacks.toml |
 | `Permission denied` | Check file permissions, use chmod in build |
@@ -342,22 +384,24 @@ curl https://your-app.up.railway.app/upload
 ## 8. Best Practices Summary
 
 ### ✅ DO:
-1. **Handle PORT dynamically** in Python code
-2. **Strip environment variables** before type conversion
-3. **Make directory mounts conditional**
-4. **Download data files during build**, not runtime
-5. **Test locally with Docker** before deploying
-6. **Use health check endpoints** for monitoring
-7. **Keep configuration files in git**
-8. **Document all environment variables**
+1. **Handle PORT dynamically** in Python code using os.environ.get()
+2. **Strip environment variables** before type conversion with .strip()
+3. **Make directory mounts conditional** with os.path.exists()
+4. **Download NLTK/spaCy data at runtime** in service __init__ with proper error handling
+5. **Catch multiple exception types** (LookupError AND OSError for NLTK)
+6. **Test locally with Docker** before deploying
+7. **Use health check endpoints** for monitoring
+8. **Keep configuration files in git**
+9. **Document all environment variables**
 
 ### ❌ DON'T:
 1. **Don't hardcode ports** - use environment variables
 2. **Don't assume directories exist** - create or check first
-3. **Don't download large files at runtime** - do it in build
-4. **Don't commit secrets** - use environment variables
-5. **Don't skip error handling** - wrap in try/except
-6. **Don't ignore logs** - they're your best debugging tool
+3. **Don't rely on build-time NLTK downloads** - download at runtime instead
+4. **Don't catch only one exception type** - NLTK can throw LookupError OR OSError
+5. **Don't commit secrets** - use environment variables
+6. **Don't skip error handling** - wrap in try/except
+7. **Don't ignore logs** - they're your best debugging tool
 
 ---
 
