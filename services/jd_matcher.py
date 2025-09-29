@@ -12,13 +12,15 @@ class JDMatcher:
     def __init__(self):
         try:
             import nltk
-            # Ensure required NLTK data is available
-            try:
-                nltk.data.find('tokenizers/punkt')
-                nltk.data.find('tokenizers/punkt_tab')
-            except LookupError:
-                nltk.download('punkt', quiet=True)
-                nltk.download('punkt_tab', quiet=True)
+            # Download required NLTK data if not available
+            for resource in ['punkt', 'punkt_tab']:
+                try:
+                    nltk.data.find(f'tokenizers/{resource}')
+                except (LookupError, OSError):
+                    try:
+                        nltk.download(resource, quiet=True)
+                    except Exception as e:
+                        logger.warning(f"Could not download NLTK {resource}: {e}")
         except ImportError:
             logger.warning("NLTK not available for advanced matching")
 
