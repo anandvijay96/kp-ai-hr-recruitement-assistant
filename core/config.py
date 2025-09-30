@@ -1,6 +1,7 @@
 import os
 from typing import Optional
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 
 class Settings(BaseSettings):
     """Application settings"""
@@ -16,6 +17,14 @@ class Settings(BaseSettings):
     max_file_size: int = 10 * 1024 * 1024  # 10MB (alias for compatibility)
     allowed_extensions: list = [".pdf", ".doc", ".docx"]
     upload_dir: str = "uploads"
+
+    @field_validator('max_file_size', 'max_upload_size', mode='before')
+    @classmethod
+    def parse_int_with_strip(cls, v):
+        """Strip whitespace and newlines from integer fields"""
+        if isinstance(v, str):
+            return int(v.strip())
+        return v
 
     # Processing Settings
     max_pages_ocr: int = 5
