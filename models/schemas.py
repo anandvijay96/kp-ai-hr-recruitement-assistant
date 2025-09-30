@@ -16,7 +16,11 @@ class AuthenticityScore(BaseModel):
     grammar_score: float = Field(..., ge=0, le=100)
     formatting_score: float = Field(..., ge=0, le=100)
     visual_consistency: float = Field(..., ge=0, le=100)
+    linkedin_profile_score: float = Field(default=0, ge=0, le=100)
+    capitalization_score: float = Field(default=0, ge=0, le=100)
     details: List[str] = Field(default_factory=list)
+    flags: List[Dict[str, str]] = Field(default_factory=list)
+    diagnostics: Dict[str, Any] = Field(default_factory=dict)
 
 class SkillMatch(BaseModel):
     skill: str

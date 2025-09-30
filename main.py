@@ -158,7 +158,11 @@ async def scan_resume(
             grammar_score=authenticity_analysis['grammar_score'],
             formatting_score=authenticity_analysis['formatting_score'],
             visual_consistency=authenticity_analysis['visual_consistency'],
-            details=authenticity_analysis['details']
+            linkedin_profile_score=authenticity_analysis.get('linkedin_profile_score', 0),
+            capitalization_score=authenticity_analysis.get('capitalization_score', 0),
+            details=authenticity_analysis.get('details', []),
+            flags=authenticity_analysis.get('flags', []),
+            diagnostics=authenticity_analysis.get('diagnostics', {})
         )
 
         # Implement JD matching if provided
