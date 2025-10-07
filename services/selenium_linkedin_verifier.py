@@ -45,7 +45,7 @@ class SeleniumLinkedInVerifier:
     
     def initialize_driver(self, headless: bool = True):
         """
-        Initialize Chrome WebDriver
+        Initialize Chrome WebDriver (supports Browserless for Railway)
         
         Args:
             headless: Run browser in headless mode (no GUI)
@@ -53,32 +53,53 @@ class SeleniumLinkedInVerifier:
         if self.driver:
             return  # Already initialized
         
+        import os
+        
         logger.info("Initializing Chrome WebDriver for LinkedIn verification...")
         
         chrome_options = Options()
         
-        # Try to find Chrome/Chromium binary
-        import os
-        import shutil
-        chrome_binary = None
-        for binary in ['chromium-browser', 'chromium', 'google-chrome', 'chrome']:
-            path = shutil.which(binary)
-            if path:
-                chrome_binary = path
-                logger.info(f"Found Chrome binary: {chrome_binary}")
-                break
+        # Check if Browserless is configured (Railway deployment)
+        browserless_endpoint = os.environ.get('BROWSER_WEBDRIVER_ENDPOINT')
+        browserless_token = os.environ.get('BROWSER_TOKEN')
         
-        if chrome_binary:
-            chrome_options.binary_location = chrome_binary
+        if browserless_endpoint and browserless_token:
+            # Use Browserless (Railway)
+            logger.info("Using Browserless service for Chrome WebDriver")
+            chrome_options.set_capability('browserless:token', browserless_token)
+        else:
+            # Local development - try to find Chrome/Chromium binary
+            logger.info("Using local Chrome/Chromium")
+            import shutil
+            chrome_binary = None
+            for binary in ['chromium-browser', 'chromium', 'google-chrome', 'chrome']:
+                path = shutil.which(binary)
+                if path:
+                    chrome_binary = path
+                    logger.info(f"Found Chrome binary: {chrome_binary}")
+                    break
+            
+            if chrome_binary:
+                chrome_options.binary_location = chrome_binary
         
+        # Common options for both local and Browserless
         if headless:
             chrome_options.add_argument('--headless')
             chrome_options.add_argument('--disable-gpu')
         
-        # Anti-detection options
+        # Anti-detection and performance options
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
         chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+        chrome_options.add_argument('--window-size=1920,1080')
+        chrome_options.add_argument('--disable-background-timer-throttling')
+        chrome_options.add_argument('--disable-backgrounding-occluded-windows')
+        chrome_options.add_argument('--disable-breakpad')
+        chrome_options.add_argument('--disable-extensions')
+        chrome_options.add_argument('--disable-ipc-flooding-protection')
+        chrome_options.add_argument('--disable-renderer-backgrounding')
+        chrome_options.add_argument('--hide-scrollbars')
+        chrome_options.add_argument('--mute-audio')
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option('useAutomationExtension', False)
         
@@ -96,29 +117,42 @@ class SeleniumLinkedInVerifier:
         chrome_options.add_experimental_option("prefs", prefs)
         
         try:
-            # Try system ChromeDriver first
-            try:
-                self.driver = webdriver.Chrome(options=chrome_options)
-                logger.info("Using system ChromeDriver")
-            except Exception as e:
-                logger.debug(f"System ChromeDriver failed: {e}")
-                
-                # Fallback to webdriver-manager
-                if WEBDRIVER_MANAGER_AVAILABLE:
-                    logger.info("Trying webdriver-manager...")
-                    service = Service(ChromeDriverManager().install())
-                    self.driver = webdriver.Chrome(service=service, options=chrome_options)
-                else:
-                    raise Exception("ChromeDriver not found. Install with: pip install webdriver-manager")
+            if browserless_endpoint:
+                # Use Browserless Remote WebDriver
+                self.driver = webdriver.Remote(
+                    command_executor=browserless_endpoint,
+                    options=chrome_options
+                )
+                logger.info("✅ Connected to Browserless service")
+            else:
+                # Try local ChromeDriver
+                try:
+                    self.driver = webdriver.Chrome(options=chrome_options)
+                    logger.info("✅ Using local ChromeDriver")
+                except Exception as e:
+                    logger.debug(f"Local ChromeDriver failed: {e}")
+                    
+                    # Fallback to webdriver-manager
+                    if WEBDRIVER_MANAGER_AVAILABLE:
+                        logger.info("Trying webdriver-manager...")
+                        service = Service(ChromeDriverManager().install())
+                        self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                        logger.info("✅ Using webdriver-manager ChromeDriver")
+                    else:
+                        raise Exception("ChromeDriver not found. Install with: pip install webdriver-manager")
             
-            # Remove webdriver property to avoid detection
-            self.driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
-                'source': '''
-                    Object.defineProperty(navigator, 'webdriver', {
-                        get: () => undefined
+            # Remove webdriver property to avoid detection (if not using Browserless)
+            if not browserless_endpoint:
+                try:
+                    self.driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
+                        'source': '''
+                            Object.defineProperty(navigator, 'webdriver', {
+                                get: () => undefined
+                            })
+                        '''
                     })
-                '''
-            })
+                except:
+                    pass  # CDP commands might not work with Remote driver
             
             logger.info("✅ Chrome WebDriver initialized successfully")
             
