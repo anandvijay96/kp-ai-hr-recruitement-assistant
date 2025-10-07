@@ -15,13 +15,13 @@ candidate_service = CandidateService()
 
 @router.post("/search")
 def search_candidates(filters: CandidateFilter, page: int = 1, page_size: int = 20, db: Session = Depends(get_db)) -> Dict[str, Any]:
-    """Searches and filters candidates."""
-    return filter_service.search_candidates(filters, page, page_size)
+    """Searches and filters candidates using database queries."""
+    return filter_service.search_candidates(filters, db, page, page_size)
 
 @router.get("/filter-options")
-def get_filter_options() -> Dict[str, List]:
-    """Retrieves available options for filters."""
-    return filter_service.get_filter_options()
+def get_filter_options(db: Session = Depends(get_db)) -> Dict[str, List]:
+    """Retrieves available options for filters from the database."""
+    return filter_service.get_filter_options(db)
 
 @router.post("/filter-presets", response_model=FilterPresetResponse)
 def create_filter_preset(preset_data: FilterPresetCreate, user_id: int = 1) -> FilterPresetResponse: # Assuming user_id=1 for demo
