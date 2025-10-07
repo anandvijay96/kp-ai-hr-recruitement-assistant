@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     # Google Search API Settings (for LinkedIn verification)
     google_search_api_key: Optional[str] = None
     google_search_engine_id: Optional[str] = None
-    use_selenium_verification: bool = True  # Use Selenium for more accurate results
+    use_selenium_verification: bool = False  # Disabled - search engines block Browserless
 
     class Config:
         env_file = ".env"
