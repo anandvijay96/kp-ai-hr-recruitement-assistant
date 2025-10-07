@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Body
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 
 from core.database import get_db
@@ -47,3 +47,23 @@ def get_candidate(candidate_id: int, db: Session = Depends(get_db)):
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Candidate not found")
     return candidate
+
+@router.post("/check-duplicate")
+def check_duplicate_candidate(
+    email: Optional[str] = Body(None),
+    phone: Optional[str] = Body(None),
+    name: Optional[str] = Body(None),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Check if candidate already exists in the database.
+    Returns duplicate detection results with confidence scores.
+    """
+    if not email and not phone and not name:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=400, 
+            detail="At least one of email, phone, or name must be provided"
+        )
+    
+    return candidate_service.check_duplicate(email, phone, name, db)

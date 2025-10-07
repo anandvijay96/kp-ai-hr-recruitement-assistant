@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from models.db import Candidate, Resume, Education, WorkExperience, Skill
+from services.duplicate_detector import DuplicateDetector
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,36 @@ class CandidateService:
     """
     Handles candidate-related business logic.
     """
+    
+    def __init__(self):
+        """Initialize candidate service with duplicate detector"""
+        self.duplicate_detector = DuplicateDetector(similarity_threshold=0.85)
+    
+    def check_duplicate(
+        self, 
+        email: Optional[str], 
+        phone: Optional[str],
+        name: Optional[str],
+        db: Session
+    ) -> Dict[str, Any]:
+        """
+        Check for duplicate candidates using advanced detection.
+        
+        Args:
+            email: Candidate email
+            phone: Candidate phone number  
+            name: Candidate full name
+            db: Database session
+            
+        Returns:
+            Dict with duplicate detection results
+        """
+        return self.duplicate_detector.check_duplicate_candidate(
+            email=email,
+            phone=phone,
+            name=name,
+            db=db
+        )
     
     def find_duplicate(self, email: str, phone: str, db: Session) -> Optional[Candidate]:
         """
