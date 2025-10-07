@@ -299,37 +299,175 @@ class ResumeAuthenticityAnalyzer:
             return 75.0
 
     def _check_linkedin_profile(self, text_content: str) -> float:
-        """Check for LinkedIn profile URL in resume"""
+        """Check for LinkedIn profile URL in resume and verify online"""
         try:
+            result = {
+                'found_in_resume': False,
+                'linkedin_url': None,
+                'other_profiles': [],
+                'score': 0.0,
+                'cross_verified': False
+            }
+            
+            # Extract candidate info for verification
+            candidate_name = self._extract_candidate_name(text_content)
+            candidate_email = self._extract_email(text_content)
+            candidate_phone = self._extract_phone(text_content)
+            
             # LinkedIn URL patterns
             linkedin_patterns = [
-                r'linkedin\.com/in/[\w-]+',
-                r'www\.linkedin\.com/in/[\w-]+',
-                r'in\.linkedin\.com/in/[\w-]+',
-                r'linkedin\.com/pub/[\w-]+'
+                r'linkedin\.com/in/([\w-]+)',
+                r'www\.linkedin\.com/in/([\w-]+)',
+                r'in\.linkedin\.com/in/([\w-]+)',
+                r'linkedin\.com/pub/([\w-]+)'
             ]
 
             for pattern in linkedin_patterns:
-                if re.search(pattern, text_content, re.IGNORECASE):
-                    return 100.0  # LinkedIn profile found
+                match = re.search(pattern, text_content, re.IGNORECASE)
+                if match:
+                    result['found_in_resume'] = True
+                    result['linkedin_url'] = match.group(0)
+                    break
 
             # Check for other professional profiles as partial credit
             other_profiles = [
-                r'github\.com/[\w-]+',
-                r'gitlab\.com/[\w-]+',
-                r'stackoverflow\.com/users/[\w-]+',
-                r'medium\.com/@[\w-]+'
+                (r'github\.com/[\w-]+', 'GitHub'),
+                (r'gitlab\.com/[\w-]+', 'GitLab'),
+                (r'stackoverflow\.com/users/[\w-]+', 'StackOverflow'),
+                (r'medium\.com/@[\w-]+', 'Medium')
             ]
 
-            for pattern in other_profiles:
-                if re.search(pattern, text_content, re.IGNORECASE):
-                    return 70.0  # Other professional profile found
+            for pattern, platform in other_profiles:
+                match = re.search(pattern, text_content, re.IGNORECASE)
+                if match:
+                    result['other_profiles'].append({
+                        'platform': platform,
+                        'url': match.group(0)
+                    })
 
-            return 0.0  # No professional profile found
+            # ALWAYS perform verification if configured and we have candidate info
+            # Priority: Selenium (more accurate) > API (limited)
+            verification = None
+            if candidate_name:
+                # Try Selenium first (more accurate, real browser results)
+                if self.selenium_verifier:
+                    try:
+                        logger.info(f"Using Selenium for LinkedIn verification: {candidate_name}")
+                        verification = self.selenium_verifier.verify_candidate(
+                            candidate_name, candidate_email, candidate_phone
+                        )
+                        logger.info(f"✅ Selenium verification complete")
+                    except Exception as e:
+                        logger.warning(f"Selenium verification failed: {e}, falling back to API")
+                        verification = None
+                
+                # Fallback to API if Selenium failed or not available
+                if not verification and self.google_search_verifier:
+                    try:
+                        logger.info("Using Google API for LinkedIn verification")
+                        verification = self.google_search_verifier.verify_candidate(
+                            candidate_name, candidate_email, candidate_phone
+                        )
+                    except Exception as e:
+                        logger.warning(f"API verification also failed: {e}")
+                        verification = None
+            
+            if verification:
+                result['google_verification'] = verification
+                
+                # Cross-verification with flexible matching
+                linkedin_matches = False
+                linkedin_found_online = verification.get('linkedin_found', False)
+                
+                if result['found_in_resume'] and result['linkedin_url'] and linkedin_found_online:
+                    resume_linkedin = self._normalize_linkedin_url(result['linkedin_url'])
+                    google_linkedins = verification.get('linkedin_profiles', [])
+                    
+                    # Try exact match first
+                    for google_profile in google_linkedins:
+                        normalized_google = self._normalize_linkedin_url(google_profile)
+                        if resume_linkedin == normalized_google:
+                            linkedin_matches = True
+                            logger.info(f"✅ LinkedIn cross-verified (exact): {result['linkedin_url']} matches {google_profile}")
+                            break
+                    
+                    # If no exact match but Google found LinkedIn profiles, give benefit of doubt
+                    if not linkedin_matches and len(google_linkedins) > 0:
+                        logger.info(f"⚠️ No exact match, but Google found {len(google_linkedins)} LinkedIn profiles")
+                        logger.info(f"   Resume: {result['linkedin_url']}")
+                        logger.info(f"   Google: {google_linkedins}")
+                        linkedin_matches = "partial"
+                
+                # Scoring based on verification results
+                if result['found_in_resume'] and linkedin_matches == True:
+                    result['score'] = 100.0
+                    result['cross_verified'] = True
+                elif result['found_in_resume'] and linkedin_matches == "partial":
+                    result['score'] = 85.0
+                    result['cross_verified'] = True
+                    logger.info("✅ LinkedIn verified (API indexing limitation)")
+                elif result['found_in_resume'] and linkedin_found_online and not linkedin_matches:
+                    result['score'] = 70.0
+                    result['cross_verified'] = False
+                elif result['found_in_resume'] and not linkedin_found_online:
+                    result['score'] = 50.0
+                    result['cross_verified'] = False
+                elif not result['found_in_resume'] and verification.get('linkedin_found'):
+                    result['score'] = 75.0
+                    result['cross_verified'] = True
+                elif verification.get('verified'):
+                    result['score'] = 60.0 if result['other_profiles'] else 40.0
+                elif verification.get('search_attempted'):
+                    result['score'] = 20.0
+            else:
+                # No verification available
+                if result['found_in_resume']:
+                    result['score'] = 70.0
+                elif result['other_profiles']:
+                    result['score'] = 50.0
+                else:
+                    result['score'] = 0.0
+
+            return result['score']
 
         except Exception as e:
             logger.error(f"LinkedIn profile check failed: {str(e)}")
             return 50.0  # Default neutral score
+    
+    def _normalize_linkedin_url(self, url: str) -> str:
+        """Normalize LinkedIn URL for comparison"""
+        if not url:
+            return ""
+        url = url.lower()
+        url = re.sub(r'^https?://', '', url)
+        url = re.sub(r'^www\.', '', url)
+        url = url.split('?')[0].rstrip('/')
+        match = re.search(r'linkedin\.com/(in|pub)/([\w-]+)', url)
+        if match:
+            return f"linkedin.com/{match.group(1)}/{match.group(2)}"
+        return url
+    
+    def _extract_candidate_name(self, text_content: str) -> Optional[str]:
+        """Extract candidate name from resume text"""
+        lines = text_content.split('\n')
+        for line in lines[:10]:
+            line = line.strip()
+            if line and len(line.split()) <= 4 and len(line) > 3:
+                if not any(char.isdigit() for char in line):
+                    return line
+        return None
+    
+    def _extract_email(self, text_content: str) -> Optional[str]:
+        """Extract email from resume text"""
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        match = re.search(email_pattern, text_content)
+        return match.group(0) if match else None
+    
+    def _extract_phone(self, text_content: str) -> Optional[str]:
+        """Extract phone number from resume text"""
+        phone_pattern = r'[\+\(]?[1-9][0-9 .\-\(\)]{8,}[0-9]'
+        match = re.search(phone_pattern, text_content)
+        return match.group(0) if match else None
 
     def _analyze_capitalization_consistency(self, text_content: str) -> float:
         """Analyze capitalization consistency across the document"""
