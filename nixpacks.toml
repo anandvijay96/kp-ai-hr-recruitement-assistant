@@ -1,5 +1,5 @@
 [phases.setup]
-aptPkgs = ["tesseract-ocr", "tesseract-ocr-eng", "chromium", "chromium-driver"]
+aptPkgs = ["tesseract-ocr", "tesseract-ocr-eng", "chromium-browser", "chromium-chromedriver"]
 
 [phases.install]
 cmds = ["pip install -r requirements.txt"]
