@@ -1,37 +1,14 @@
 import re
 import logging
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from collections import Counter
-
-from services.google_search_verifier import GoogleSearchVerifier
-from services.selenium_linkedin_verifier import SeleniumLinkedInVerifier
 
 logger = logging.getLogger(__name__)
 
 class ResumeAuthenticityAnalyzer:
     """Analyzes resume authenticity using multiple criteria"""
 
-    def __init__(self, google_search_verifier=None, use_selenium=True):
-        """
-        Initialize Resume Authenticity Analyzer
-        
-        Args:
-            google_search_verifier: Optional GoogleSearchVerifier instance for LinkedIn verification
-            use_selenium: Use Selenium for more accurate Google searches (default: True)
-        """
-        self.google_search_verifier = google_search_verifier
-        self.use_selenium = use_selenium
-        self.selenium_verifier = None
-        
-        # Initialize Selenium verifier if requested
-        if use_selenium:
-            try:
-                self.selenium_verifier = SeleniumLinkedInVerifier()
-                logger.info("✅ Selenium LinkedIn verifier initialized")
-            except Exception as e:
-                logger.warning(f"Failed to initialize Selenium verifier: {e}")
-                logger.info("Falling back to Google API verification")
-        
+    def __init__(self):
         try:
             import nltk
             # Download required NLTK data if not available
