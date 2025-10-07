@@ -201,7 +201,9 @@ class DocumentProcessor:
                         if "lines" in block:
                             for line in block["lines"]:
                                 for span in line["spans"]:
-                                    font_info = f"{span['font']}:{span['size']}"
+                                    # Normalize font name (remove weight variants)
+                                    font_name = self._normalize_font_name(span['font'])
+                                    font_info = f"{font_name}:{span['size']}"
                                     page_fonts.add(font_info)
                 except:
                     pass  # Skip if text extraction fails
@@ -255,3 +257,42 @@ class DocumentProcessor:
         except Exception as e:
             logger.error(f"DOCX structure analysis failed: {str(e)}")
             return {}
+    
+    def _normalize_font_name(self, font_name: str) -> str:
+        """
+        Normalize font name by removing weight/style variants
+        
+        Examples:
+            Heebo-Regular, Heebo-Bold, Heebo-Black -> Heebo
+            Arial-BoldMT -> Arial
+            TimesNewRomanPS-BoldMT -> TimesNewRoman
+        """
+        import re
+        
+        # Remove common weight/style suffixes
+        patterns = [
+            r'-Regular$',
+            r'-Bold$',
+            r'-Black$',
+            r'-Medium$',
+            r'-Light$',
+            r'-Thin$',
+            r'-Heavy$',
+            r'-Italic$',
+            r'-BoldItalic$',
+            r'-BoldMT$',
+            r'-ItalicMT$',
+            r'MT$',
+            r'PS-Bold$',
+            r'PS-Italic$',
+            r'PS-BoldItalic$',
+        ]
+        
+        normalized = font_name
+        for pattern in patterns:
+            normalized = re.sub(pattern, '', normalized, flags=re.IGNORECASE)
+        
+        # Remove trailing hyphens
+        normalized = normalized.rstrip('-')
+        
+        return normalized if normalized else font_name

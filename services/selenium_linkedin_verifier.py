@@ -245,23 +245,23 @@ class SeleniumLinkedInVerifier:
         results = []
         
         try:
-            # Use DuckDuckGo instead of Google (no CAPTCHAs!)
-            search_url = f"https://duckduckgo.com/?q={quote_plus(query)}"
+            # Use Google with site:linkedin.com to get better results
+            search_url = f"https://www.google.com/search?q={quote_plus(query)}+site:linkedin.com"
             
-            logger.info(f"Navigating to DuckDuckGo: {search_url}")
+            logger.info(f"Navigating to Google: {search_url}")
             self.driver.get(search_url)
             
-            # Wait for DuckDuckGo results to load
-            time.sleep(4)  # DuckDuckGo needs time for JavaScript
+            # Wait for page to load
+            time.sleep(3)
             
             # Wait for results
             try:
                 WebDriverWait(self.driver, 10).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "article, [data-testid='result']"))
+                    EC.presence_of_element_located((By.ID, "search"))
                 )
-                logger.info("✅ Found DuckDuckGo search results")
+                logger.info("✅ Found Google search results")
             except TimeoutException:
-                logger.warning("⚠️ Timeout waiting for DuckDuckGo results")
+                logger.warning("⚠️ Timeout waiting for Google results")
                 # Still try to parse what we have
             
             # Get HTML
@@ -278,11 +278,11 @@ class SeleniumLinkedInVerifier:
             except:
                 pass
             
-            # Find DuckDuckGo search results
-            # DuckDuckGo uses: article, ol.react-results--main, [data-testid="result"]
-            search_results = soup.select('article[data-testid="result"], li[data-layout="organic"]')
+            # Find Google search results
+            # Google uses: div.g, div.tF2Cxc for organic results
+            search_results = soup.select('div.g, div.tF2Cxc, div[data-sokoban-container]')
             
-            logger.info(f"Found {len(search_results)} DuckDuckGo result containers")
+            logger.info(f"Found {len(search_results)} Google result containers")
             
             # FALLBACK: If no structured results, just search for LinkedIn URLs in entire HTML
             if len(search_results) == 0:
@@ -293,19 +293,22 @@ class SeleniumLinkedInVerifier:
                 
                 for link in all_links:
                     href = link.get('href', '')
-                    # Clean DuckDuckGo redirect URLs
-                    if '//duckduckgo.com/l/' in href:
-                        # DuckDuckGo uses redirect links, extract actual URL
+                    # Clean Google redirect URLs
+                    if href.startswith('/url?'):
+                        # Google uses /url?q= redirect links
                         try:
                             from urllib.parse import unquote, urlparse, parse_qs
                             parsed = urlparse(href)
                             params = parse_qs(parsed.query)
-                            if 'uddg' in params:
-                                href = unquote(params['uddg'][0])
+                            if 'q' in params:
+                                href = params['q'][0]
                         except:
                             pass
                     
                     if 'linkedin.com/in/' in href or 'linkedin.com/pub/' in href:
+                        # Ensure it's a full URL
+                        if not href.startswith('http'):
+                            href = 'https://' + href
                         results.append({
                             'title': link.get_text(strip=True) or 'LinkedIn Profile',
                             'link': href,
@@ -317,42 +320,26 @@ class SeleniumLinkedInVerifier:
             
             for idx, result in enumerate(search_results, 1):
                 try:
-                    # Extract title from DuckDuckGo result
-                    title_elem = result.select_one('h2, [data-testid="result-title-a"]')
+                    # Extract title from Google result
+                    title_elem = result.select_one('h3')
                     title = title_elem.get_text(strip=True) if title_elem else ''
                     
-                    # Extract link from DuckDuckGo result - need to find the actual external link
-                    # DuckDuckGo wraps links, look for data-testid="result-extras-url-link" or the main result link
-                    link = ''
-                    
-                    # Try multiple selectors for the actual URL
-                    for selector in ['a[data-testid="result-extras-url-link"]', 'a.result__a', 'a[href^="http"]']:
-                        link_elem = result.select_one(selector)
-                        if link_elem:
-                            link = link_elem.get('href', '')
-                            if link and not link.startswith('/?'):  # Skip internal DDG links
-                                break
-                    
-                    # If still no link, check all <a> tags and find first external one
-                    if not link or link.startswith('/?'):
-                        all_links = result.find_all('a', href=True)
-                        for a in all_links:
-                            href = a.get('href', '')
-                            if href.startswith('http') and 'duckduckgo.com' not in href:
-                                link = href
-                                break
+                    # Extract link from Google result
+                    link_elem = result.select_one('a[href]')
+                    link = link_elem.get('href', '') if link_elem else ''
                     
                     # Log original link
-                    logger.info(f"Result {idx} original link: {link[:100]}")
+                    if link:
+                        logger.info(f"Result {idx} original link: {link[:100]}")
                     
-                    # Clean DuckDuckGo redirect URLs
-                    if link and '//duckduckgo.com/l/' in link:
+                    # Clean Google redirect URLs
+                    if link and link.startswith('/url?'):
                         try:
                             from urllib.parse import unquote, urlparse, parse_qs
                             parsed = urlparse(link)
                             params = parse_qs(parsed.query)
-                            if 'uddg' in params:
-                                link = unquote(params['uddg'][0])
+                            if 'q' in params:
+                                link = params['q'][0]
                                 logger.info(f"Result {idx} cleaned link: {link[:100]}")
                         except Exception as e:
                             logger.warning(f"Failed to clean redirect: {e}")
