@@ -16,6 +16,7 @@ from services.document_processor import DocumentProcessor
 from services.resume_analyzer import ResumeAuthenticityAnalyzer
 from services.jd_matcher import JDMatcher
 from services.result_storage import ResultStorage
+from services.google_search_verifier import GoogleSearchVerifier
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -34,9 +35,23 @@ if os.path.exists("static"):
 # Setup templates
 templates = Jinja2Templates(directory="templates")
 
+# Initialize Google Search verifier (optional)
+google_search_verifier = None
+if settings.google_search_api_key and settings.google_search_engine_id:
+    google_search_verifier = GoogleSearchVerifier(
+        api_key=settings.google_search_api_key,
+        search_engine_id=settings.google_search_engine_id
+    )
+    logger.info("Google Search verification enabled for LinkedIn profile checks")
+else:
+    logger.info("Google Search API not configured - using Selenium for LinkedIn verification")
+
 # Initialize services
 document_processor = DocumentProcessor()
-resume_analyzer = ResumeAuthenticityAnalyzer()
+resume_analyzer = ResumeAuthenticityAnalyzer(
+    google_search_verifier=google_search_verifier,
+    use_selenium=settings.use_selenium_verification
+)
 jd_matcher = JDMatcher()
 result_storage = ResultStorage(settings.results_dir)
 analysis_cache = SimpleCache(ttl_minutes=30)  # Cache results for 30 minutes

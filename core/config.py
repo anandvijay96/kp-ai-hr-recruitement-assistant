@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     # Storage Settings
     results_dir: str = "results"
     temp_dir: str = "temp"
+    
+    # Google Search API Settings (for LinkedIn verification)
+    google_search_api_key: Optional[str] = None
+    google_search_engine_id: Optional[str] = None
+    use_selenium_verification: bool = True  # Use Selenium for more accurate results
 
     class Config:
         env_file = ".env"
