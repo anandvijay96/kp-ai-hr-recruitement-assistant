@@ -31,10 +31,21 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="/">🤖 AI HR Assistant</a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/">Home</a>
-                <a class="nav-link active" href="/upload">Upload Resume</a>
-                <a class="nav-link" href="/candidates">Candidates</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/upload">Resume Analysis</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/candidates">Candidate Database</a>
+                    </li>
+                </ul>
             </div>
         </div>
     </nav>
@@ -79,6 +90,12 @@
                                 <label for="resumeFiles" class="form-label">Select Multiple Resume Files</label>
                                 <input type="file" class="form-control" id="resumeFiles" name="files" accept=".pdf,.doc,.docx" multiple required>
                                 <div class="form-text">You can select multiple files at once</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="batchJobDescription" class="form-label">Job Description (Optional)</label>
+                                <textarea class="form-control" id="batchJobDescription" name="job_description" rows="4" placeholder="Paste job description here to match all resumes..."></textarea>
+                                <div class="form-text">Apply the same JD matching to all uploaded resumes</div>
                             </div>
 
                             <button type="submit" class="btn btn-secondary">Analyze Multiple Resumes</button>
@@ -288,25 +305,37 @@
                             ${result.matching_score ? `
                                 <div class="mt-3">
                                     <h6>🎯 JD Match: ${Math.round(result.matching_score.overall_match)}%</h6>
-                                    <div class="progress mb-2">
+                                    <div class="progress mb-3">
                                         <div class="progress-bar bg-${getScoreColor(result.matching_score.overall_match)}"
                                              style="width: ${result.matching_score.overall_match}%">
                                             ${Math.round(result.matching_score.overall_match)}%
                                         </div>
                                     </div>
-                                    <small>
-                                        <strong>Skills:</strong> ${Math.round(result.matching_score.skills_match)}% | 
-                                        <strong>Experience:</strong> ${Math.round(result.matching_score.experience_match)}% | 
-                                        <strong>Education:</strong> ${Math.round(result.matching_score.education_match)}%
-                                    </small>
-                                    ${result.matching_score.matched_skills && result.matching_score.matched_skills.length > 0 ? `
-                                        <div class="mt-2">
-                                            <small><strong>✓ Matched Skills:</strong> ${result.matching_score.matched_skills.join(', ')}</small>
+                                    <div class="text-sm">
+                                        <div class="row mb-2">
+                                            <div class="col-4"><small><strong>Skills:</strong></small></div>
+                                            <div class="col-8">
+                                                <span class="badge bg-${getScoreColor(result.matching_score.skills_match)}">${Math.round(result.matching_score.skills_match)}%</span>
+                                            </div>
                                         </div>
-                                    ` : ''}
+                                        <div class="row mb-2">
+                                            <div class="col-4"><small><strong>Experience:</strong></small></div>
+                                            <div class="col-8">
+                                                <span class="badge bg-${getScoreColor(result.matching_score.experience_match)}">${Math.round(result.matching_score.experience_match)}%</span>
+                                            </div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <div class="col-4"><small><strong>Education:</strong></small></div>
+                                            <div class="col-8">
+                                                <span class="badge bg-${getScoreColor(result.matching_score.education_match)}">${Math.round(result.matching_score.education_match)}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                     ${result.matching_score.missing_skills && result.matching_score.missing_skills.length > 0 ? `
-                                        <div class="mt-1">
-                                            <small class="text-warning"><strong>✗ Missing Skills:</strong> ${result.matching_score.missing_skills.join(', ')}</small>
+                                        <div class="mt-2">
+                                            <small class="text-warning">
+                                                <strong>✗ Missing Skills:</strong> ${result.matching_score.missing_skills.slice(0, 5).join(', ')}${result.matching_score.missing_skills.length > 5 ? '...' : ''}
+                                            </small>
                                         </div>
                                     ` : ''}
                                 </div>
@@ -328,25 +357,110 @@
                     <!-- Detailed Diagnostics Collapse -->
                     <div class="collapse mt-3" id="detailedDiagnostics">
                         <div class="card card-body">
-                            ${generateDiagnosticsHTML(diagnostics)}
+                            ${generateDiagnosticsHTML(diagnostics, result.matching_score)}
                         </div>
                     </div>
                 `;
         }
         
-        function generateDiagnosticsHTML(diagnostics) {
+        function generateDiagnosticsHTML(diagnostics, matchingScore = null) {
             let html = '<h6 class="mb-3">📋 Detailed Analysis Report</h6>';
+            
+            // JD Matching Diagnostics (if available)
+            if (matchingScore) {
+                html += `
+                    <div class="mb-4">
+                        <h6 class="text-primary">🎯 Job Description Matching Analysis</h6>
+                        <div class="alert alert-${getScoreColor(matchingScore.overall_match) === 'success' ? 'success' : getScoreColor(matchingScore.overall_match) === 'warning' ? 'warning' : 'danger'}">
+                            <h6 class="alert-heading">Overall Match: ${Math.round(matchingScore.overall_match)}%</h6>
+                            <hr>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <p class="mb-2"><strong>Skills Match:</strong></p>
+                                    <div class="progress" style="height: 25px;">
+                                        <div class="progress-bar bg-${getScoreColor(matchingScore.skills_match)}" 
+                                             style="width: ${matchingScore.skills_match}%">
+                                            ${Math.round(matchingScore.skills_match)}%
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <p class="mb-2"><strong>Experience Match:</strong></p>
+                                    <div class="progress" style="height: 25px;">
+                                        <div class="progress-bar bg-${getScoreColor(matchingScore.experience_match)}" 
+                                             style="width: ${matchingScore.experience_match}%">
+                                            ${Math.round(matchingScore.experience_match)}%
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <p class="mb-2"><strong>Education Match:</strong></p>
+                                    <div class="progress" style="height: 25px;">
+                                        <div class="progress-bar bg-${getScoreColor(matchingScore.education_match)}" 
+                                             style="width: ${matchingScore.education_match}%">
+                                            ${Math.round(matchingScore.education_match)}%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            ${matchingScore.matched_skills && matchingScore.matched_skills.length > 0 ? `
+                                <div class="mb-3">
+                                    <p class="mb-2"><strong>✓ Matched Skills (${matchingScore.matched_skills.length}):</strong></p>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        ${matchingScore.matched_skills.map(skill => `
+                                            <span class="badge bg-success">${skill}</span>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : '<p class="mb-2 text-muted">No skills matched from the job description.</p>'}
+                            
+                            ${matchingScore.missing_skills && matchingScore.missing_skills.length > 0 ? `
+                                <div class="mb-3">
+                                    <p class="mb-2"><strong>✗ Missing Skills (${matchingScore.missing_skills.length}):</strong></p>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        ${matchingScore.missing_skills.map(skill => `
+                                            <span class="badge bg-danger">${skill}</span>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${matchingScore.details && matchingScore.details.length > 0 ? `
+                                <div class="mt-3">
+                                    <p class="mb-2"><strong>📝 Detailed Feedback:</strong></p>
+                                    <ul class="mb-0">
+                                        ${matchingScore.details.map(detail => `<li>${detail}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="mt-3 p-2 bg-light rounded">
+                                <small class="text-muted">
+                                    <strong>💡 Matching Algorithm:</strong> This score is calculated based on weighted factors: 
+                                    Skills (50%), Experience (30%), and Education (20%). The algorithm uses keyword matching 
+                                    and considers both required and bonus qualifications.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
             
             // Debug: Check if diagnostics exists
             if (!diagnostics || Object.keys(diagnostics).length === 0) {
-                html += `
-                    <div class="alert alert-warning">
-                        <p class="mb-0">⚠️ Detailed diagnostics are not available for this resume.</p>
-                        <small>This may occur with older analysis results or if the document format is not fully supported.</small>
-                    </div>
-                `;
+                if (!matchingScore) {
+                    html += `
+                        <div class="alert alert-warning">
+                            <p class="mb-0">⚠️ Detailed diagnostics are not available for this resume.</p>
+                            <small>This may occur with older analysis results or if the document format is not fully supported.</small>
+                        </div>
+                    `;
+                }
                 return html;
             }
+            
+            html += '<h6 class="text-primary mb-3">🔍 Authenticity Analysis Details</h6>';
             
             // LinkedIn Diagnostics
             if (diagnostics.linkedin) {
@@ -504,12 +618,26 @@
                                         <div class="col-md-6">
                                             <h6>📋 Details</h6>
                                             <p><strong>Size:</strong> ${(result.file_size / 1024).toFixed(1)} KB</p>
+                                            
                                             ${result.matching_score ? `
-                                                <p><strong>JD Match:</strong> ${Math.round(result.matching_score.overall_match)}%</p>
+                                                <div class="mt-2">
+                                                    <h6>🎯 JD Match: ${Math.round(result.matching_score.overall_match)}%</h6>
+                                                    <div class="progress mb-2" style="height: 20px;">
+                                                        <div class="progress-bar bg-${getScoreColor(result.matching_score.overall_match)}"
+                                                             style="width: ${result.matching_score.overall_match}%">
+                                                            ${Math.round(result.matching_score.overall_match)}%
+                                                        </div>
+                                                    </div>
+                                                    <small>
+                                                        Skills: ${Math.round(result.matching_score.skills_match)}% | 
+                                                        Experience: ${Math.round(result.matching_score.experience_match)}% | 
+                                                        Education: ${Math.round(result.matching_score.education_match)}%
+                                                    </small>
+                                                </div>
                                             ` : ''}
                                             
                                             ${result.authenticity_score?.flags && result.authenticity_score.flags.length > 0 ? `
-                                                <div class="mt-2">
+                                                <div class="mt-3">
                                                     <strong>🚩 Flags:</strong><br>
                                                     ${result.authenticity_score.flags.map(flag => `
                                                         <span class="badge bg-${flag.severity === 'high' ? 'danger' : flag.severity === 'medium' ? 'warning' : 'info'} me-1 mb-1">
@@ -536,7 +664,7 @@
                                     <!-- Detailed Diagnostics Collapse for Batch Item -->
                                     <div class="collapse mt-3" id="batchDiagnostics${index}">
                                         <div class="card card-body">
-                                            ${generateDiagnosticsHTML(result.authenticity_score?.diagnostics || {})}
+                                            ${generateDiagnosticsHTML(result.authenticity_score?.diagnostics || {}, result.matching_score)}
                                         </div>
                                     </div>
                                 </div>

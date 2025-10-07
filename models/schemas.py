@@ -49,6 +49,8 @@ class ResumeAnalysis(BaseModel):
     experience: List[Dict[str, Any]] = Field(default_factory=list)
     education: List[Dict[str, Any]] = Field(default_factory=list)
     certifications: List[str] = Field(default_factory=list)
+    total_experience_months: Optional[int] = None
+    average_rating: Optional[float] = None
 
     # Analysis results
     authenticity_score: AuthenticityScore
@@ -71,3 +73,9 @@ class BatchAnalysisResult(BaseModel):
     failed: int
     results: List[ResumeAnalysis] = Field(default_factory=list)
     errors: List[str] = Field(default_factory=list)
+
+class FilterPreset(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    filters: Dict[str, Any]

@@ -2,15 +2,49 @@ import os
 import logging
 from typing import Dict, List, Any, Optional
 
+try:
+    import fitz  # PyMuPDF
+except ImportError:
+    fitz = None
+
 logger = logging.getLogger(__name__)
 
 class DocumentProcessor:
-    """Handles document processing for various file formats"""
-
+    """Handle document processing and text extraction"""
+    
     def __init__(self):
-        # Configure Tesseract if needed
-        # pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
-        pass
+        self.temp_dir = "temp"
+        os.makedirs(self.temp_dir, exist_ok=True)
+    
+    def _normalize_font_family(self, font_name: str) -> str:
+        """
+        Normalize font name by removing weight indicators.
+        Treats different weights (Bold, Regular, Black, Medium, Light, etc.) as same family.
+        
+        Examples:
+            "Heebo-Black" -> "Heebo"
+            "Heebo-Regular" -> "Heebo"
+            "Arial-BoldMT" -> "Arial"
+            "Calibri (Body)" -> "Calibri"
+        """
+        if not font_name:
+            return "Unknown"
+        
+        # Common weight indicators to remove
+        weight_patterns = [
+            r'-?(Bold|Regular|Light|Medium|Black|Thin|Heavy|SemiBold|ExtraBold|UltraLight|DemiBold)',
+            r'(MT|PS|Std|Pro|MS)?$',  # Font technology suffixes
+            r'\s*\(.*?\)',  # Remove anything in parentheses like "(Body)"
+        ]
+        
+        normalized = font_name
+        for pattern in weight_patterns:
+            normalized = re.sub(pattern, '', normalized, flags=re.IGNORECASE)
+        
+        # Clean up any trailing hyphens or spaces
+        normalized = normalized.strip(' -_')
+        
+        return normalized if normalized else "Unknown"
 
     def extract_text(self, file_path: str) -> str:
         """Extract text from document based on file extension"""
@@ -31,8 +65,7 @@ class DocumentProcessor:
         """Extract text from PDF using multiple methods including OCR"""
         try:
             # Try PyMuPDF first
-            try:
-                import fitz  # PyMuPDF
+            if fitz:
                 doc = fitz.open(file_path)
                 text_content = []
                 for page in doc:
@@ -45,10 +78,8 @@ class DocumentProcessor:
                         return extracted_text
                     else:
                         logger.info("PyMuPDF extracted minimal text, trying OCR fallback")
-            except ImportError:
+            else:
                 logger.warning("PyMuPDF not available, trying pdfplumber")
-            except Exception as e:
-                logger.warning(f"PyMuPDF extraction failed: {str(e)}")
 
             # Try pdfplumber
             try:
@@ -186,27 +217,36 @@ class DocumentProcessor:
 
     def _analyze_pdf_structure(self, file_path: str) -> Dict[str, Any]:
         """Analyze PDF structure"""
+        if not fitz:
+            return {}
         try:
-            import fitz
             doc = fitz.open(file_path)
             fonts = set()
+            font_families = set()
             pages_info = []
 
-            for page_num in range(min(3, doc.page_count)):  # Limit analysis
-                page = doc.load_page(page_num)
+            for page_num in range(len(doc)):
+                page = doc[page_num]
                 page_fonts = set()
+                page_font_families = set()
 
                 try:
                     for block in page.get_text("dict")["blocks"]:
                         if "lines" in block:
                             for line in block["lines"]:
                                 for span in line["spans"]:
+                                    # Keep original font with size
                                     font_info = f"{span['font']}:{span['size']}"
                                     page_fonts.add(font_info)
+                                    
+                                    # Also track normalized family
+                                    family = self._normalize_font_family(span['font'])
+                                    page_font_families.add(family)
                 except:
                     pass  # Skip if text extraction fails
 
                 fonts.update(page_fonts)
+                font_families.update(page_font_families)
                 pages_info.append({
                     "page": page_num + 1,
                     "fonts": list(page_fonts),
@@ -217,8 +257,9 @@ class DocumentProcessor:
 
             return {
                 "font_analysis": {
-                    "unique_fonts": len(fonts),
+                    "unique_fonts": len(font_families),  # Count font families, not variants
                     "font_list": list(fonts),
+                    "font_families": list(font_families),
                     "pages_info": pages_info
                 },
                 "page_count": len(pages_info),
@@ -236,20 +277,24 @@ class DocumentProcessor:
             from docx import Document
             doc = Document(file_path)
             fonts = set()
+            font_families = set()
 
             for paragraph in doc.paragraphs:
                 for run in paragraph.runs:
                     if run.font.name:
                         fonts.add(f"{run.font.name}:{run.font.size}")
+                        family = self._normalize_font_family(run.font.name)
+                        font_families.add(family)
 
             return {
                 "font_analysis": {
-                    "unique_fonts": len(fonts),
-                    "font_list": list(fonts)
+                    "unique_fonts": len(font_families),  # Count font families, not variants
+                    "font_list": list(fonts),
+                    "font_families": list(font_families)
                 },
                 "page_count": 1,
                 "layout_analysis": {
-                    "consistent_fonts": len(fonts) <= 3
+                    "consistent_fonts": len(font_families) <= 3
                 }
             }
         except Exception as e:

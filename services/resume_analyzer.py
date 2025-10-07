@@ -1,14 +1,40 @@
+"""
+Resume Authenticity Analyzer
+"""
 import re
-import logging
-from typing import Dict, List, Any
+from typing import Dict, Any, List, Optional
 from collections import Counter
+import logging
+
+from services.google_search_verifier import GoogleSearchVerifier
+from services.selenium_linkedin_verifier import SeleniumLinkedInVerifier
 
 logger = logging.getLogger(__name__)
 
 class ResumeAuthenticityAnalyzer:
     """Analyzes resume authenticity using multiple criteria"""
 
-    def __init__(self):
+    def __init__(self, google_search_verifier=None, use_selenium=True):
+        """
+        Initialize Resume Authenticity Analyzer
+        
+        Args:
+            google_search_verifier: Optional GoogleSearchVerifier instance for LinkedIn verification
+            use_selenium: Use Selenium for more accurate Google searches (default: True)
+        """
+        self.google_search_verifier = google_search_verifier
+        self.use_selenium = use_selenium
+        self.selenium_verifier = None
+        
+        # Initialize Selenium verifier if requested
+        if use_selenium:
+            try:
+                self.selenium_verifier = SeleniumLinkedInVerifier()
+                logger.info("✅ Selenium LinkedIn verifier initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Selenium verifier: {e}")
+                logger.info("Falling back to Google API verification")
+        
         try:
             import nltk
             # Download required NLTK data if not available
@@ -23,37 +49,73 @@ class ResumeAuthenticityAnalyzer:
         except ImportError:
             logger.warning("NLTK not available for grammar analysis")
 
-    def analyze_authenticity(self, text_content: str, structure_info: Dict[str, Any]) -> Dict[str, Any]:
+    def analyze_authenticity(self, text_content: str, structure_info: Dict[str, Any],
+                           candidate_name: Optional[str] = None,
+                           candidate_email: Optional[str] = None,
+                           candidate_phone: Optional[str] = None) -> Dict[str, Any]:
         """Analyze resume authenticity using multiple criteria"""
 
+        # Check LinkedIn profile (in resume and via Google search)
+        try:
+            linkedin_check_result = self._check_linkedin_profile(
+                text_content, candidate_name, candidate_email, candidate_phone
+            )
+            # Safety check
+            if linkedin_check_result is None:
+                logger.warning("LinkedIn check returned None, using default")
+                linkedin_check_result = {
+                    'score': 50.0,
+                    'found_in_resume': False,
+                    'google_verification': None,
+                    'cross_verified': False
+                }
+        except Exception as e:
+            logger.error(f"LinkedIn profile check failed: {str(e)}")
+            linkedin_check_result = {
+                'score': 50.0,
+                'found_in_resume': False,
+                'google_verification': None,
+                'cross_verified': False
+            }
+        
         scores = {
             'font_consistency': self._analyze_font_consistency(structure_info),
             'grammar_quality': self._analyze_grammar_quality(text_content),
             'formatting_consistency': self._analyze_formatting_consistency(structure_info),
             'content_suspicious_patterns': self._analyze_suspicious_patterns(text_content),
             'structure_consistency': self._analyze_structure_consistency(structure_info),
-            'linkedin_profile': self._check_linkedin_profile(text_content),
+            'linkedin_profile': linkedin_check_result['score'],
             'capitalization_consistency': self._analyze_capitalization_consistency(text_content)
         }
 
         # Calculate overall score (weighted average)
+        # LinkedIn is CRITICAL in modern hiring - given highest weight
         weights = {
-            'font_consistency': 0.20,
-            'grammar_quality': 0.20,
-            'formatting_consistency': 0.15,
-            'content_suspicious_patterns': 0.10,
-            'structure_consistency': 0.10,
-            'linkedin_profile': 0.15,
+            'font_consistency': 0.15,
+            'grammar_quality': 0.15,
+            'formatting_consistency': 0.10,
+            'content_suspicious_patterns': 0.08,
+            'structure_consistency': 0.07,
+            'linkedin_profile': 0.35,  # CRITICAL: 35% weight for LinkedIn presence
             'capitalization_consistency': 0.10
         }
 
         overall_score = sum(scores[criteria] * weights[criteria] for criteria in scores)
+        
+        # Apply additional penalty if LinkedIn is critically low (< 30%)
+        # This ensures missing LinkedIn significantly impacts the score
+        if scores['linkedin_profile'] < 30:
+            # Apply 10-20% penalty based on how low the LinkedIn score is
+            penalty = (30 - scores['linkedin_profile']) / 30 * 0.20  # Up to 20% penalty
+            overall_score = overall_score * (1 - penalty)
 
         # Generate flags and warnings
-        flags = self._generate_flags(scores, text_content)
+        flags = self._generate_flags(scores, text_content, linkedin_check_result)
 
         # Generate detailed diagnostics
-        diagnostics = self._generate_detailed_diagnostics(text_content, structure_info, scores)
+        diagnostics = self._generate_detailed_diagnostics(
+            text_content, structure_info, scores, linkedin_check_result
+        )
 
         return {
             'overall_score': round(overall_score, 1),
@@ -275,9 +337,51 @@ class ResumeAuthenticityAnalyzer:
             logger.error(f"Structure analysis failed: {str(e)}")
             return 75.0
 
-    def _check_linkedin_profile(self, text_content: str) -> float:
-        """Check for LinkedIn profile URL in resume"""
+    def _normalize_linkedin_url(self, url: str) -> str:
+        """Normalize LinkedIn URL for comparison"""
+        if not url:
+            return ""
+        
+        # Convert to lowercase
+        url = url.lower()
+        
+        # Remove protocol
+        url = re.sub(r'^https?://', '', url)
+        
+        # Remove www.
+        url = re.sub(r'^www\.', '', url)
+        
+        # Remove trailing slashes
+        url = url.rstrip('/')
+        
+        # Extract just the profile path (e.g., linkedin.com/in/username)
+        match = re.search(r'linkedin\.com/(in|pub)/([\w-]+)', url)
+        if match:
+            return f"linkedin.com/{match.group(1)}/{match.group(2)}"
+        
+        return url
+    
+    def _check_linkedin_profile(self, text_content: str, 
+                               candidate_name: Optional[str] = None,
+                               candidate_email: Optional[str] = None,
+                               candidate_phone: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Check for LinkedIn profile URL in resume and ALWAYS verify via Google search
+        Google verification is mandatory for proper scoring regardless of resume content.
+        
+        Returns:
+            Dictionary with score and verification details
+        """
         try:
+            result = {
+                'score': 0.0,
+                'found_in_resume': False,
+                'google_verification': None,
+                'linkedin_url': None,
+                'other_profiles': [],
+                'cross_verified': False
+            }
+            
             # LinkedIn URL patterns
             linkedin_patterns = [
                 r'linkedin\.com/in/[\w-]+',
@@ -286,27 +390,137 @@ class ResumeAuthenticityAnalyzer:
                 r'linkedin\.com/pub/[\w-]+'
             ]
 
+            # Check for LinkedIn in resume
             for pattern in linkedin_patterns:
-                if re.search(pattern, text_content, re.IGNORECASE):
-                    return 100.0  # LinkedIn profile found
+                match = re.search(pattern, text_content, re.IGNORECASE)
+                if match:
+                    result['found_in_resume'] = True
+                    result['linkedin_url'] = match.group(0)
+                    break
 
             # Check for other professional profiles as partial credit
             other_profiles = [
-                r'github\.com/[\w-]+',
-                r'gitlab\.com/[\w-]+',
-                r'stackoverflow\.com/users/[\w-]+',
-                r'medium\.com/@[\w-]+'
+                (r'github\.com/[\w-]+', 'GitHub'),
+                (r'gitlab\.com/[\w-]+', 'GitLab'),
+                (r'stackoverflow\.com/users/[\w-]+', 'StackOverflow'),
+                (r'medium\.com/@[\w-]+', 'Medium')
             ]
 
-            for pattern in other_profiles:
-                if re.search(pattern, text_content, re.IGNORECASE):
-                    return 70.0  # Other professional profile found
+            for pattern, platform in other_profiles:
+                match = re.search(pattern, text_content, re.IGNORECASE)
+                if match:
+                    result['other_profiles'].append({
+                        'platform': platform,
+                        'url': match.group(0)
+                    })
 
-            return 0.0  # No professional profile found
+            # ALWAYS perform Google verification if configured and we have candidate info
+            # Priority: Selenium (more accurate) > API (limited)
+            verification = None
+            if candidate_name:
+                # Try Selenium first (more accurate, real browser results)
+                if self.selenium_verifier:
+                    try:
+                        logger.info(f"Using Selenium for LinkedIn verification: {candidate_name}")
+                        verification = self.selenium_verifier.verify_candidate(
+                            candidate_name, candidate_email, candidate_phone
+                        )
+                        logger.info(f"✅ Selenium verification complete")
+                    except Exception as e:
+                        logger.warning(f"Selenium verification failed: {e}, falling back to API")
+                        verification = None
+                
+                # Fallback to API if Selenium failed or not available
+                if not verification and self.google_search_verifier:
+                    try:
+                        logger.info("Using Google API for LinkedIn verification")
+                        verification = self.google_search_verifier.verify_candidate(
+                            candidate_name, candidate_email, candidate_phone
+                        )
+                    except Exception as e:
+                        logger.warning(f"API verification also failed: {e}")
+                        verification = None
+            
+            if verification:
+                result['google_verification'] = verification
+                
+                # NEW SCORING LOGIC: Cross-verification with flexible matching
+                # Check if the LinkedIn URL from resume matches any found by Google
+                linkedin_matches = False
+                linkedin_found_online = verification.get('linkedin_found', False)
+                
+                if result['found_in_resume'] and result['linkedin_url'] and linkedin_found_online:
+                    resume_linkedin = self._normalize_linkedin_url(result['linkedin_url'])
+                    google_linkedins = verification.get('linkedin_profiles', [])
+                    
+                    # Try exact match first
+                    for google_profile in google_linkedins:
+                        normalized_google = self._normalize_linkedin_url(google_profile)
+                        if resume_linkedin == normalized_google:
+                            linkedin_matches = True
+                            logger.info(f"✅ LinkedIn cross-verified (exact): {result['linkedin_url']} matches {google_profile}")
+                            break
+                    
+                    # If no exact match but Google found LinkedIn profiles, give benefit of doubt
+                    # Google CSE API has indexing limitations - if ANY LinkedIn found, it's promising
+                    if not linkedin_matches and len(google_linkedins) > 0:
+                        logger.info(f"⚠️ No exact match, but Google found {len(google_linkedins)} LinkedIn profiles")
+                        logger.info(f"   Resume: {result['linkedin_url']}")
+                        logger.info(f"   Google: {google_linkedins}")
+                        # Partial credit - person likely exists, just API indexing issue
+                        linkedin_matches = "partial"
+                
+                # Scoring based on verification results
+                if result['found_in_resume'] and linkedin_matches == True:
+                    # BEST CASE: LinkedIn in resume AND exact match on Google
+                    result['score'] = 100.0
+                    result['cross_verified'] = True
+                elif result['found_in_resume'] and linkedin_matches == "partial":
+                    # GOOD: LinkedIn in resume AND Google found LinkedIn results (but not exact)
+                    # Give benefit of doubt - likely valid but API indexing limitations
+                    result['score'] = 85.0
+                    result['cross_verified'] = True  # Mark as verified (API limitations)
+                    logger.info("✅ LinkedIn verified (API indexing limitation)")
+                elif result['found_in_resume'] and linkedin_found_online and not linkedin_matches:
+                    # CAUTION: LinkedIn in resume, Google found OTHER LinkedIn profiles
+                    # Could be legitimate (common name) or suspicious
+                    result['score'] = 70.0
+                    result['cross_verified'] = False
+                elif result['found_in_resume'] and not linkedin_found_online:
+                    # SUSPICIOUS: LinkedIn in resume but Google found NO LinkedIn at all
+                    result['score'] = 50.0
+                    result['cross_verified'] = False
+                elif not result['found_in_resume'] and verification.get('linkedin_found'):
+                    # GOOD: LinkedIn verified on Google but not in resume
+                    result['score'] = 75.0
+                    result['cross_verified'] = True
+                elif verification.get('verified'):
+                    # FAIR: Verified online presence but no LinkedIn
+                    result['score'] = 60.0 if result['other_profiles'] else 40.0
+                elif verification.get('search_attempted'):
+                    # POOR: Search attempted but no strong verification
+                    result['score'] = 20.0
+            else:
+                # No Google verification available (API not configured)
+                if result['found_in_resume']:
+                    # LinkedIn in resume but can't cross-verify
+                    result['score'] = 70.0  # Reduced score - can't verify authenticity
+                elif result['other_profiles']:
+                    result['score'] = 50.0
+                else:
+                    result['score'] = 0.0
+
+            return result
 
         except Exception as e:
             logger.error(f"LinkedIn profile check failed: {str(e)}")
-            return 50.0  # Default neutral score
+            return {
+                'score': 50.0,  # Default neutral score
+                'found_in_resume': False,
+                'google_verification': None,
+                'cross_verified': False,
+                'error': str(e)
+            }
 
     def _analyze_capitalization_consistency(self, text_content: str) -> float:
         """Analyze capitalization consistency across the document"""
@@ -350,11 +564,22 @@ class ResumeAuthenticityAnalyzer:
             # 3. Check for sentence case violations
             sentences = [s.strip() for s in text_content.split('.') if s.strip()]
             for sentence in sentences:
-                if sentence and len(sentence) > 5:
+                if sentence and len(sentence) > 10:  # Increased minimum length
+                    # Skip URLs, emails, file paths, etc.
+                    if any(pattern in sentence.lower() for pattern in ['@', 'http', 'www.', 'linkedin.com', 'github.com', '/', '\\']):
+                        continue
+                    
+                    # Skip if it looks like a domain or URL fragment
+                    if sentence.lower().startswith(('com ', 'org ', 'net ', 'io ', 'in/', 'pub/')):
+                        continue
+                    
                     total_checks += 1
-                    # Check if sentence starts with lowercase (excluding bullet points)
-                    if sentence[0].islower() and not sentence.startswith(('•', '-', '*')):
-                        issues += 1
+                    # Check if sentence starts with lowercase (excluding bullet points and list markers)
+                    first_word = sentence.split()[0] if sentence.split() else ""
+                    if first_word and first_word[0].islower() and not sentence.startswith(('•', '-', '*', '○', '●', '■', '□')):
+                        # Additional check: Skip if it's likely a continuation or code snippet
+                        if len(first_word) > 2 and first_word.isalpha():
+                            issues += 1
 
             # Calculate score
             if total_checks == 0:
@@ -369,24 +594,71 @@ class ResumeAuthenticityAnalyzer:
             logger.error(f"Capitalization analysis failed: {str(e)}")
             return 75.0
 
-    def _generate_flags(self, scores: Dict[str, float], text_content: str) -> List[Dict[str, str]]:
+    def _generate_flags(self, scores: Dict[str, float], text_content: str,
+                       linkedin_check_result: Dict[str, Any]) -> List[Dict[str, str]]:
         """Generate warning flags based on analysis"""
         flags = []
 
-        # LinkedIn profile flag
-        if scores['linkedin_profile'] == 0:
+        # Safety check for linkedin_check_result
+        if linkedin_check_result is None:
+            logger.warning("linkedin_check_result is None in _generate_flags, using defaults")
+            linkedin_check_result = {
+                'found_in_resume': False,
+                'google_verification': None,
+                'cross_verified': False
+            }
+
+        # LinkedIn profile flag (enhanced with mandatory Google cross-verification)
+        found_in_resume = linkedin_check_result.get('found_in_resume', False)
+        google_verification = linkedin_check_result.get('google_verification') or {}
+        google_verified = google_verification.get('linkedin_found', False)
+        cross_verified = linkedin_check_result.get('cross_verified', False)
+        search_attempted = google_verification.get('search_attempted', False)
+        
+        if found_in_resume and cross_verified:
+            # BEST CASE: LinkedIn in resume AND verified online - no flag needed
+            pass
+        elif found_in_resume and search_attempted and not google_verified:
+            # SUSPICIOUS: LinkedIn in resume but NOT found on Google
             flags.append({
                 'type': 'warning',
                 'category': 'Professional Profile',
-                'message': 'No LinkedIn profile found',
+                'message': '⚠️ LinkedIn URL in resume could not be verified on Google - possible fake profile',
                 'severity': 'high'
             })
-        elif scores['linkedin_profile'] == 70:
+        elif found_in_resume and not search_attempted:
+            # LinkedIn in resume but couldn't verify (API not configured)
             flags.append({
                 'type': 'info',
                 'category': 'Professional Profile',
-                'message': 'Alternative professional profile found (GitHub/GitLab/etc.)',
+                'message': 'LinkedIn URL in resume (not cross-verified - Google API not configured)',
+                'severity': 'medium'
+            })
+        elif not found_in_resume and google_verified:
+            # LinkedIn verified online but not in resume
+            flags.append({
+                'type': 'info',
+                'category': 'Professional Profile',
+                'message': '✓ LinkedIn profile verified via Google search (not in resume - suggest adding)',
                 'severity': 'low'
+            })
+        elif linkedin_check_result.get('other_profiles'):
+            # Only alternative profiles found
+            profiles = linkedin_check_result.get('other_profiles', [])
+            platforms = ', '.join([p['platform'] for p in profiles])
+            flags.append({
+                'type': 'info',
+                'category': 'Professional Profile',
+                'message': f'Alternative professional profiles found: {platforms}',
+                'severity': 'low'
+            })
+        elif scores['linkedin_profile'] == 0 or scores['linkedin_profile'] <= 20:
+            # No profile found anywhere
+            flags.append({
+                'type': 'warning',
+                'category': 'Professional Profile',
+                'message': '❌ No LinkedIn profile found (in resume or online)',
+                'severity': 'high'
             })
 
         # Capitalization consistency flag
@@ -461,7 +733,9 @@ class ResumeAuthenticityAnalyzer:
 
         return details
 
-    def _generate_detailed_diagnostics(self, text_content: str, structure_info: Dict[str, Any], scores: Dict[str, float]) -> Dict[str, Any]:
+    def _generate_detailed_diagnostics(self, text_content: str, structure_info: Dict[str, Any], 
+                                      scores: Dict[str, float],
+                                      linkedin_check_result: Dict[str, Any]) -> Dict[str, Any]:
         """Generate detailed diagnostics for each criterion"""
         diagnostics = {}
 
@@ -471,8 +745,8 @@ class ResumeAuthenticityAnalyzer:
         # 2. Capitalization Issues Diagnostics
         diagnostics['capitalization'] = self._get_capitalization_diagnostics(text_content)
 
-        # 3. LinkedIn Profile Diagnostics
-        diagnostics['linkedin'] = self._get_linkedin_diagnostics(text_content)
+        # 3. LinkedIn Profile Diagnostics (enhanced with Google verification)
+        diagnostics['linkedin'] = self._get_linkedin_diagnostics(text_content, linkedin_check_result)
 
         # 4. Grammar Issues Diagnostics
         diagnostics['grammar'] = self._get_grammar_diagnostics(text_content)
@@ -486,44 +760,50 @@ class ResumeAuthenticityAnalyzer:
             
             # Get font details
             font_list = font_analysis.get('font_list', [])
+            font_families = font_analysis.get('font_families', [])
             unique_fonts = font_analysis.get('unique_fonts', 0)
             
-            # Parse font information and create breakdown
+            # Parse font information and group by family
             font_breakdown = {}
-            if font_list:
+            
+            # If we have font_families, use them (better approach)
+            if font_families:
+                # Group font variants by family
+                family_variants = {}
                 for font_info in font_list:
-                    # Font info format: "FontName:Size" (e.g., "Arial:12.0")
                     try:
                         if ':' in font_info:
                             font_name = font_info.split(':')[0]
-                            # Count occurrences of each font family
+                            # Normalize to get family
+                            from document_processor import DocumentProcessor
+                            processor = DocumentProcessor()
+                            family = processor._normalize_font_family(font_name)
+                            
+                            if family not in family_variants:
+                                family_variants[family] = []
+                            if font_name not in family_variants[family]:
+                                family_variants[family].append(font_name)
+                    except Exception:
+                        continue
+                
+                # Create breakdown showing families
+                for family in font_families:
+                    variants = family_variants.get(family, [])
+                    count = len(variants) if variants else 1
+                    font_breakdown[family] = f"{count} times" if count > 1 else "1 time"
+            
+            # Fallback: old logic
+            elif font_list:
+                for font_info in font_list:
+                    try:
+                        if ':' in font_info:
+                            font_name = font_info.split(':')[0]
                             if font_name in font_breakdown:
                                 font_breakdown[font_name] += 1
                             else:
                                 font_breakdown[font_name] = 1
-                        else:
-                            # If no size info, just use the font name
-                            if font_info in font_breakdown:
-                                font_breakdown[font_info] += 1
-                            else:
-                                font_breakdown[font_info] = 1
                     except Exception:
                         continue
-            
-            # If no breakdown available, show font list
-            if not font_breakdown and font_list:
-                # Extract just font names for display
-                font_names = []
-                for font_info in font_list:
-                    try:
-                        font_name = font_info.split(':')[0] if ':' in font_info else font_info
-                        if font_name not in font_names:
-                            font_names.append(font_name)
-                    except:
-                        continue
-                
-                if font_names:
-                    font_breakdown = {name: 'Used' for name in font_names}
             
             # Fallback if still no data
             if not font_breakdown:
@@ -630,66 +910,117 @@ class ResumeAuthenticityAnalyzer:
                 'details': [{'type': 'Error', 'message': 'Unable to analyze capitalization'}]
             }
 
-    def _get_linkedin_diagnostics(self, text_content: str) -> Dict[str, Any]:
-        """Get detailed LinkedIn profile search results"""
+    def _get_linkedin_diagnostics(self, text_content: str, 
+                                  linkedin_check_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Get detailed LinkedIn profile search results with mandatory Google cross-verification"""
         try:
-            # Check for LinkedIn
-            linkedin_patterns = [
-                (r'linkedin\.com/in/([\w-]+)', 'LinkedIn Profile'),
-                (r'www\.linkedin\.com/in/([\w-]+)', 'LinkedIn Profile (www)'),
-                (r'in\.linkedin\.com/in/([\w-]+)', 'LinkedIn Profile (in.)'),
-            ]
-            
-            linkedin_found = None
-            for pattern, label in linkedin_patterns:
-                match = re.search(pattern, text_content, re.IGNORECASE)
-                if match:
-                    linkedin_found = {
-                        'type': 'LinkedIn',
-                        'url': match.group(0),
-                        'username': match.group(1),
-                        'status': '✅ Found'
-                    }
-                    break
-            
-            # Check for alternative profiles
-            alternative_patterns = [
-                (r'github\.com/([\w-]+)', 'GitHub'),
-                (r'gitlab\.com/([\w-]+)', 'GitLab'),
-                (r'stackoverflow\.com/users/([\w-]+)', 'Stack Overflow'),
-                (r'medium\.com/@([\w-]+)', 'Medium'),
-            ]
-            
-            alternatives_found = []
-            for pattern, platform in alternative_patterns:
-                match = re.search(pattern, text_content, re.IGNORECASE)
-                if match:
-                    alternatives_found.append({
-                        'platform': platform,
-                        'url': match.group(0),
-                        'username': match.group(1)
-                    })
-            
-            if linkedin_found:
+            # Safety check for linkedin_check_result
+            if linkedin_check_result is None:
+                logger.warning("linkedin_check_result is None in _get_linkedin_diagnostics")
                 return {
-                    'status': 'found',
-                    'profile': linkedin_found,
-                    'alternatives': alternatives_found,
-                    'recommendation': '✅ LinkedIn profile found - Good professional presence'
+                    'status': 'error',
+                    'profile': None,
+                    'alternatives': [],
+                    'recommendation': 'Unable to analyze professional profiles'
                 }
-            elif alternatives_found:
+            
+            found_in_resume = linkedin_check_result.get('found_in_resume', False)
+            linkedin_url = linkedin_check_result.get('linkedin_url')
+            other_profiles = linkedin_check_result.get('other_profiles', [])
+            google_verification = linkedin_check_result.get('google_verification')
+            cross_verified = linkedin_check_result.get('cross_verified', False)
+            
+            # Build LinkedIn profile info if found in resume
+            linkedin_found = None
+            if found_in_resume and linkedin_url:
+                # Extract username from URL
+                username_match = re.search(r'linkedin\.com/(?:in|pub)/([\w-]+)', linkedin_url, re.IGNORECASE)
+                username = username_match.group(1) if username_match else 'Unknown'
+                
+                # Determine status based on cross-verification
+                if cross_verified:
+                    status = '✅ Found in Resume & Verified Online'
+                elif google_verification and google_verification.get('search_attempted'):
+                    status = '⚠️ Found in Resume but NOT Verified Online'
+                else:
+                    status = '⚠️ Found in Resume (Not Cross-Verified)'
+                
+                linkedin_found = {
+                    'type': 'LinkedIn',
+                    'url': linkedin_url,
+                    'username': username,
+                    'status': status,
+                    'cross_verified': cross_verified
+                }
+            
+            # Check Google verification results if available
+            google_verified_linkedin = None
+            if google_verification and google_verification.get('linkedin_found'):
+                profiles = google_verification.get('linkedin_profiles', [])
+                if profiles:
+                    google_verified_linkedin = {
+                        'profiles': profiles,
+                        'confidence': google_verification.get('confidence', 0),
+                        'status': '✅ Verified via Google Search'
+                    }
+            
+            # Determine final status and recommendation based on cross-verification
+            if linkedin_found and cross_verified:
+                return {
+                    'status': 'found_and_verified',
+                    'profile': linkedin_found,
+                    'alternatives': other_profiles,
+                    'google_verification': google_verified_linkedin,
+                    'recommendation': '✅ LinkedIn profile found in resume AND verified online - Highest authenticity confidence'
+                }
+            elif linkedin_found and google_verification and google_verification.get('search_attempted') and not cross_verified:
+                return {
+                    'status': 'found_not_verified',
+                    'profile': linkedin_found,
+                    'alternatives': other_profiles,
+                    'google_verification': google_verification,
+                    'recommendation': '⚠️ WARNING: LinkedIn URL in resume could NOT be verified on Google - Possible fake or deleted profile'
+                }
+            elif linkedin_found and not google_verification:
+                return {
+                    'status': 'found_not_checked',
+                    'profile': linkedin_found,
+                    'alternatives': other_profiles,
+                    'google_verification': None,
+                    'recommendation': '⚠️ LinkedIn URL in resume but not cross-verified (Google API not configured)'
+                }
+            elif google_verified_linkedin:
+                return {
+                    'status': 'verified_online_only',
+                    'profile': None,
+                    'google_verified_profiles': google_verified_linkedin['profiles'],
+                    'alternatives': other_profiles,
+                    'google_verification': google_verified_linkedin,
+                    'recommendation': '✅ LinkedIn profile verified online (not in resume) - Consider adding to resume for better visibility'
+                }
+            elif other_profiles:
                 return {
                     'status': 'alternative',
                     'profile': None,
-                    'alternatives': alternatives_found,
-                    'recommendation': '⚠️ No LinkedIn profile, but found alternative professional profiles. Consider adding LinkedIn.'
+                    'alternatives': other_profiles,
+                    'google_verification': google_verification,
+                    'recommendation': '⚠️ No LinkedIn profile, but found alternative professional profiles. Consider adding LinkedIn URL.'
                 }
             else:
+                # No profile found anywhere
+                google_note = ''
+                if google_verification:
+                    if google_verification.get('search_attempted'):
+                        google_note = ' (Google search performed - no LinkedIn found)'
+                    else:
+                        google_note = ' (Google search API not configured)'
+                
                 return {
                     'status': 'missing',
                     'profile': None,
                     'alternatives': [],
-                    'recommendation': '❌ No professional profile found. Add LinkedIn URL: linkedin.com/in/your-username'
+                    'google_verification': google_verification,
+                    'recommendation': f'❌ No professional profile found{google_note}. Add LinkedIn URL: linkedin.com/in/your-username'
                 }
                 
         except Exception as e:

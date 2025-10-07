@@ -17,6 +17,11 @@ from services.resume_analyzer import ResumeAuthenticityAnalyzer
 from services.jd_matcher import JDMatcher
 from services.result_storage import ResultStorage
 from services.google_search_verifier import GoogleSearchVerifier
+from services.resume_data_extractor import ResumeDataExtractor
+from api.v1 import resumes as resumes_v1
+from api.v1 import candidates as candidates_v1
+from api.v1 import auth as auth_v1
+from models.database import init_db
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,9 +29,19 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.app_name,
-    description="Resume authenticity scanning and JD matching system",
-    version="1.0.0"
+    description="Resume authenticity scanning and JD matching system with OAuth",
+    version="2.0.0"
 )
+
+# Initialize database on startup
+@app.on_event("startup")
+def on_startup():
+    """Initialize database tables on startup"""
+    try:
+        init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
 
 # Mount static files (only if directory exists)
 if os.path.exists("static"):
@@ -35,7 +50,11 @@ if os.path.exists("static"):
 # Setup templates
 templates = Jinja2Templates(directory="templates")
 
-# Initialize Google Search verifier (optional)
+# Initialize services
+document_processor = DocumentProcessor()
+resume_data_extractor = ResumeDataExtractor()
+
+# Initialize Google Search Verifier (if API credentials are configured)
 google_search_verifier = None
 if settings.google_search_api_key and settings.google_search_engine_id:
     google_search_verifier = GoogleSearchVerifier(
@@ -44,10 +63,9 @@ if settings.google_search_api_key and settings.google_search_engine_id:
     )
     logger.info("Google Search verification enabled for LinkedIn profile checks")
 else:
-    logger.info("Google Search API not configured - using Selenium for LinkedIn verification")
+    logger.info("Google Search API not configured - LinkedIn verification will be limited to resume content only")
 
-# Initialize services
-document_processor = DocumentProcessor()
+# Initialize resume analyzer with optional Google verification and Selenium
 resume_analyzer = ResumeAuthenticityAnalyzer(
     google_search_verifier=google_search_verifier,
     use_selenium=settings.use_selenium_verification
@@ -61,6 +79,10 @@ os.makedirs(settings.upload_dir, exist_ok=True)
 os.makedirs(settings.results_dir, exist_ok=True)
 os.makedirs(settings.temp_dir, exist_ok=True)
 
+app.include_router(resumes_v1.router, prefix="/api/v1/resumes", tags=["resumes"])
+app.include_router(candidates_v1.router, prefix="/api/v1/candidates", tags=["candidates"])
+app.include_router(auth_v1.router, prefix="/auth", tags=["authentication"])
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     """Main dashboard"""
@@ -70,6 +92,16 @@ async def home(request: Request):
 async def upload_form(request: Request):
     """Resume upload form"""
     return templates.TemplateResponse("upload.html", {"request": request})
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    """User settings page"""
+    return templates.TemplateResponse("settings.html", {"request": request})
+
+@app.get("/candidates", response_class=HTMLResponse)
+async def candidate_dashboard(request: Request):
+    """Candidate filtering dashboard"""
+    return templates.TemplateResponse("candidate_dashboard.html", {"request": request})
 
 @app.post("/api/scan-resume")
 async def scan_resume(
@@ -164,15 +196,50 @@ async def scan_resume(
                 detail=f"Failed to process document: {str(e)}"
             )
 
-        # Analyze resume authenticity using real criteria
-        authenticity_analysis = resume_analyzer.analyze_authenticity(text_content, structure_info)
+        # Extract candidate information for Google verification
+        try:
+            extracted_data = resume_data_extractor.extract_all(text_content)
+            # Safety check: ensure extracted_data is not None
+            if extracted_data is None:
+                logger.warning("Extractor returned None, using empty data")
+                extracted_data = {}
+            
+            candidate_name = extracted_data.get('name')
+            candidate_email = extracted_data.get('email')
+            candidate_phone = extracted_data.get('phone')
+        except Exception as e:
+            logger.warning(f"Failed to extract candidate data: {str(e)}")
+            candidate_name = None
+            candidate_email = None
+            candidate_phone = None
+
+        # Analyze resume authenticity using real criteria (with Google verification if configured)
+        try:
+            authenticity_analysis = resume_analyzer.analyze_authenticity(
+                text_content, 
+                structure_info,
+                candidate_name=candidate_name,
+                candidate_email=candidate_email,
+                candidate_phone=candidate_phone
+            )
+            
+            # Safety check
+            if authenticity_analysis is None:
+                logger.error("analyze_authenticity returned None!")
+                raise ValueError("Authenticity analysis returned None")
+                
+        except Exception as e:
+            import traceback
+            logger.error(f"Error in authenticity analysis: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
 
         authenticity_score = AuthenticityScore(
-            overall_score=authenticity_analysis['overall_score'],
-            font_consistency=authenticity_analysis['font_consistency'],
-            grammar_score=authenticity_analysis['grammar_score'],
-            formatting_score=authenticity_analysis['formatting_score'],
-            visual_consistency=authenticity_analysis['visual_consistency'],
+            overall_score=authenticity_analysis.get('overall_score', 0),
+            font_consistency=authenticity_analysis.get('font_consistency', 0),
+            grammar_score=authenticity_analysis.get('grammar_score', 0),
+            formatting_score=authenticity_analysis.get('formatting_score', 0),
+            visual_consistency=authenticity_analysis.get('visual_consistency', 0),
             linkedin_profile_score=authenticity_analysis.get('linkedin_profile_score', 0),
             capitalization_score=authenticity_analysis.get('capitalization_score', 0),
             details=authenticity_analysis.get('details', []),
@@ -241,9 +308,10 @@ async def scan_resume(
 @app.post("/api/batch-scan")
 async def batch_scan_resumes(
     request: Request,
-    files: List[UploadFile] = File(...)
+    files: List[UploadFile] = File(...),
+    job_description: str = Form(None)
 ):
-    """Batch scan multiple resumes with async processing"""
+    """Batch scan multiple resumes with async processing and optional JD matching"""
     try:
         # Validate batch upload
         if not files or len(files) == 0:
@@ -268,7 +336,7 @@ async def batch_scan_resumes(
         
         async def process_single_file(file: UploadFile):
             try:
-                result = await scan_resume(request, file, job_description=None)
+                result = await scan_resume(request, file, job_description=job_description)
                 return {"success": True, "result": result}
             except HTTPException as e:
                 return {"success": False, "error": f"{file.filename}: {e.detail}"}
