@@ -5,6 +5,7 @@ class ResumeUploadResponse(BaseModel):
     job_id: str
     file_name: str
     status: str
+    message: Optional[str] = None
 
 class CandidateCreate(BaseModel):
     full_name: str
