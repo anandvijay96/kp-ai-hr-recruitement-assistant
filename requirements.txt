@@ -22,5 +22,10 @@ pandas==2.0.3
 pytest==7.4.3
 pytest-asyncio==0.21.1
 httpx==0.25.2
+requests==2.31.0
+selenium==4.15.2
+webdriver-manager==4.0.1
+beautifulsoup4==4.12.2
+lxml==4.9.3
 celery==5.3.4
 redis==5.0.1
