@@ -467,7 +467,7 @@
                 html += `
                     <div class="mb-4">
                         <h6 class="text-primary">🔗 Professional Profile Analysis</h6>
-                        <div class="alert alert-${diagnostics.linkedin.status === 'found' ? 'success' : diagnostics.linkedin.status === 'alternative' ? 'warning' : 'danger'}">
+                        <div class="alert alert-${diagnostics.linkedin.status === 'found_and_verified' || diagnostics.linkedin.status === 'found' ? 'success' : diagnostics.linkedin.status === 'alternative' || diagnostics.linkedin.status === 'verified_online_only' ? 'warning' : 'danger'}">
                             <p class="mb-2"><strong>${diagnostics.linkedin.recommendation}</strong></p>
                             ${diagnostics.linkedin.profile ? `
                                 <p class="mb-1"><strong>LinkedIn Profile:</strong> ${diagnostics.linkedin.profile.url}</p>

@@ -564,15 +564,18 @@ class ResumeAuthenticityAnalyzer:
             # 3. Check for sentence case violations
             sentences = [s.strip() for s in text_content.split('.') if s.strip()]
             for sentence in sentences:
-                if sentence and len(sentence) > 10:  # Increased minimum length
-                    # Skip URLs, emails, file paths, etc.
-                    if any(pattern in sentence.lower() for pattern in ['@', 'http', 'www.', 'linkedin.com', 'github.com', '/', '\\']):
+                if sentence and len(sentence) > 10:  
+                    # Skip bullet points and list markers
+                    if sentence.startswith(('•', '-', '*', '○', '●', '■', '□')):
                         continue
                     
-                    # Skip if it looks like a domain or URL fragment
-                    if sentence.lower().startswith(('com ', 'org ', 'net ', 'io ', 'in/', 'pub/')):
+                    # Skip if it's an email, URL, or technical string
+                    if '@' in sentence[:20] or 'http' in sentence[:20].lower() or 'www.' in sentence[:20].lower():
+                        continue
+                    if '/' in sentence[:15] or '.com' in sentence[:20] or '.in' in sentence[:20]:
                         continue
                     
+                    # Check if first character is lowercase
                     total_checks += 1
                     # Check if sentence starts with lowercase (excluding bullet points and list markers)
                     first_word = sentence.split()[0] if sentence.split() else ""
@@ -886,7 +889,16 @@ class ResumeAuthenticityAnalyzer:
             
             for sentence in sentences[:20]:  # Check first 20 sentences
                 if sentence and len(sentence) > 5:
-                    if sentence[0].islower() and not sentence.startswith(('•', '-', '*')):
+                    # Skip if starts with bullet points
+                    if sentence.startswith(('•', '-', '*')):
+                        continue
+                    # Skip if it's an email, URL, or technical string
+                    if '@' in sentence[:20] or 'http' in sentence[:20].lower() or 'www.' in sentence[:20].lower():
+                        continue
+                    if '/' in sentence[:15] or '.com' in sentence[:20] or '.in' in sentence[:20]:
+                        continue
+                    # Check for sentence case violation
+                    if sentence[0].islower():
                         lowercase_starts.append(sentence[:50] + '...' if len(sentence) > 50 else sentence)
             
             if lowercase_starts:
