@@ -462,29 +462,133 @@
             
             html += '<h6 class="text-primary mb-3">🔍 Authenticity Analysis Details</h6>';
             
-            // LinkedIn Diagnostics
+            // LinkedIn Diagnostics - Enhanced with separate Resume/Online sections
             if (diagnostics.linkedin) {
-                html += `
-                    <div class="mb-4">
-                        <h6 class="text-primary">🔗 Professional Profile Analysis</h6>
-                        <div class="alert alert-${diagnostics.linkedin.status === 'found_and_verified' || diagnostics.linkedin.status === 'found' ? 'success' : diagnostics.linkedin.status === 'alternative' || diagnostics.linkedin.status === 'verified_online_only' ? 'warning' : 'danger'}">
-                            <p class="mb-2"><strong>${diagnostics.linkedin.recommendation}</strong></p>
-                            ${diagnostics.linkedin.profile ? `
-                                <p class="mb-1"><strong>LinkedIn Profile:</strong> ${diagnostics.linkedin.profile.url}</p>
-                                <p class="mb-0"><strong>Username:</strong> ${diagnostics.linkedin.profile.username}</p>
-                            ` : ''}
-                            ${diagnostics.linkedin.alternatives && diagnostics.linkedin.alternatives.length > 0 ? `
-                                <hr>
-                                <p class="mb-1"><strong>Alternative Profiles Found:</strong></p>
-                                <ul class="mb-0">
-                                    ${diagnostics.linkedin.alternatives.map(alt => `
-                                        <li><strong>${alt.platform}:</strong> ${alt.url}</li>
-                                    `).join('')}
-                                </ul>
-                            ` : ''}
+                html += `<div class="mb-4"><h6 class="text-primary">🔗 Professional Profile Analysis</h6>`;
+                
+                // Section 1: Resume Presence
+                if (diagnostics.linkedin.profile) {
+                    const profile = diagnostics.linkedin.profile;
+                    const resumeStatus = profile.cross_verified ? 'success' : 'warning';
+                    html += `
+                        <div class="alert alert-${resumeStatus} mb-3">
+                            <div class="d-flex align-items-start">
+                                <span style="font-size: 1.5rem; margin-right: 12px;">📄</span>
+                                <div style="flex: 1;">
+                                    <p class="mb-2"><strong>Found in Resume</strong></p>
+                                    <p class="mb-1">
+                                        <strong>LinkedIn URL:</strong> 
+                                        <a href="${profile.url}" target="_blank" class="text-decoration-none">
+                                            ${profile.url}
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-box-arrow-up-right" viewBox="0 0 16 16" style="margin-left: 4px;">
+                                                <path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
+                                                <path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
+                                            </svg>
+                                        </a>
+                                    </p>
+                                    <p class="mb-0"><strong>Username:</strong> <code>${profile.username}</code></p>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                }
+                
+                // Section 2: Online Verification (Enhanced)
+                if (diagnostics.linkedin.verification_details) {
+                    const details = diagnostics.linkedin.verification_details;
+                    html += `
+                        <div class="alert alert-info mb-3" style="border-left: 4px solid #0077b5;">
+                            <div class="d-flex align-items-start">
+                                <span style="font-size: 1.5rem; margin-right: 12px;">🔍</span>
+                                <div style="flex: 1;">
+                                    <p class="mb-2"><strong>Online Verification Results</strong></p>
+                                    <div class="mb-2">
+                                        <span class="badge bg-success me-2">✓ Verified</span>
+                                        <span class="badge bg-info">via ${details.search_engine}</span>
+                                    </div>
+                                    
+                                    ${details.search_url ? `
+                                        <p class="mb-2">
+                                            <strong>Verification Source:</strong><br>
+                                            <a href="${details.search_url}" target="_blank" class="btn btn-sm btn-outline-primary mt-1">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16" style="margin-right: 4px;">
+                                                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                                                </svg>
+                                                View ${details.search_engine} Search: "${details.search_query}"
+                                            </a>
+                                        </p>
+                                    ` : ''}
+                                    
+                                    ${details.matched_profiles && details.matched_profiles.length > 0 ? `
+                                        <div class="mt-2">
+                                            <strong>Matched LinkedIn Profile(s):</strong>
+                                            <ul class="list-unstyled mt-1 mb-0">
+                                                ${details.matched_profiles.slice(0, 3).map(profile => `
+                                                    <li class="mb-1">
+                                                        <a href="${profile}" target="_blank" class="text-decoration-none">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="#0077b5" class="bi bi-linkedin" viewBox="0 0 16 16">
+                                                                <path d="M0 1.146C0 .513.526 0 1.175 0h13.65C15.474 0 16 .513 16 1.146v13.708c0 .633-.526 1.146-1.175 1.146H1.175C.526 16 0 15.487 0 14.854V1.146zm4.943 12.248V6.169H2.542v7.225h2.401zm-1.2-8.212c.837 0 1.358-.554 1.358-1.248-.015-.709-.52-1.248-1.342-1.248-.822 0-1.359.54-1.359 1.248 0 .694.521 1.248 1.327 1.248h.016zm4.908 8.212V9.359c0-.216.016-.432.08-.586.173-.431.568-.878 1.232-.878.869 0 1.216.662 1.216 1.634v3.865h2.401V9.25c0-2.22-1.184-3.252-2.764-3.252-1.274 0-1.845.7-2.165 1.193v.025h-.016a5.54 5.54 0 0 1 .016-.025V6.169h-2.4c.03.678 0 7.225 0 7.225h2.4z"/>
+                                                            </svg>
+                                                            ${profile}
+                                                        </a>
+                                                    </li>
+                                                `).join('')}
+                                            </ul>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    <div class="mt-2 p-2 bg-light rounded">
+                                        <small class="text-muted">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                                <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                                            </svg>
+                                            <strong>Why this matters:</strong> HR can click the verification link to confirm this is the correct person and not someone with a similar name.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else if (diagnostics.linkedin.profile && diagnostics.linkedin.profile.cross_verified === false) {
+                    // Show warning if found in resume but not verified
+                    html += `
+                        <div class="alert alert-warning mb-3">
+                            <div class="d-flex align-items-start">
+                                <span style="font-size: 1.5rem; margin-right: 12px;">⚠️</span>
+                                <div style="flex: 1;">
+                                    <p class="mb-1"><strong>Could Not Verify Online</strong></p>
+                                    <small>The LinkedIn profile from the resume could not be found through online search. This may indicate a deleted profile or privacy settings.</small>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Alternative Profiles
+                if (diagnostics.linkedin.alternatives && diagnostics.linkedin.alternatives.length > 0) {
+                    html += `
+                        <div class="alert alert-secondary mb-3">
+                            <p class="mb-2"><strong>Alternative Profiles Found:</strong></p>
+                            <ul class="mb-0">
+                                ${diagnostics.linkedin.alternatives.map(alt => `
+                                    <li>
+                                        <strong>${alt.platform}:</strong> 
+                                        <a href="${alt.url}" target="_blank" class="text-decoration-none">
+                                            ${alt.url}
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="margin-left: 2px;">
+                                                <path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
+                                                <path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
+                                            </svg>
+                                        </a>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+                html += `</div>`;
             }
             
             // Capitalization Diagnostics

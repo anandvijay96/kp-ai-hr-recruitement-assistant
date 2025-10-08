@@ -978,11 +978,35 @@ class ResumeAuthenticityAnalyzer:
             
             # Determine final status and recommendation based on cross-verification
             if linkedin_found and cross_verified:
+                # Extract verification details
+                verification_details = {}
+                if google_verification:
+                    search_query = google_verification.get('search_query', '')
+                    method = google_verification.get('method', 'unknown')
+                    search_url = None
+                    
+                    # Generate search URL based on method
+                    if method == 'selenium':
+                        from urllib.parse import quote_plus
+                        search_url = f"https://duckduckgo.com/?q={quote_plus(search_query)}"
+                    elif method == 'api':
+                        search_url = f"https://www.google.com/search?q={quote_plus(search_query)}"
+                    
+                    verification_details = {
+                        'search_query': search_query,
+                        'search_engine': 'DuckDuckGo' if method == 'selenium' else 'Google',
+                        'search_url': search_url,
+                        'method': method,
+                        'matched_profiles': google_verification.get('linkedin_profiles', []),
+                        'search_results_summary': google_verification.get('search_results_summary', [])
+                    }
+                
                 return {
                     'status': 'found_and_verified',
                     'profile': linkedin_found,
                     'alternatives': other_profiles,
                     'google_verification': google_verified_linkedin,
+                    'verification_details': verification_details,
                     'recommendation': '✅ LinkedIn profile found in resume AND verified online - Highest authenticity confidence'
                 }
             elif linkedin_found and google_verification and google_verification.get('search_attempted') and not cross_verified:
@@ -990,6 +1014,7 @@ class ResumeAuthenticityAnalyzer:
                     'status': 'found_not_verified',
                     'profile': linkedin_found,
                     'alternatives': other_profiles,
+                    'google_verification': google_verified_linkedin,
                     'google_verification': google_verification,
                     'recommendation': '⚠️ WARNING: LinkedIn URL in resume could NOT be verified on Google - Possible fake or deleted profile'
                 }
