@@ -18,10 +18,11 @@
         .card { border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: none; margin-bottom: 20px; }
         .upload-zone { border: 3px dashed #dee2e6; border-radius: 12px; padding: 50px 30px; text-align: center; transition: all 0.3s; cursor: pointer; background: white; }
         .upload-zone:hover, .upload-zone.dragover { border-color: var(--primary); background: #f0f7ff; }
-        .score-badge { font-size: 1.5em; font-weight: bold; padding: 8px 16px; border-radius: 8px; }
+        .score-badge { font-size: 1.2em; font-weight: bold; padding: 6px 12px; border-radius: 6px; display: inline-block; margin-bottom: 8px; }
         .score-high { background: var(--success); color: white; }
         .score-medium { background: var(--warning); color: #000; }
         .score-low { background: var(--danger); color: white; }
+        .score-details { font-size: 0.85em; line-height: 1.6; }
         .resume-row { cursor: pointer; transition: all 0.2s; }
         .resume-row:hover { background: #f8f9fa; }
         .component-score { margin-bottom: 10px; }
@@ -236,12 +237,12 @@
                             <small class="text-muted">${formatFileSize(scan.file_size)}</small>
                         </td>
                         <td>
-                            <span class="score-badge score-${scoreClass}">${Math.round(authScore)}%</span><br>
-                            <small>
-                                Font: ${Math.round(scan.authenticity_score.font_consistency || 0)}% |
-                                Grammar: ${Math.round(scan.authenticity_score.grammar_score || 0)}% |
-                                LinkedIn: ${Math.round(scan.authenticity_score.linkedin_profile_score || 0)}%
-                            </small><br>
+                            <div><span class="score-badge score-${scoreClass}">${Math.round(authScore)}%</span></div>
+                            <div class="score-details">
+                                <small class="d-block">Font: ${Math.round(scan.authenticity_score.font_consistency || 0)}%</small>
+                                <small class="d-block">Grammar: ${Math.round(scan.authenticity_score.grammar_score || 0)}%</small>
+                                <small class="d-block">LinkedIn: ${Math.round(scan.authenticity_score.linkedin_profile_score || 0)}%</small>
+                            </div>
                             ${scan.authenticity_score.flags && scan.authenticity_score.flags.length > 0 ?
                                 `<span class="badge bg-danger flag-badge">🚩 ${scan.authenticity_score.flags.length} flags</span>` : ''}
                         </td>
@@ -266,10 +267,13 @@
 
         function generateDetailsHTML(scan) {
             const auth = scan.authenticity_score;
+            const match = scan.matching_score;
+            
             return `
-                <h6><i class="bi bi-clipboard-data"></i> Detailed Authenticity Analysis</h6>
-                <div class="row mt-3">
+                <!-- Quick Summary -->
+                <div class="row mb-3">
                     <div class="col-md-6">
+                        <h6><i class="bi bi-clipboard-data"></i> Detailed Authenticity Analysis</h6>
                         <div class="component-score">
                             <strong>Font Consistency:</strong> ${Math.round(auth.font_consistency || 0)}%
                             <div class="progress"><div class="progress-bar bg-success" style="width: ${auth.font_consistency || 0}%"></div></div>
@@ -298,27 +302,154 @@
                         </div>
                     </div>
                 </div>
+                
                 ${auth.flags && auth.flags.length > 0 ? `
-                    <div class="mt-3">
-                        <h6><i class="bi bi-flag"></i> Flags Detected:</h6>
+                    <div class="alert alert-warning mb-3">
+                        <h6><i class="bi bi-flag"></i> Flags Detected (${auth.flags.length}):</h6>
                         ${auth.flags.map(flag => `
-                            <span class="badge bg-${flag.severity === 'high' ? 'danger' : flag.severity === 'medium' ? 'warning' : 'info'} flag-badge">
-                                ${flag.severity === 'high' ? '🔴' : flag.severity === 'medium' ? '🟡' : 'ℹ️'} ${flag.message}
-                            </span>
+                            <div class="mb-2">
+                                <span class="badge bg-${flag.severity === 'high' ? 'danger' : flag.severity === 'medium' ? 'warning' : 'info'}">  
+                                    ${flag.severity === 'high' ? '🔴' : flag.severity === 'medium' ? '🟡' : 'ℹ️'} ${flag.severity.toUpperCase()}
+                                </span>
+                                <strong>${flag.category}:</strong> ${flag.message}
+                            </div>
                         `).join('')}
                     </div>
-                ` : ''}
-                ${scan.matching_score ? `
-                    <div class="mt-3">
-                        <h6><i class="bi bi-bullseye"></i> Job Match: ${Math.round(scan.matching_score.overall_match || 0)}%</h6>
-                        <small>
-                            Skills: ${Math.round(scan.matching_score.skills_match || 0)}% |
-                            Experience: ${Math.round(scan.matching_score.experience_match || 0)}% |
-                            Education: ${Math.round(scan.matching_score.education_match || 0)}%
-                        </small>
+                ` : '<div class="alert alert-success mb-3">✅ No authenticity issues detected</div>'}
+                
+                ${match ? `
+                    <div class="card mb-3" style="background: #fff3cd;">
+                        <div class="card-body">
+                            <h6><i class="bi bi-bullseye"></i> Job Description Matching Analysis</h6>
+                            <h5 class="mb-3">Overall Match: ${Math.round(match.overall_match || 0)}%</h5>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <strong>Skills Match:</strong>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-${match.skills_match >= 80 ? 'success' : match.skills_match >= 60 ? 'warning' : 'danger'}" 
+                                             style="width: ${match.skills_match || 0}%">${Math.round(match.skills_match || 0)}%</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Experience Match:</strong>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-${match.experience_match >= 80 ? 'success' : match.experience_match >= 60 ? 'warning' : 'danger'}" 
+                                             style="width: ${match.experience_match || 0}%">${Math.round(match.experience_match || 0)}%</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Education Match:</strong>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-${match.education_match >= 80 ? 'success' : match.education_match >= 60 ? 'warning' : 'danger'}" 
+                                             style="width: ${match.education_match || 0}%">${Math.round(match.education_match || 0)}%</div>
+                                    </div>
+                                </div>
+                            </div>
+                            ${match.matched_skills && match.matched_skills.length > 0 ? `
+                                <div class="mt-2">
+                                    <strong class="text-success">✓ Matched Skills:</strong>
+                                    ${match.matched_skills.map(skill => `<span class="badge bg-success">${skill}</span>`).join(' ')}
+                                </div>
+                            ` : ''}
+                            ${match.missing_skills && match.missing_skills.length > 0 ? `
+                                <div class="mt-2">
+                                    <strong class="text-danger">✗ Missing Skills:</strong>
+                                    ${match.missing_skills.map(skill => `<span class="badge bg-danger">${skill}</span>`).join(' ')}
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
                 ` : ''}
+                
+                <div class="text-center mt-3">
+                    <button class="btn btn-outline-primary btn-sm" onclick="toggleFullDiagnostics('${scan.file_hash || Math.random()}')">  
+                        <i class="bi bi-search"></i> View Detailed Diagnostics
+                    </button>
+                </div>
+                
+                <div class="hidden" id="full-diagnostics-${scan.file_hash || Math.random()}">
+                    <hr>
+                    <h6 class="mt-3"><i class="bi bi-clipboard-check"></i> Detailed Analysis Report</h6>
+                    ${auth.diagnostics ? `
+                        <div class="accordion mt-3" id="diagnosticsAccordion-${scan.file_hash}">
+                            ${auth.diagnostics.font ? `
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#fontDiag-${scan.file_hash}">
+                                            <strong>📝 Font Analysis</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="fontDiag-${scan.file_hash}" class="accordion-collapse collapse">
+                                        <div class="accordion-body">
+                                            <p><strong>Score:</strong> ${Math.round(auth.diagnostics.font.score || 0)}%</p>
+                                            <p>${auth.diagnostics.font.recommendation || ''}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            ${auth.diagnostics.grammar ? `
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#grammarDiag-${scan.file_hash}">
+                                            <strong>✍️ Grammar Analysis</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="grammarDiag-${scan.file_hash}" class="accordion-collapse collapse">
+                                        <div class="accordion-body">
+                                            <p><strong>Score:</strong> ${Math.round(auth.diagnostics.grammar.score || 0)}%</p>
+                                            <p>${auth.diagnostics.grammar.recommendation || ''}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            ${auth.diagnostics.linkedin ? `
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#linkedinDiag-${scan.file_hash}">
+                                            <strong>💼 LinkedIn Profile Analysis</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="linkedinDiag-${scan.file_hash}" class="accordion-collapse collapse">
+                                        <div class="accordion-body">
+                                            <p><strong>Score:</strong> ${Math.round(auth.diagnostics.linkedin.score || 0)}%</p>
+                                            <p>${auth.diagnostics.linkedin.recommendation || ''}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            ${auth.diagnostics.capitalization ? `
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#capDiag-${scan.file_hash}">
+                                            <strong>🔤 Capitalization Analysis</strong>
+                                        </button>
+                                    </h2>
+                                    <div id="capDiag-${scan.file_hash}" class="accordion-collapse collapse">
+                                        <div class="accordion-body">
+                                            <p><strong>Score:</strong> ${Math.round(auth.diagnostics.capitalization.score || 0)}%</p>
+                                            <p>${auth.diagnostics.capitalization.recommendation || ''}</p>
+                                            ${auth.diagnostics.capitalization.details && auth.diagnostics.capitalization.details.length > 0 ? `
+                                                <div class="mt-2">
+                                                    ${auth.diagnostics.capitalization.details.map(detail => `
+                                                        <div class="alert alert-${detail.type === 'Error' ? 'danger' : 'warning'} py-1 mb-1">
+                                                            <small><strong>${detail.type}:</strong> ${detail.message}</small>
+                                                        </div>
+                                                    `).join('')}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : '<p class="text-muted">Detailed diagnostics not available</p>'}
+                </div>
             `;
+        }
+        
+        function toggleFullDiagnostics(hash) {
+            const elem = document.getElementById(`full-diagnostics-${hash}`);
+            if (elem) elem.classList.toggle('hidden');
         }
 
         function toggleDetails(hash) {
