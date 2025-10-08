@@ -15,8 +15,31 @@ candidate_service = CandidateService()
 
 @router.post("/search")
 def search_candidates(filters: CandidateFilter, page: int = 1, page_size: int = 20, db: Session = Depends(get_db)) -> Dict[str, Any]:
-    """Searches and filters candidates using database queries."""
+    """
+    Searches and filters candidates using database queries.
+    If search_query is provided, uses full-text search with optional filters.
+    """
+    # If search_query is provided, use full-text search
+    if filters.search_query:
+        return filter_service.full_text_search(filters.search_query, db, page, page_size)
+    
+    # Otherwise use traditional filtering
     return filter_service.search_candidates(filters, db, page, page_size)
+
+@router.get("/full-text-search")
+def full_text_search(q: str, page: int = 1, page_size: int = 20, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """
+    Perform full-text search across all candidate data.
+    
+    Supports:
+    - Simple search: "Python developer"
+    - Boolean AND: "Python AND React"
+    - Boolean OR: "Java OR Kotlin"
+    - Boolean NOT: "Python NOT Django"
+    - Phrase search: "senior software engineer"
+    - Complex: "(Python OR Java) AND React NOT PHP"
+    """
+    return filter_service.full_text_search(q, db, page, page_size)
 
 @router.get("/filter-options")
 def get_filter_options(db: Session = Depends(get_db)) -> Dict[str, List]:

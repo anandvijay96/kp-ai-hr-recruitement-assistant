@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, func
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from core.database import Base
 
 class Candidate(Base):
@@ -17,6 +18,7 @@ class Candidate(Base):
     portfolio_url = Column(String(500), nullable=True)
     location = Column(String(255), nullable=True)
     professional_summary = Column(Text, nullable=True)
+    search_vector = Column(TSVECTOR, nullable=True)  # Full-text search vector
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
