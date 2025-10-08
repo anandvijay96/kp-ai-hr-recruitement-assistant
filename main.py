@@ -108,6 +108,11 @@ def candidate_detail_page(candidate_id: int):
     """Candidate detail page."""
     return templates.TemplateResponse("candidate_detail.html", {"request": request})
 
+@app.get("/resumes/{resume_id}/preview")
+def resume_preview_page(resume_id: int, request: Request):
+    """Resume preview page."""
+    return templates.TemplateResponse("resume_preview.html", {"request": request})
+
 @app.post("/api/scan-resume")
 async def scan_resume(
     request: Request,
