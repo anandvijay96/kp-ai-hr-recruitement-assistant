@@ -1,0 +1,37 @@
+<!-- File Progress Item Template - This file is a template reference for upload.html -->
+<!-- Note: This file contains HTML template strings used in the main upload.html JavaScript -->
+<!-- The template variables like {fileId} are replaced dynamically in JavaScript -->
+
+<!-- File Progress Item Template Structure -->
+<div class="file-progress-item" data-file-id="FILE_ID_PLACEHOLDER">
+    <div class="file-progress-header">
+        <div class="file-name" title="FILE_NAME_PLACEHOLDER">FILE_NAME_PLACEHOLDER</div>
+        <div class="file-status status-STATUS_PLACEHOLDER">STATUS_TEXT_PLACEHOLDER</div>
+    </div>
+    <div class="progress mb-2">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+             id="progress-FILE_ID_PLACEHOLDER" 
+             style="width: PROGRESS_PLACEHOLDER%">
+        </div>
+    </div>
+    <div class="file-details">
+        <div class="file-size">
+            <i class="bi bi-file-earmark"></i>
+            <span>FILE_SIZE_PLACEHOLDER</span>
+        </div>
+        <div class="file-time">
+            <i class="bi bi-clock"></i>
+            <span id="time-FILE_ID_PLACEHOLDER">ELAPSED_TIME_PLACEHOLDER</span>
+        </div>
+    </div>
+    <div class="result-preview" id="preview-FILE_ID_PLACEHOLDER" style="display: none;">
+        <div class="preview-score">
+            <span>Authenticity:</span>
+            <span class="score-badge score-SCORE_CLASS_PLACEHOLDER">AUTHENTICITY_SCORE_PLACEHOLDER%</span>
+            <span>Match:</span><span class="score-badge score-MATCH_SCORE_CLASS_PLACEHOLDER">MATCH_SCORE_PLACEHOLDER%</span>
+        </div>
+    </div>
+</div>
+
+<!-- This template is used by the progress tracking system in upload.html -->
+<!-- Template variables are replaced using string interpolation in JavaScript -->

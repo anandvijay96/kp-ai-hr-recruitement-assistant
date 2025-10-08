@@ -74,7 +74,9 @@
                                 <textarea class="form-control" id="jobDescription" name="job_description" rows="4" placeholder="Paste job description here for matching analysis..."></textarea>
                             </div>
 
-                            <button type="submit" class="btn btn-primary">Analyze Resume</button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-upload me-2"></i>Analyze Resume
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -82,32 +84,127 @@
                 <!-- Batch Upload -->
                 <div class="card">
                     <div class="card-header">
-                        <h5>Batch Resume Analysis</h5>
+                        <h5><i class="bi bi-files me-2"></i>Batch Resume Analysis</h5>
                     </div>
                     <div class="card-body">
                         <form id="batchUploadForm" enctype="multipart/form-data" action="javascript:void(0);">
                             <div class="mb-3">
-                                <label for="resumeFiles" class="form-label">Select Multiple Resume Files</label>
-                                <input type="file" class="form-control" id="resumeFiles" name="files" accept=".pdf,.doc,.docx" multiple required>
-                                <div class="form-text">You can select multiple files at once</div>
+                                <label for="resumeFiles" class="form-label">
+                                    <i class="bi bi-folder2-open me-1"></i>
+                                    Select Multiple Resume Files
+                                </label>
+                                <div class="drag-drop-area">
+                                    <input type="file" class="form-control" id="resumeFiles" name="files" accept=".pdf,.doc,.docx" multiple required>
+                                    <div class="drag-drop-overlay" id="dragDropOverlay">
+                                        <div class="drag-drop-content">
+                                            <i class="bi bi-cloud-upload"></i>
+                                            <h5>Drop files here</h5>
+                                            <p class="mb-0">Release to upload up to 50 files</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-text">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    You can select up to 50 files at once. Drag & drop supported.
+                                </div>
                             </div>
 
                             <div class="mb-3">
-                                <label for="batchJobDescription" class="form-label">Job Description (Optional)</label>
+                                <label for="batchJobDescription" class="form-label">
+                                    <i class="bi bi-file-text me-1"></i>
+                                    Job Description (Optional)
+                                </label>
                                 <textarea class="form-control" id="batchJobDescription" name="job_description" rows="4" placeholder="Paste job description here to match all resumes..."></textarea>
                                 <div class="form-text">Apply the same JD matching to all uploaded resumes</div>
                             </div>
 
-                            <button type="submit" class="btn btn-secondary">Analyze Multiple Resumes</button>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-cloud-upload me-2"></i>Analyze Multiple Resumes
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" id="previewFilesBtn">
+                                    <i class="bi bi-eye me-2"></i>Preview Files
+                                </button>
+                            </div>
                         </form>
+                    </div>
+                </div>
+
+                <!-- Progress Tracking Section -->
+                <div class="progress-section" id="progressSection">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-activity me-2"></i>Upload Progress</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Overall Progress -->
+                            <div class="overall-progress">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <h6 class="mb-1">Overall Progress</h6>
+                                        <small id="progressStatus">Initializing upload...</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <h4 class="mb-0" id="overallPercentage">0%</h4>
+                                        <small id="progressTime">0:00</small>
+                                    </div>
+                                </div>
+                                <div class="overall-progress-bar">
+                                    <div class="progress-bar" id="overallProgressBar" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Progress Stats -->
+                            <div class="progress-header">
+                                <div class="progress-stats">
+                                    <div class="stat-item">
+                                        <i class="bi bi-files"></i>
+                                        <span id="totalFiles">0 files</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <i class="bi bi-hourglass-split"></i>
+                                        <span id="processingFiles">0 processing</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <i class="bi bi-check-circle"></i>
+                                        <span id="completedFiles">0 completed</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <i class="bi bi-x-circle"></i>
+                                        <span id="failedFiles">0 failed</span>
+                                    </div>
+                                </div>
+                                <div class="action-buttons">
+                                    <button class="btn btn-cancel btn-sm" id="cancelUploadBtn">
+                                        <i class="bi bi-x-circle me-1"></i>Cancel
+                                    </button>
+                                    <button class="btn btn-retry btn-sm" id="retryFailedBtn" style="display: none;">
+                                        <i class="bi bi-arrow-clockwise me-1"></i>Retry Failed
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Individual File Progress -->
+                            <div id="fileProgressList" style="max-height: 400px; overflow-y: auto;">
+                                <!-- File progress items will be added here dynamically -->
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Results Area -->
                 <div id="results" class="mt-4" style="display: none;">
                     <div class="card">
-                        <div class="card-header">
-                            <h5>Analysis Results</h5>
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5><i class="bi bi-check-circle me-2"></i>Analysis Results</h5>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-success btn-sm" id="exportResultsBtn">
+                                    <i class="bi bi-download me-1"></i>Export Results
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm" id="viewInSearchBtn">
+                                    <i class="bi bi-search me-1"></i>View in Search
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div id="resultsContent"></div>
@@ -175,8 +272,487 @@
             e.preventDefault();
 
             const formData = new FormData(this);
-            await submitAnalysis(formData, 'batch');
+            await submitBatchAnalysisWithProgress(formData);
         });
+
+        // Progress tracking state
+        let uploadState = {
+            files: [],
+            startTime: null,
+            completed: 0,
+            failed: 0,
+            processing: 0,
+            cancelled: false,
+            progressInterval: null
+        };
+
+        // Enhanced batch upload with progress tracking
+        async function submitBatchAnalysisWithProgress(formData) {
+            const files = formData.getAll('files');
+            
+            // Validate file count
+            if (files.length > 50) {
+                alert('Maximum 50 files allowed per batch upload.');
+                return;
+            }
+
+            // Initialize progress tracking
+            initializeProgressTracking(files);
+            
+            try {
+                // Show progress section
+                document.getElementById('progressSection').style.display = 'block';
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('results').style.display = 'none';
+
+                // Process files with progress updates
+                const results = await processBatchWithProgress(formData);
+                
+                // Show final results
+                displayBatchResults(results);
+                
+            } catch (error) {
+                console.error('Batch upload error:', error);
+                handleUploadError(error);
+            }
+        }
+
+        function handleUploadError(error) {
+            clearInterval(uploadState.progressInterval);
+            
+            // Show error in results section
+            document.getElementById('progressSection').style.display = 'none';
+            document.getElementById('results').style.display = 'block';
+            
+            let errorMessage = 'An unexpected error occurred during batch upload. Please try again.';
+            if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            document.getElementById('resultsContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <h6 class="alert-heading">❌ Batch Upload Failed</h6>
+                    <p class="mb-0">${errorMessage}</p>
+                    <hr>
+                    <small class="mb-0">
+                        <strong>Troubleshooting tips:</strong><br>
+                        • Ensure all files are valid PDF, DOC, or DOCX<br>
+                        • Check total upload size is under 100MB<br>
+                        • Make sure files are not password-protected<br>
+                        • Try uploading smaller batches (10-20 files)<br>
+                        • Check network connection and try again
+                    </small>
+                    <div class="mt-3">
+                        <button class="btn btn-outline-danger btn-sm" onclick="location.reload()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Start Over
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function initializeProgressTracking(files) {
+            uploadState = {
+                files: files.map((file, index) => ({
+                    id: `file-${index}`,
+                    name: file.name,
+                    size: formatFileSize(file.size),
+                    status: 'pending',
+                    progress: 0,
+                    startTime: null,
+                    endTime: null,
+                    result: null,
+                    error: null
+                })),
+                startTime: Date.now(),
+                completed: 0,
+                failed: 0,
+                processing: 0,
+                cancelled: false,
+                progressInterval: null
+            };
+
+            // Update UI
+            updateProgressStats();
+            createFileProgressItems();
+            startProgressTimer();
+        }
+
+        function createFileProgressItems() {
+            const container = document.getElementById('fileProgressList');
+            container.innerHTML = '';
+
+            uploadState.files.forEach(file => {
+                const fileElement = createFileProgressElement(file);
+                container.appendChild(fileElement);
+            });
+        }
+
+        function createFileProgressElement(file) {
+            const template = `
+                <div class="file-progress-item" data-file-id="${file.id}">
+                    <div class="file-progress-header">
+                        <div class="file-name" title="${file.name}">${file.name}</div>
+                        <div class="file-status status-${file.status}">${getStatusLabel(file.status)}</div>
+                    </div>
+                    <div class="progress mb-2">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             id="progress-${file.id}" 
+                             style="width: ${file.progress}%">
+                        </div>
+                    </div>
+                    <div class="file-details">
+                        <div class="file-size">
+                            <i class="bi bi-file-earmark"></i>
+                            <span>${file.size}</span>
+                        </div>
+                        <div class="file-time">
+                            <i class="bi bi-clock"></i>
+                            <span id="time-${file.id}">0:00</span>
+                        </div>
+                    </div>
+                    <div class="result-preview" id="preview-${file.id}" style="display: none;">
+                        <div class="preview-score">
+                            <span>Authenticity:</span>
+                            <span class="score-badge score-high">-</span>
+                            <span>Match:</span><span class="score-badge score-high">-</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const div = document.createElement('div');
+            div.innerHTML = template;
+            return div.firstElementChild;
+        }
+
+        async function processBatchWithProgress(formData) {
+            const files = formData.getAll('files');
+            const jobDescription = formData.get('job_description');
+            const results = [];
+
+            // Process files sequentially (can be parallelized in production)
+            for (let i = 0; i < files.length; i++) {
+                if (uploadState.cancelled) break;
+
+                const file = files[i];
+                const fileState = uploadState.files[i];
+                
+                // Update file status to processing
+                updateFileStatus(fileState.id, 'processing');
+                
+                try {
+                    // Create individual file form data
+                    const fileFormData = new FormData();
+                    fileFormData.append('file', file);
+                    if (jobDescription) {
+                        fileFormData.append('job_description', jobDescription);
+                    }
+
+                    // Simulate progress updates (in real implementation, this would come from WebSocket or polling)
+                    await simulateFileProgress(fileState.id);
+
+                    // Upload and analyze file
+                    const response = await fetch('/api/scan-resume', {
+                        method: 'POST',
+                        body: fileFormData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Upload failed: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    results.push(result);
+
+                    // Update file status to completed
+                    updateFileStatus(fileState.id, 'completed', result);
+
+                } catch (error) {
+                    console.error(`Error processing ${file.name}:`, error);
+                    updateFileStatus(fileState.id, 'failed', error);
+                    results.push({ filename: file.name, error: error.message });
+                }
+            }
+
+            return results;
+        }
+
+        async function simulateFileProgress(fileId) {
+            // Simulate progress updates for demonstration
+            // In production, this would be replaced with real progress updates
+            const updateProgress = (progress) => {
+                if (uploadState.cancelled) return;
+                updateFileProgress(fileId, progress);
+            };
+
+            // Simulate processing steps
+            const steps = [
+                { progress: 25, delay: 200 },
+                { progress: 50, delay: 400 },
+                { progress: 75, delay: 300 },
+                { progress: 90, delay: 200 },
+                { progress: 100, delay: 100 }
+            ];
+
+            for (const step of steps) {
+                await new Promise(resolve => setTimeout(resolve, step.delay));
+                updateProgress(step.progress);
+            }
+        }
+
+        function updateFileStatus(fileId, status, data = null) {
+            const fileIndex = uploadState.files.findIndex(f => f.id === fileId);
+            if (fileIndex === -1) return;
+
+            const file = uploadState.files[fileIndex];
+            
+            // Update previous status counts
+            if (file.status === 'processing') uploadState.processing--;
+            if (file.status === 'completed') uploadState.completed--;
+            if (file.status === 'failed') uploadState.failed--;
+
+            // Update file status
+            file.status = status;
+            file.result = data;
+            
+            // Update new status counts
+            if (status === 'processing') {
+                uploadState.processing++;
+                file.startTime = Date.now();
+            }
+            if (status === 'completed') {
+                uploadState.completed++;
+                file.endTime = Date.now();
+                file.progress = 100;
+                showFileResult(fileId, data);
+            }
+            if (status === 'failed') {
+                uploadState.failed++;
+                file.endTime = Date.now();
+                file.error = data;
+                file.progress = 0;
+            }
+
+            // Update UI
+            updateFileProgressUI(fileId);
+            updateProgressStats();
+            updateOverallProgress();
+        }
+
+        function updateFileProgress(fileId, progress) {
+            const fileIndex = uploadState.files.findIndex(f => f.id === fileId);
+            if (fileIndex === -1) return;
+
+            uploadState.files[fileIndex].progress = progress;
+            updateFileProgressUI(fileId);
+            updateOverallProgress();
+        }
+
+        function updateFileProgressUI(fileId) {
+            const file = uploadState.files.find(f => f.id === fileId);
+            if (!file) return;
+
+            // Update progress bar
+            const progressBar = document.getElementById(`progress-${fileId}`);
+            if (progressBar) {
+                progressBar.style.width = `${file.progress}%`;
+                
+                // Remove animation when complete
+                if (file.progress === 100) {
+                    progressBar.classList.remove('progress-bar-animated');
+                    progressBar.classList.add('bg-success');
+                } else if (file.status === 'failed') {
+                    progressBar.classList.remove('progress-bar-animated');
+                    progressBar.classList.add('bg-danger');
+                    progressBar.style.width = '100%';
+                }
+            }
+
+            // Update status badge
+            const statusElement = document.querySelector(`[data-file-id="${fileId}"] .file-status`);
+            if (statusElement) {
+                statusElement.className = `file-status status-${file.status}`;
+                statusElement.textContent = getStatusLabel(file.status);
+            }
+        }
+
+        function showFileResult(fileId, result) {
+            const previewElement = document.getElementById(`preview-${fileId}`);
+            if (!previewElement || !result) return;
+
+            const authenticityScore = result.authenticity_score?.overall_score || 0;
+            const matchScore = result.matching_score?.overall_match || 0;
+
+            previewElement.innerHTML = `
+                <div class="preview-score">
+                    <span>Authenticity:</span>
+                    <span class="score-badge ${getScoreClass(authenticityScore)}">${authenticityScore}%</span>
+                    ${matchScore > 0 ? `
+                        <span>Match:</span>
+                        <span class="score-badge ${getScoreClass(matchScore)}">${matchScore}%</span>
+                    ` : ''}
+                </div>
+            `;
+            previewElement.style.display = 'block';
+        }
+
+        function updateProgressStats() {
+            document.getElementById('totalFiles').textContent = `${uploadState.files.length} files`;
+            document.getElementById('processingFiles').textContent = `${uploadState.processing} processing`;
+            document.getElementById('completedFiles').textContent = `${uploadState.completed} completed`;
+            document.getElementById('failedFiles').textContent = `${uploadState.failed} failed`;
+
+            // Show/hide retry button
+            const retryBtn = document.getElementById('retryFailedBtn');
+            retryBtn.style.display = uploadState.failed > 0 ? 'block' : 'none';
+        }
+
+        function updateOverallProgress() {
+            const totalFiles = uploadState.files.length;
+            const totalProgress = uploadState.files.reduce((sum, file) => sum + file.progress, 0);
+            const overallPercentage = totalFiles > 0 ? Math.round(totalProgress / totalFiles) : 0;
+
+            // Update progress bar
+            const progressBar = document.getElementById('overallProgressBar');
+            if (progressBar) {
+                progressBar.style.width = `${overallPercentage}%`;
+            }
+
+            // Update percentage text
+            document.getElementById('overallPercentage').textContent = `${overallPercentage}%`;
+
+            // Update status text
+            let statusText = 'Processing files...';
+            if (uploadState.cancelled) {
+                statusText = 'Upload cancelled';
+            } else if (uploadState.completed === totalFiles && uploadState.failed === 0) {
+                statusText = 'All files completed successfully';
+            } else if (uploadState.completed + uploadState.failed === totalFiles) {
+                statusText = `Processing complete (${uploadState.completed} successful, ${uploadState.failed} failed)`;
+            } else if (uploadState.processing > 0) {
+                statusText = `Processing ${uploadState.processing} file${uploadState.processing > 1 ? 's' : ''}...`;
+            }
+
+            document.getElementById('progressStatus').textContent = statusText;
+        }
+
+        function startProgressTimer() {
+            uploadState.progressInterval = setInterval(() => {
+                updateElapsedTime();
+            }, 1000);
+        }
+
+        function updateElapsedTime() {
+            if (!uploadState.startTime) return;
+
+            const elapsed = Date.now() - uploadState.startTime;
+            const minutes = Math.floor(elapsed / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+            document.getElementById('progressTime').textContent = timeString;
+
+            // Update individual file times
+            uploadState.files.forEach(file => {
+                if (file.startTime && !file.endTime) {
+                    const fileElapsed = Date.now() - file.startTime;
+                    const fileMinutes = Math.floor(fileElapsed / 60000);
+                    const fileSeconds = Math.floor((fileElapsed % 60000) / 1000);
+                    const timeElement = document.getElementById(`time-${file.id}`);
+                    if (timeElement) {
+                        timeElement.textContent = `${fileMinutes}:${fileSeconds.toString().padStart(2, '0')}`;
+                    }
+                }
+            });
+        }
+
+        // Helper functions
+        function getStatusLabel(status) {
+            const labels = {
+                'pending': 'Pending',
+                'processing': 'Processing',
+                'completed': 'Completed',
+                'failed': 'Failed'
+            };
+            return labels[status] || status;
+        }
+
+        function getScoreClass(score) {
+            if (score >= 80) return 'score-high';
+            if (score >= 60) return 'score-medium';
+            return 'score-low';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Event handlers
+        document.getElementById('cancelUploadBtn').addEventListener('click', function() {
+            if (confirm('Are you sure you want to cancel the upload?')) {
+                uploadState.cancelled = true;
+                clearInterval(uploadState.progressInterval);
+                
+                // Update UI to show cancelled state
+                document.getElementById('progressStatus').textContent = 'Upload cancelled';
+                document.getElementById('overallProgressBar').classList.remove('progress-bar-animated');
+                
+                // Disable cancel button
+                this.disabled = true;
+            }
+        });
+
+        document.getElementById('retryFailedBtn').addEventListener('click', function() {
+            // Retry failed files (implementation would depend on backend)
+            alert('Retry functionality would be implemented with backend support');
+        });
+
+        // Drag and drop functionality
+        const dragDropArea = document.querySelector('.drag-drop-area');
+        const dragDropOverlay = document.getElementById('dragDropOverlay');
+        const fileInput = document.getElementById('resumeFiles');
+
+        if (dragDropArea && dragDropOverlay) {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dragDropArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dragDropArea.addEventListener(eventName, () => {
+                    dragDropOverlay.classList.add('active');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dragDropArea.addEventListener(eventName, () => {
+                    dragDropOverlay.classList.remove('active');
+                }, false);
+            });
+
+            dragDropArea.addEventListener('drop', function(e) {
+                const files = e.dataTransfer.files;
+                fileInput.files = files;
+                updateFileList(files);
+            });
+        }
+
+        function updateFileList(files) {
+            if (files.length > 0) {
+                const fileNames = Array.from(files).map(f => f.name).join(', ');
+                const fileText = files.length === 1 ? '1 file selected' : `${files.length} files selected`;
+                console.log(`${fileText}: ${fileNames}`);
+            }
+        }
 
         async function submitAnalysis(formData, type) {
             document.getElementById('loading').style.display = 'block';
