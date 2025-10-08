@@ -1027,12 +1027,36 @@ class ResumeAuthenticityAnalyzer:
                     'recommendation': '⚠️ LinkedIn URL in resume but not cross-verified (Google API not configured)'
                 }
             elif google_verified_linkedin:
+                # Extract verification details for online-only matches
+                verification_details = {}
+                if google_verification:
+                    search_query = google_verification.get('search_query', '')
+                    method = google_verification.get('method', 'unknown')
+                    search_url = None
+                    
+                    # Generate search URL based on method
+                    if method == 'selenium':
+                        from urllib.parse import quote_plus
+                        search_url = f"https://duckduckgo.com/?q={quote_plus(search_query)}"
+                    elif method == 'api':
+                        search_url = f"https://www.google.com/search?q={quote_plus(search_query)}"
+                    
+                    verification_details = {
+                        'search_query': search_query,
+                        'search_engine': 'DuckDuckGo' if method == 'selenium' else 'Google',
+                        'search_url': search_url,
+                        'method': method,
+                        'matched_profiles': google_verification.get('linkedin_profiles', []),
+                        'search_results_summary': google_verification.get('search_results_summary', [])
+                    }
+                
                 return {
                     'status': 'verified_online_only',
                     'profile': None,
                     'google_verified_profiles': google_verified_linkedin['profiles'],
                     'alternatives': other_profiles,
                     'google_verification': google_verified_linkedin,
+                    'verification_details': verification_details,
                     'recommendation': '✅ LinkedIn profile verified online (not in resume) - Consider adding to resume for better visibility'
                 }
             elif other_profiles:
