@@ -15,14 +15,29 @@ from services.document_processor import DocumentProcessor
 from services.resume_analyzer import ResumeAuthenticityAnalyzer
 from services.jd_matcher import JDMatcher
 from services.vetting_session import VettingSession
+from services.google_search_verifier import GoogleSearchVerifier
 from core.config import settings
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# Initialize Google Search Verifier (if configured)
+google_search_verifier = None
+if settings.google_search_api_key and settings.google_search_engine_id:
+    try:
+        google_search_verifier = GoogleSearchVerifier(
+            api_key=settings.google_search_api_key,
+            search_engine_id=settings.google_search_engine_id
+        )
+    except Exception as e:
+        logger.warning(f"Failed to initialize Google Search verifier: {e}")
+
 # Initialize services
 document_processor = DocumentProcessor()
-resume_analyzer = ResumeAuthenticityAnalyzer()
+resume_analyzer = ResumeAuthenticityAnalyzer(
+    google_search_verifier=google_search_verifier,
+    use_selenium=settings.use_selenium_verification if hasattr(settings, 'use_selenium_verification') else False
+)
 jd_matcher = JDMatcher()
 vetting_session = VettingSession()
 
