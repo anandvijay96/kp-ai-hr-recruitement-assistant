@@ -1,17 +1,21 @@
 from fastapi import APIRouter, Depends, Body
+from fastapi.responses import StreamingResponse
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
+import io
 
 from core.database import get_db
 from services.filter_service import FilterService
 from services.preset_service import PresetService
 from services.candidate_service import CandidateService
+from services.export_service import ExportService
 from models.filter_models import CandidateFilter, FilterPresetCreate, FilterPresetResponse
 
 router = APIRouter()
 filter_service = FilterService()
 preset_service = PresetService()
 candidate_service = CandidateService()
+export_service = ExportService()
 
 @router.post("/search")
 def search_candidates(filters: CandidateFilter, page: int = 1, page_size: int = 20, db: Session = Depends(get_db)) -> Dict[str, Any]:
