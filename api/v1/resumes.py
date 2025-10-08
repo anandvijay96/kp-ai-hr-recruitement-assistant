@@ -1,6 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, BackgroundTasks
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import logging
 import os
 import uuid
@@ -13,11 +14,13 @@ from models.resume_models import ResumeUploadResponse, JobStatusResponse
 from models.db import Resume, Candidate
 from services.duplicate_detector import DuplicateDetector
 from services.candidate_service import CandidateService
+from services.resume_service import ResumeService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 duplicate_detector = DuplicateDetector()
 candidate_service = CandidateService()
+resume_service = ResumeService()
 
 # Create uploads directory if it doesn't exist
 os.makedirs(settings.upload_dir, exist_ok=True)

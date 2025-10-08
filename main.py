@@ -21,6 +21,13 @@ from services.resume_data_extractor import ResumeDataExtractor
 from api.v1 import resumes as resumes_v1
 from api.v1 import candidates as candidates_v1
 from api.v1 import auth as auth_v1
+try:
+    from api.v1 import vetting as vetting_v1
+    VETTING_ENABLED = True
+except ImportError:
+    VETTING_ENABLED = False
+    logger = logging.getLogger(__name__)
+    logger.warning("Vetting module not available")
 from models.database import init_db
 
 # Configure logging
@@ -82,6 +89,7 @@ os.makedirs(settings.temp_dir, exist_ok=True)
 app.include_router(resumes_v1.router, prefix="/api/v1/resumes", tags=["resumes"])
 app.include_router(candidates_v1.router, prefix="/api/v1/candidates", tags=["candidates"])
 app.include_router(auth_v1.router, prefix="/auth", tags=["authentication"])
+app.include_router(vetting_v1.router, prefix="/api/v1/vetting", tags=["vetting"])
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -97,6 +105,11 @@ async def upload_form(request: Request):
 async def settings_page(request: Request):
     """User settings page"""
     return templates.TemplateResponse("settings.html", {"request": request})
+
+@app.get("/vet-resumes")
+def vet_resumes_page(request: Request):
+    """Resume vetting page - scan without saving to database."""
+    return templates.TemplateResponse("vet_resumes.html", {"request": request})
 
 @app.get("/candidates")
 def candidates_list_page(request: Request):
