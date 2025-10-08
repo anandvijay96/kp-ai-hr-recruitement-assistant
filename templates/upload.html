@@ -742,12 +742,18 @@
                                             
                                             ${result.authenticity_score?.flags && result.authenticity_score.flags.length > 0 ? `
                                                 <div class="mt-3">
-                                                    <strong>🚩 Flags:</strong><br>
-                                                    ${result.authenticity_score.flags.map(flag => `
-                                                        <span class="badge bg-${flag.severity === 'high' ? 'danger' : flag.severity === 'medium' ? 'warning' : 'info'} me-1 mb-1">
-                                                            ${flag.message}
-                                                        </span>
-                                                    `).join('')}
+                                                    <strong>🚩 Flags:</strong>
+                                                    <ul class="list-unstyled mb-0 mt-1">
+                                                        ${result.authenticity_score.flags.map(flag => `
+                                                            <li class="mb-1">
+                                                                <span class="badge bg-${flag.severity === 'high' ? 'danger' : flag.severity === 'medium' ? 'warning' : 'info'}" 
+                                                                      style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                                                                    ${flag.severity === 'high' ? '🔴' : flag.severity === 'medium' ? '🟡' : 'ℹ️'}
+                                                                </span>
+                                                                <span style="font-size: 0.875rem;">${flag.message}</span>
+                                                            </li>
+                                                        `).join('')}
+                                                    </ul>
                                                 </div>
                                             ` : ''}
                                             
