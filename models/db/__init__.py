@@ -4,6 +4,7 @@ from models.db.education import Education
 from models.db.work_experience import WorkExperience
 from models.db.skill import Skill
 from models.db.candidate_skill import candidate_skills
+from models.db.certification import Certification
 
 __all__ = [
     "Candidate",
@@ -11,5 +12,6 @@ __all__ = [
     "Education",
     "WorkExperience",
     "Skill",
-    "candidate_skills"
+    "candidate_skills",
+    "Certification"
 ]

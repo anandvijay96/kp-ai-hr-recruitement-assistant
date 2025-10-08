@@ -4,12 +4,25 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from core.celery_app import celery_app
 from core.database import SessionLocal
-from models.db import Resume, Candidate, Education, WorkExperience, Skill
+from models.db import Resume, Candidate, Education, WorkExperience, Skill, Certification
 from services.document_processor import DocumentProcessor
-from services.resume_data_extractor import ResumeDataExtractor
+from services.enhanced_resume_extractor import EnhancedResumeExtractor
 from services.resume_analyzer import ResumeAuthenticityAnalyzer
+from services.duplicate_detector import DuplicateDetector
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_year_to_date(year_str):
+    """Helper function to convert year string to date object"""
+    if not year_str:
+        return None
+    try:
+        year = int(year_str)
+        return datetime(year, 1, 1).date()
+    except:
+        return None
+
 
 @celery_app.task(bind=True, name='tasks.resume_tasks.process_resume')
 def process_resume(self, resume_id: int):
@@ -52,12 +65,18 @@ def process_resume(self, resume_id: int):
         if not text or len(text.strip()) < 50:
             raise ValueError("Could not extract meaningful text from document")
         
-        # Step 2: Extract structured data
+        # Step 2: Extract structured data (Enhanced)
         self.update_state(state='PROCESSING', meta={'status': 'Extracting structured data'})
-        data_extractor = ResumeDataExtractor()
+        data_extractor = EnhancedResumeExtractor()
         extracted_data = data_extractor.extract_all(text)
         resume.extracted_data = extracted_data
         db.commit()
+        
+        logger.info(f"Extracted data: email={extracted_data.get('email')}, "
+                   f"name={extracted_data.get('name')}, "
+                   f"skills_count={len(extracted_data.get('skills', []))}, "
+                   f"education_count={len(extracted_data.get('education', []))}, "
+                   f"experience_count={len(extracted_data.get('work_experience', []))}")
         
         # Step 3: Analyze authenticity
         self.update_state(state='PROCESSING', meta={'status': 'Analyzing authenticity'})
@@ -80,7 +99,7 @@ def process_resume(self, resume_id: int):
             if candidate:
                 logger.info(f"Found existing candidate: {candidate.id} ({candidate.email})")
         
-        # Step 5: Create or update candidate
+        # Step 5: Create or update candidate (Enhanced)
         if not candidate and extracted_data.get('email'):
             self.update_state(state='PROCESSING', meta={'status': 'Creating candidate profile'})
             
@@ -89,6 +108,10 @@ def process_resume(self, resume_id: int):
                 email=extracted_data['email'],
                 phone_number=extracted_data.get('phone'),
                 linkedin_url=extracted_data.get('linkedin_url'),
+                github_url=extracted_data.get('github_url'),
+                portfolio_url=extracted_data.get('portfolio_url'),
+                location=extracted_data.get('location'),
+                professional_summary=extracted_data.get('summary'),
             )
             db.add(candidate)
             db.commit()
@@ -96,38 +119,102 @@ def process_resume(self, resume_id: int):
             
             logger.info(f"Created new candidate: {candidate.id} ({candidate.email})")
             
-            # Add education records
+            # Add education records with enhanced fields
             for edu in extracted_data.get('education', []):
-                education = Education(
-                    candidate_id=candidate.id,
-                    degree=edu.get('degree'),
-                    institution=edu.get('institution'),
-                )
-                db.add(education)
+                try:
+                    education = Education(
+                        candidate_id=candidate.id,
+                        degree=edu.get('degree'),
+                        field_of_study=edu.get('field_of_study'),
+                        institution=edu.get('institution'),
+                        grade=edu.get('gpa'),
+                        # Parse dates if available
+                        start_date=_parse_year_to_date(edu.get('start_year')),
+                        end_date=_parse_year_to_date(edu.get('graduation_year')),
+                    )
+                    db.add(education)
+                except Exception as e:
+                    logger.warning(f"Error adding education record: {e}")
             
-            # Add work experience records
+            # Add work experience records with enhanced fields
             for exp in extracted_data.get('work_experience', []):
-                experience = WorkExperience(
-                    candidate_id=candidate.id,
-                    company=exp.get('company'),
-                    job_title=exp.get('title'),
-                )
-                db.add(experience)
+                try:
+                    # Parse dates
+                    from dateutil import parser as date_parser
+                    start_date = None
+                    end_date = None
+                    is_current = False
+                    
+                    try:
+                        if exp.get('start_date'):
+                            start_date = date_parser.parse(exp['start_date'], fuzzy=True).date()
+                    except:
+                        pass
+                    
+                    try:
+                        if exp.get('end_date'):
+                            if 'present' in exp['end_date'].lower():
+                                is_current = True
+                                end_date = None
+                            else:
+                                end_date = date_parser.parse(exp['end_date'], fuzzy=True).date()
+                    except:
+                        pass
+                    
+                    # Join responsibilities into description
+                    description = '\n'.join(exp.get('responsibilities', []))
+                    
+                    experience = WorkExperience(
+                        candidate_id=candidate.id,
+                        company=exp.get('company'),
+                        job_title=exp.get('title'),
+                        location=exp.get('location'),
+                        start_date=start_date,
+                        end_date=end_date,
+                        is_current=is_current,
+                        description=description if description else None,
+                    )
+                    db.add(experience)
+                except Exception as e:
+                    logger.warning(f"Error adding work experience record: {e}")
+            
+            # Add certifications
+            for cert in extracted_data.get('certifications', []):
+                try:
+                    certification = Certification(
+                        candidate_id=candidate.id,
+                        name=cert.get('name'),
+                        issue_year=cert.get('year'),
+                    )
+                    db.add(certification)
+                except Exception as e:
+                    logger.warning(f"Error adding certification: {e}")
             
             # Add skills
             for skill_name in extracted_data.get('skills', []):
-                # Get or create skill
-                skill = db.query(Skill).filter(Skill.name == skill_name).first()
-                if not skill:
-                    skill = Skill(name=skill_name)
-                    db.add(skill)
-                    db.flush()
-                
-                # Associate with candidate
-                if skill not in candidate.skills:
-                    candidate.skills.append(skill)
+                try:
+                    # Normalize skill name (lowercase for storage)
+                    skill_name_normalized = skill_name.lower()
+                    
+                    # Get or create skill
+                    skill = db.query(Skill).filter(Skill.name == skill_name_normalized).first()
+                    if not skill:
+                        skill = Skill(name=skill_name_normalized)
+                        db.add(skill)
+                        db.flush()
+                    
+                    # Associate with candidate (avoid duplicates)
+                    if skill not in candidate.skills:
+                        candidate.skills.append(skill)
+                except Exception as e:
+                    logger.warning(f"Error adding skill '{skill_name}': {e}")
             
             db.commit()
+            
+            logger.info(f"Saved candidate data: {len(extracted_data.get('education', []))} education, "
+                       f"{len(extracted_data.get('work_experience', []))} work experience, "
+                       f"{len(extracted_data.get('certifications', []))} certifications, "
+                       f"{len(extracted_data.get('skills', []))} skills")
         
         # Link resume to candidate
         if candidate:
