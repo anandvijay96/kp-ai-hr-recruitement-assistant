@@ -99,12 +99,12 @@ async def settings_page(request: Request):
     return templates.TemplateResponse("settings.html", {"request": request})
 
 @app.get("/search")
-def search_page():
+def search_page(request: Request):
     """Candidate search and filtering page."""
     return templates.TemplateResponse("candidate_search.html", {"request": request})
 
 @app.get("/candidates/{candidate_id}")
-def candidate_detail_page(candidate_id: int):
+def candidate_detail_page(candidate_id: int, request: Request):
     """Candidate detail page."""
     return templates.TemplateResponse("candidate_detail.html", {"request": request})
 
