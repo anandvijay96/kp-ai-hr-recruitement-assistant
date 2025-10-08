@@ -268,6 +268,7 @@
         function generateDetailsHTML(scan) {
             const auth = scan.authenticity_score;
             const match = scan.matching_score;
+            const diagnostics = auth.diagnostics || {};
             
             return `
                 <!-- Quick Summary -->
@@ -362,87 +363,15 @@
                 ` : ''}
                 
                 <div class="text-center mt-3">
-                    <button class="btn btn-outline-primary btn-sm" onclick="toggleFullDiagnostics('${scan.file_hash || Math.random()}')">  
-                        <i class="bi bi-search"></i> View Detailed Diagnostics
+                    <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#detailedDiagnostics-${scan.file_hash || Math.random()}">
+                        🔍 View Detailed Diagnostics
                     </button>
                 </div>
                 
-                <div class="hidden" id="full-diagnostics-${scan.file_hash || Math.random()}">
-                    <hr>
-                    <h6 class="mt-3"><i class="bi bi-clipboard-check"></i> Detailed Analysis Report</h6>
-                    ${auth.diagnostics ? `
-                        <div class="accordion mt-3" id="diagnosticsAccordion-${scan.file_hash}">
-                            ${auth.diagnostics.font ? `
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#fontDiag-${scan.file_hash}">
-                                            <strong>📝 Font Analysis</strong>
-                                        </button>
-                                    </h2>
-                                    <div id="fontDiag-${scan.file_hash}" class="accordion-collapse collapse">
-                                        <div class="accordion-body">
-                                            <p><strong>Score:</strong> ${Math.round(auth.diagnostics.font.score || 0)}%</p>
-                                            <p>${auth.diagnostics.font.recommendation || ''}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ` : ''}
-                            ${auth.diagnostics.grammar ? `
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#grammarDiag-${scan.file_hash}">
-                                            <strong>✍️ Grammar Analysis</strong>
-                                        </button>
-                                    </h2>
-                                    <div id="grammarDiag-${scan.file_hash}" class="accordion-collapse collapse">
-                                        <div class="accordion-body">
-                                            <p><strong>Score:</strong> ${Math.round(auth.diagnostics.grammar.score || 0)}%</p>
-                                            <p>${auth.diagnostics.grammar.recommendation || ''}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ` : ''}
-                            ${auth.diagnostics.linkedin ? `
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#linkedinDiag-${scan.file_hash}">
-                                            <strong>💼 LinkedIn Profile Analysis</strong>
-                                        </button>
-                                    </h2>
-                                    <div id="linkedinDiag-${scan.file_hash}" class="accordion-collapse collapse">
-                                        <div class="accordion-body">
-                                            <p><strong>Score:</strong> ${Math.round(auth.diagnostics.linkedin.score || 0)}%</p>
-                                            <p>${auth.diagnostics.linkedin.recommendation || ''}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ` : ''}
-                            ${auth.diagnostics.capitalization ? `
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#capDiag-${scan.file_hash}">
-                                            <strong>🔤 Capitalization Analysis</strong>
-                                        </button>
-                                    </h2>
-                                    <div id="capDiag-${scan.file_hash}" class="accordion-collapse collapse">
-                                        <div class="accordion-body">
-                                            <p><strong>Score:</strong> ${Math.round(auth.diagnostics.capitalization.score || 0)}%</p>
-                                            <p>${auth.diagnostics.capitalization.recommendation || ''}</p>
-                                            ${auth.diagnostics.capitalization.details && auth.diagnostics.capitalization.details.length > 0 ? `
-                                                <div class="mt-2">
-                                                    ${auth.diagnostics.capitalization.details.map(detail => `
-                                                        <div class="alert alert-${detail.type === 'Error' ? 'danger' : 'warning'} py-1 mb-1">
-                                                            <small><strong>${detail.type}:</strong> ${detail.message}</small>
-                                                        </div>
-                                                    `).join('')}
-                                                </div>
-                                            ` : ''}
-                                        </div>
-                                    </div>
-                                </div>
-                            ` : ''}
-                        </div>
-                    ` : '<p class="text-muted">Detailed diagnostics not available</p>'}
+                <div class="collapse mt-3" id="detailedDiagnostics-${scan.file_hash || Math.random()}">
+                    <div class="card card-body">
+                        ${generateFullDiagnosticsHTML(diagnostics, match)}
+                    </div>
                 </div>
             `;
         }
