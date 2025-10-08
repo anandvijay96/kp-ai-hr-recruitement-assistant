@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resumes - HR Recruitment System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .status-badge {
+            font-size: 0.85rem;
+            padding: 0.25rem 0.75rem;
+        }
+        .file-icon {
+            font-size: 1.2rem;
+            margin-right: 0.5rem;
+        }
+        .action-btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-briefcase"></i> HR Recruitment System
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i class="fas fa-home"></i> Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/resumes">
+                            <i class="fas fa-file-alt"></i> Resumes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/upload">
+                            <i class="fas fa-upload"></i> Upload
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="logout()">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>
+                        <i class="fas fa-file-alt text-primary"></i> Resume Management
+                    </h2>
+                    <a href="/resumes/upload-new" class="btn btn-primary">
+                        <i class="fas fa-upload"></i> Upload New Resume
+                    </a>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" id="searchInput" 
+                                       placeholder="Search by candidate name...">
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-primary w-100" id="searchBtn">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-outline-secondary w-100" id="clearBtn">
+                                    <i class="fas fa-times"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resumes Table -->
+                <div class="card">
+                    <div class="card-body">
+                        <div id="loadingSpinner" class="text-center py-5" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+
+                        <div id="resumesTableContainer">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>File Name</th>
+                                        <th>Candidate</th>
+                                        <th>Email</th>
+                                        <th>Upload Date</th>
+                                        <th>Uploaded By</th>
+                                        <th>Size</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resumesTableBody">
+                                    <!-- Populated by JavaScript -->
+                                </tbody>
+                            </table>
+                            </div>
+
+                            <div id="noResults" class="text-center py-5" style="display: none;">
+                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No resumes found</p>
+                            </div>
+
+                            <!-- Pagination -->
+                            <nav id="paginationNav" class="mt-3">
+                                <ul class="pagination justify-content-center" id="pagination">
+                                    <!-- Populated by JavaScript -->
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentPage = 1;
+        const limit = 20;
+
+        // Load resumes on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadResumes(1);
+        });
+
+        async function loadResumes(page = 1) {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const search = document.getElementById('searchInput').value;
+
+            const params = new URLSearchParams({
+                page: page,
+                limit: limit,
+                ...(search && { search })
+            });
+
+            showLoading(true);
+
+            try {
+                const response = await fetch(`/api/resumes?${params}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayResumes(data.data.resumes);
+                    displayPagination(data.data.pagination);
+                    currentPage = page;
+                }
+            } catch (error) {
+                console.error('Error loading resumes:', error);
+                alert('Failed to load resumes. Please try again.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').style.display = show ? 'block' : 'none';
+            document.getElementById('resumesTableContainer').style.display = show ? 'none' : 'block';
+        }
+
+        function displayResumes(resumes) {
+            const tbody = document.getElementById('resumesTableBody');
+            tbody.innerHTML = '';
+
+            if (resumes.length === 0) {
+                document.getElementById('noResults').style.display = 'block';
+                document.querySelector('.table-responsive').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('noResults').style.display = 'none';
+            document.querySelector('.table-responsive').style.display = 'block';
+
+            resumes.forEach(resume => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <i class="fas fa-file-${getFileIcon(resume.file_name)} file-icon text-primary"></i>
+                        ${escapeHtml(resume.file_name)}
+                    </td>
+                    <td>${escapeHtml(resume.candidate_name || '-')}</td>
+                    <td>${escapeHtml(resume.candidate_email || '-')}</td>
+                    <td>${formatDate(resume.upload_date)}</td>
+                    <td>${escapeHtml(resume.uploaded_by_name)}</td>
+                    <td>${formatFileSize(resume.file_size)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info action-btn" onclick="viewResume('${resume.id}')" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-success action-btn" onclick="downloadResume('${resume.id}')" title="Download">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger action-btn" onclick="deleteResume('${resume.id}')" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function displayPagination(pagination) {
+            const paginationEl = document.getElementById('pagination');
+            paginationEl.innerHTML = '';
+
+            if (pagination.total_pages <= 1) {
+                return;
+            }
+
+            // Previous button
+            const prevLi = document.createElement('li');
+            prevLi.className = `page-item ${pagination.page === 1 ? 'disabled' : ''}`;
+            prevLi.innerHTML = `<a class="page-link" href="#" onclick="loadResumes(${pagination.page - 1}); return false;">Previous</a>`;
+            paginationEl.appendChild(prevLi);
+
+            // Page numbers
+            for (let i = 1; i <= pagination.total_pages; i++) {
+                if (i === 1 || i === pagination.total_pages || (i >= pagination.page - 2 && i <= pagination.page + 2)) {
+                    const li = document.createElement('li');
+                    li.className = `page-item ${i === pagination.page ? 'active' : ''}`;
+                    li.innerHTML = `<a class="page-link" href="#" onclick="loadResumes(${i}); return false;">${i}</a>`;
+                    paginationEl.appendChild(li);
+                } else if (i === pagination.page - 3 || i === pagination.page + 3) {
+                    const li = document.createElement('li');
+                    li.className = 'page-item disabled';
+                    li.innerHTML = '<a class="page-link" href="#">...</a>';
+                    paginationEl.appendChild(li);
+                }
+            }
+
+            // Next button
+            const nextLi = document.createElement('li');
+            nextLi.className = `page-item ${pagination.page === pagination.total_pages ? 'disabled' : ''}`;
+            nextLi.innerHTML = `<a class="page-link" href="#" onclick="loadResumes(${pagination.page + 1}); return false;">Next</a>`;
+            paginationEl.appendChild(nextLi);
+        }
+
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const icons = {
+                'pdf': 'pdf',
+                'docx': 'word',
+                'doc': 'word',
+                'txt': 'alt'
+            };
+            return icons[ext] || 'file';
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'uploaded': 'primary',
+                'parsing': 'warning',
+                'parsed': 'success',
+                'failed': 'danger',
+                'archived': 'secondary'
+            };
+            return colors[status] || 'secondary';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString();
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function viewResume(id) {
+            const token = localStorage.getItem('access_token');
+            
+            try {
+                const response = await fetch(`/api/resumes/${id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const resume = result.data;
+                    
+                    // Create and show modal with resume details
+                    showResumeDetailsModal(resume);
+                } else {
+                    alert('Failed to load resume details');
+                }
+            } catch (error) {
+                console.error('Error loading resume:', error);
+                alert('Failed to load resume details');
+            }
+        }
+
+        function showResumeDetailsModal(resume) {
+            // Create modal HTML
+            const modalHTML = `
+                <div class="modal fade" id="resumeDetailsModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-file-alt"></i> Resume Details
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <strong>File Name:</strong><br>
+                                        ${escapeHtml(resume.original_file_name)}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>File Size:</strong><br>
+                                        ${formatFileSize(resume.file_size)}
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <strong>File Type:</strong><br>
+                                        ${resume.file_type.toUpperCase()}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Upload Date:</strong><br>
+                                        ${formatDate(resume.upload_date)}
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <strong>Status:</strong><br>
+                                        <span class="badge bg-${getStatusColor(resume.status)}">${resume.status}</span>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Virus Scan:</strong><br>
+                                        <span class="badge bg-${resume.virus_scan_status === 'clean' ? 'success' : 'warning'}">
+                                            ${resume.virus_scan_status}
+                                        </span>
+                                    </div>
+                                </div>
+                                <hr>
+                                <h6>Candidate Information</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <strong>Name:</strong><br>
+                                        ${escapeHtml(resume.candidate_name || 'Not provided')}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Email:</strong><br>
+                                        ${escapeHtml(resume.candidate_email || 'Not provided')}
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <strong>Phone:</strong><br>
+                                        ${escapeHtml(resume.candidate_phone || 'Not provided')}
+                                    </div>
+                                </div>
+                                <hr>
+                                <h6>Parsed Information</h6>
+                                ${resume.parsed_data ? `
+                                    ${resume.parsed_data.linkedin ? `
+                                        <div class="row mb-2">
+                                            <div class="col-md-12">
+                                                <strong>LinkedIn:</strong><br>
+                                                <a href="${resume.parsed_data.linkedin}" target="_blank">${resume.parsed_data.linkedin}</a>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                    ${resume.parsed_data.github ? `
+                                        <div class="row mb-2">
+                                            <div class="col-md-12">
+                                                <strong>GitHub:</strong><br>
+                                                <a href="${resume.parsed_data.github}" target="_blank">${resume.parsed_data.github}</a>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                    ${resume.parsed_data && resume.parsed_data.skills && resume.parsed_data.skills.length > 0 ? `
+                                        <div class="row mb-2">
+                                            <div class="col-md-12">
+                                                <strong>Skills:</strong><br>
+                                                ${resume.parsed_data.skills.map(skill => 
+                                                    '<span class="badge bg-secondary me-1">' + escapeHtml(skill) + '</span>'
+                                                ).join('')}
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                    <hr>
+                                    <h6>Education Qualification</h6>
+                                    ${resume.parsed_data && resume.parsed_data.education && resume.parsed_data.education.length > 0 ? `
+                                        <table class="table table-sm table-bordered mt-2">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Degree</th>
+                                                    <th>College</th>
+                                                    <th>Year</th>
+                                                    <th>GPA</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${resume.parsed_data.education
+                                                    .filter(edu => {
+                                                        if (!edu.degree || edu.degree.length <= 3) return false;
+                                                        
+                                                        const degreeLower = edu.degree.toLowerCase();
+                                                        const collegeLower = (edu.college || '').toLowerCase();
+                                                        
+                                                        // Exclude junk data
+                                                        if (degreeLower.includes('me through')) return false;
+                                                        
+                                                        // Exclude certificates and non-degree programs
+                                                        if (degreeLower.includes('certificate')) return false;
+                                                        if (degreeLower.includes('certification')) return false;
+                                                        if (degreeLower.includes('master class')) return false;
+                                                        if (degreeLower.includes('masterclass')) return false;
+                                                        if (degreeLower.includes('course')) return false;
+                                                        if (degreeLower.includes('training')) return false;
+                                                        
+                                                        // Exclude 10th and 12th by degree name
+                                                        if (degreeLower.includes('10th') || degreeLower.includes('tenth')) return false;
+                                                        if (degreeLower.includes('12th') || degreeLower.includes('twelfth')) return false;
+                                                        if (degreeLower.includes('ssc') || degreeLower.includes('hsc')) return false;
+                                                        if (degreeLower.includes('secondary') || degreeLower.includes('intermediate')) return false;
+                                                        
+                                                        // Exclude by college name (if it mentions 10th/12th/standard/school)
+                                                        if (collegeLower.includes('10th') || collegeLower.includes('tenth')) return false;
+                                                        if (collegeLower.includes('12th') || collegeLower.includes('twelfth')) return false;
+                                                        if (collegeLower.includes('standard')) return false;
+                                                        if (collegeLower.includes('high school') || collegeLower.includes('secondary school')) return false;
+                                                        
+                                                        // Only allow proper degree abbreviations (must be followed by space and text, or be full words)
+                                                        // Exclude standalone "B.S." or "M.S." without proper context
+                                                        if (degreeLower === 'b.s.' || degreeLower === 'b.s' || degreeLower === 'bs') {
+                                                            // Check if college mentions school/standard - if yes, exclude
+                                                            if (collegeLower.includes('school') && !collegeLower.includes('college')) return false;
+                                                        }
+                                                        
+                                                        // Only include if it looks like a real degree (has proper degree keywords)
+                                                        const validDegreeKeywords = ['bachelor', 'master', 'phd', 'b.e', 'b.tech', 'm.e', 'm.tech', 'mba', 'bba', 'b.sc', 'm.sc', 'diploma'];
+                                                        const hasValidKeyword = validDegreeKeywords.some(keyword => degreeLower.includes(keyword));
+                                                        if (!hasValidKeyword) return false;
+                                                        
+                                                        return true;
+                                                    })
+                                                    .map(edu => `
+                                                        <tr>
+                                                            <td>${escapeHtml(edu.degree || '-')}</td>
+                                                            <td>${escapeHtml(edu.college || '-')}</td>
+                                                            <td>${escapeHtml(edu.year || '-')}</td>
+                                                            <td>${escapeHtml(edu.gpa || '-')}</td>
+                                                        </tr>
+                                                    `).join('')}
+                                            </tbody>
+                                        </table>
+                                    ` : `
+                                        <p class="text-muted">No education information extracted</p>
+                                    `}
+                                    ${resume.parsed_data.experience && resume.parsed_data.experience.length > 0 ? `
+                                        <div class="row mb-2">
+                                            <div class="col-md-12">
+                                                <strong>Experience:</strong><br>
+                                                <ul class="mb-0">
+                                                    ${resume.parsed_data.experience.map(exp => 
+                                                        '<li>' + escapeHtml(exp.title) + ' at ' + escapeHtml(exp.company) + '</li>'
+                                                    ).join('')}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                    <hr>
+                                    <h6>Certifications</h6>
+                                    ${resume.parsed_data && resume.parsed_data.certifications && resume.parsed_data.certifications.length > 0 ? `
+                                        <ul class="mb-0">
+                                            ${resume.parsed_data.certifications.map(cert => 
+                                                '<li>' + escapeHtml(cert) + '</li>'
+                                            ).join('')}
+                                        </ul>
+                                    ` : `
+                                        <p class="text-muted">No certifications found</p>
+                                    `}
+                                    ${resume.parsed_data.total_experience_years ? `
+                                        <div class="row mb-2">
+                                            <div class="col-md-12">
+                                                <strong>Total Experience:</strong><br>
+                                                ${resume.parsed_data.total_experience_years} years
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                ` : '<p class="text-muted">No parsed data available</p>'}
+                                <hr>
+                                <h6>Upload Information</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <strong>Uploaded By:</strong><br>
+                                        ${escapeHtml(resume.uploaded_by.name)}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Email:</strong><br>
+                                        ${escapeHtml(resume.uploaded_by.email || 'N/A')}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-success" onclick="downloadResume('${resume.id}')">
+                                    <i class="fas fa-download"></i> Download
+                                </button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove existing modal if any
+            const existingModal = document.getElementById('resumeDetailsModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Add modal to body
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('resumeDetailsModal'));
+            modal.show();
+            
+            // Clean up modal after it's hidden
+            document.getElementById('resumeDetailsModal').addEventListener('hidden.bs.modal', function() {
+                this.remove();
+            });
+        }
+
+        async function downloadResume(id) {
+            const token = localStorage.getItem('access_token');
+            
+            try {
+                const response = await fetch(`/api/resumes/${id}/download`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    // Get the blob from response
+                    const blob = await response.blob();
+                    
+                    // Get filename from Content-Disposition header or use default
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = 'resume.pdf';
+                    if (contentDisposition) {
+                        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+                        if (filenameMatch) {
+                            filename = filenameMatch[1];
+                        }
+                    }
+                    
+                    // Create download link
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                } else {
+                    alert('Failed to download resume');
+                }
+            } catch (error) {
+                console.error('Download error:', error);
+                alert('Failed to download resume');
+            }
+        }
+
+        async function deleteResume(id) {
+            if (!confirm('Are you sure you want to delete this resume?')) return;
+
+            const token = localStorage.getItem('access_token');
+            try {
+                const response = await fetch(`/api/resumes/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    alert('Resume deleted successfully');
+                    loadResumes(currentPage);
+                } else {
+                    const error = await response.json();
+                    alert('Failed to delete resume: ' + (error.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert('Failed to delete resume');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('access_token');
+            window.location.href = '/login';
+        }
+
+        // Event listeners
+        document.getElementById('searchBtn').addEventListener('click', () => {
+            loadResumes(1);
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            document.getElementById('searchInput').value = '';
+            loadResumes(1);
+        });
+
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loadResumes(1);
+            }
+        });
+    </script>
+</body>
+</html>

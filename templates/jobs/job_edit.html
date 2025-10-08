@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Job - HR Recruitment System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">HR Recruitment System</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/jobs">Jobs</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/candidates">Candidates</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-edit"></i> Edit Job</h1>
+            <a href="/jobs" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Jobs
+            </a>
+        </div>
+
+        <div id="loadingMessage" class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading job details...</p>
+        </div>
+
+        <div id="editForm" style="display: none;">
+            <form id="jobEditForm">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5>Basic Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label for="title" class="form-label">Job Title *</label>
+                                <input type="text" class="form-control" id="title" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="department" class="form-label">Department</label>
+                                <input type="text" class="form-control" id="department">
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="locationCity" class="form-label">City</label>
+                                <input type="text" class="form-control" id="locationCity">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="locationState" class="form-label">State</label>
+                                <input type="text" class="form-control" id="locationState">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="numOpenings" class="form-label">Number of Openings</label>
+                                <input type="number" class="form-control" id="numOpenings" min="1">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description * <small class="text-muted">(minimum 50 characters)</small></label>
+                            <textarea class="form-control" id="description" rows="6" required></textarea>
+                            <small class="text-muted">
+                                <span id="charCount">0</span> characters
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary" onclick="window.location.href='/jobs'">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const jobId = '{{ job_id }}';
+        let jobData = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadJobDetails();
+            
+            document.getElementById('jobEditForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                updateJob();
+            });
+            
+            // Add character counter
+            document.getElementById('description').addEventListener('input', function() {
+                const count = this.value.length;
+                document.getElementById('charCount').textContent = count;
+                
+                // Change color based on length
+                const charCountSpan = document.getElementById('charCount');
+                if (count < 50) {
+                    charCountSpan.style.color = 'red';
+                } else {
+                    charCountSpan.style.color = 'green';
+                }
+            });
+        });
+
+        async function loadJobDetails() {
+            try {
+                const response = await fetch(`/api/jobs/${jobId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load job details');
+                }
+
+                const result = await response.json();
+                jobData = result.data;
+                
+                populateForm(jobData);
+                
+                document.getElementById('loadingMessage').style.display = 'none';
+                document.getElementById('editForm').style.display = 'block';
+            } catch (error) {
+                console.error('Error loading job:', error);
+                document.getElementById('loadingMessage').style.display = 'none';
+                document.getElementById('errorMessage').textContent = 'Failed to load job details: ' + error.message;
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        }
+
+        function populateForm(job) {
+            document.getElementById('title').value = job.title || '';
+            document.getElementById('department').value = job.department || '';
+            document.getElementById('locationCity').value = job.location_city || '';
+            document.getElementById('locationState').value = job.location_state || '';
+            document.getElementById('numOpenings').value = job.num_openings || 1;
+            document.getElementById('description').value = job.description || '';
+            
+            // Update character count
+            const count = (job.description || '').length;
+            document.getElementById('charCount').textContent = count;
+            const charCountSpan = document.getElementById('charCount');
+            if (count < 50) {
+                charCountSpan.style.color = 'red';
+            } else {
+                charCountSpan.style.color = 'green';
+            }
+        }
+
+        async function updateJob() {
+            try {
+                const title = document.getElementById('title').value;
+                const description = document.getElementById('description').value;
+                
+                // Validate required fields
+                if (!title || title.length < 3) {
+                    alert('Job title must be at least 3 characters long');
+                    return;
+                }
+                
+                if (!description || description.length < 50) {
+                    alert('Job description must be at least 50 characters long');
+                    return;
+                }
+                
+                const updateData = {
+                    title: title,
+                    department: document.getElementById('department').value || null,
+                    location: {
+                        city: document.getElementById('locationCity').value || null,
+                        state: document.getElementById('locationState').value || null,
+                        country: jobData.location_country || 'USA',
+                        is_remote: jobData.is_remote || false
+                    },
+                    num_openings: parseInt(document.getElementById('numOpenings').value) || 1,
+                    description: description
+                };
+
+                console.log('Updating job with data:', updateData);
+
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    alert('You are not logged in. Please login first.');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const response = await fetch(`/api/jobs/${jobId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(updateData)
+                });
+
+                const result = await response.json();
+                console.log('Update response:', result);
+
+                if (!response.ok) {
+                    console.error('Update failed:', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        result: result
+                    });
+                    
+                    // Handle validation errors
+                    if (response.status === 422) {
+                        const errors = result.detail;
+                        let errorMsg = 'Validation errors:\n\n';
+                        if (Array.isArray(errors)) {
+                            errors.forEach(err => {
+                                errorMsg += `• Field: ${err.loc.join('.')}\n  Error: ${err.msg}\n\n`;
+                            });
+                        } else {
+                            errorMsg = JSON.stringify(errors, null, 2);
+                        }
+                        alert(errorMsg);
+                    } else if (response.status === 401) {
+                        alert('Authentication failed. Please login again.');
+                        window.location.href = '/login';
+                    } else if (response.status === 403) {
+                        alert('You do not have permission to update this job.');
+                    } else if (response.status === 500) {
+                        alert('Server error: ' + (result.detail || 'Internal server error. Please check the server logs.'));
+                    } else {
+                        const errorDetail = result.detail || result.message || 'Failed to update job';
+                        alert(`Error (${response.status}): ${errorDetail}\n\nCheck browser console (F12) for more details.`);
+                    }
+                    return;
+                }
+
+                alert('Job updated successfully!');
+                window.location.href = `/jobs/${jobId}`;
+            } catch (error) {
+                console.error('Error updating job:', error);
+                alert('Network error: ' + error.message + '\n\nPlease check your connection and try again.');
+            }
+        }
+    </script>
+</body>
+</html>

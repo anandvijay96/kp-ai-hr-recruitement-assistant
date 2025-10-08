@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Job - HR Recruitment System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Quill Rich Text Editor -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <style>
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            border-bottom: 3px solid #dee2e6;
+            color: #6c757d;
+            cursor: pointer;
+        }
+        .step.active {
+            border-bottom-color: #0d6efd;
+            color: #0d6efd;
+            font-weight: 600;
+        }
+        .step.completed {
+            border-bottom-color: #28a745;
+            color: #28a745;
+        }
+        .form-section {
+            display: none;
+        }
+        .form-section.active {
+            display: block;
+        }
+        .skill-tag {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 5px;
+            background-color: #e9ecef;
+            border-radius: 20px;
+        }
+        .skill-tag .remove-skill {
+            margin-left: 5px;
+            cursor: pointer;
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">HR Recruitment System</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/jobs">Jobs</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/candidates">Candidates</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-plus-circle"></i> Create New Job</h1>
+            <a href="/jobs" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Jobs
+            </a>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step active" data-step="1">
+                <i class="fas fa-info-circle"></i><br>Basic Info
+            </div>
+            <div class="step" data-step="2">
+                <i class="fas fa-file-alt"></i><br>Description
+            </div>
+            <div class="step" data-step="3">
+                <i class="fas fa-cogs"></i><br>Skills
+            </div>
+            <div class="step" data-step="4">
+                <i class="fas fa-check-circle"></i><br>Review
+            </div>
+        </div>
+
+        <!-- Form -->
+        <form id="jobForm">
+            <!-- Step 1: Basic Information -->
+            <div class="form-section active" data-section="1">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Basic Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label for="title" class="form-label">Job Title *</label>
+                                <input type="text" class="form-control" id="title" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="department" class="form-label">Department</label>
+                                <select class="form-select" id="department">
+                                    <option value="">Select Department</option>
+                                    <option value="Engineering">Engineering</option>
+                                    <option value="Sales">Sales</option>
+                                    <option value="Marketing">Marketing</option>
+                                    <option value="Product">Product</option>
+                                    <option value="HR">HR</option>
+                                    <option value="Finance">Finance</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="locationCity" class="form-label">City</label>
+                                <input type="text" class="form-control" id="locationCity">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="locationState" class="form-label">State</label>
+                                <input type="text" class="form-control" id="locationState">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="locationCountry" class="form-label">Country</label>
+                                <input type="text" class="form-control" id="locationCountry" value="USA">
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Work Type *</label>
+                                <div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="workType" id="workTypeOnsite" value="onsite">
+                                        <label class="form-check-label" for="workTypeOnsite">Onsite</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="workType" id="workTypeRemote" value="remote">
+                                        <label class="form-check-label" for="workTypeRemote">Remote</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="workType" id="workTypeHybrid" value="hybrid" checked>
+                                        <label class="form-check-label" for="workTypeHybrid">Hybrid</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="employmentType" class="form-label">Employment Type *</label>
+                                <select class="form-select" id="employmentType" required>
+                                    <option value="full_time">Full-time</option>
+                                    <option value="part_time">Part-time</option>
+                                    <option value="contract">Contract</option>
+                                    <option value="internship">Internship</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="numOpenings" class="form-label">Number of Openings *</label>
+                                <input type="number" class="form-control" id="numOpenings" value="1" min="1" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label for="salaryMin" class="form-label">Salary Min</label>
+                                <input type="number" class="form-control" id="salaryMin" placeholder="150000">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="salaryMax" class="form-label">Salary Max</label>
+                                <input type="number" class="form-control" id="salaryMax" placeholder="200000">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="salaryCurrency" class="form-label">Currency</label>
+                                <select class="form-select" id="salaryCurrency">
+                                    <option value="USD">USD</option>
+                                    <option value="EUR">EUR</option>
+                                    <option value="GBP">GBP</option>
+                                    <option value="INR">INR</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="salaryPeriod" class="form-label">Period</label>
+                                <select class="form-select" id="salaryPeriod">
+                                    <option value="annual">Annual</option>
+                                    <option value="monthly">Monthly</option>
+                                    <option value="hourly">Hourly</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="closingDate" class="form-label">Closing Date</label>
+                                <input type="date" class="form-control" id="closingDate">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-end mt-3">
+                    <button type="button" class="btn btn-primary" onclick="nextStep()">
+                        Next <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Step 2: Description -->
+            <div class="form-section" data-section="2">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Job Description</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">
+                                Job Description <small class="text-muted">(Type description OR upload document below)</small>
+                            </label>
+                            <!-- Quill Rich Text Editor -->
+                            <div id="descriptionEditor" style="height: 300px;"></div>
+                            <input type="hidden" id="description">
+                            <small class="text-muted">Minimum 50 characters if typing. Use the toolbar to format text (bold, italic, lists, etc.)</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="jobDocument" class="form-label">
+                                Or Upload Job Description Document
+                            </label>
+                            <input type="file" class="form-control" id="jobDocument" accept=".pdf,.doc,.docx">
+                            <small class="text-muted d-block mt-1">
+                                <i class="fas fa-info-circle"></i> <strong>Either type the description above OR upload a document</strong> (PDF, DOC, DOCX - Max 5MB)
+                            </small>
+                            <div id="fileInfo" class="mt-2"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Responsibilities</label>
+                            <div id="responsibilitiesList"></div>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="responsibilityInput" 
+                                    placeholder="Add a responsibility">
+                                <button type="button" class="btn btn-primary" onclick="addResponsibility()">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Mandatory Requirements</label>
+                            <div id="mandatoryReqList"></div>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="mandatoryReqInput" 
+                                    placeholder="Add a mandatory requirement">
+                                <button type="button" class="btn btn-primary" onclick="addMandatoryReq()">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Preferred Requirements</label>
+                            <div id="preferredReqList"></div>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="preferredReqInput" 
+                                    placeholder="Add a preferred requirement">
+                                <button type="button" class="btn btn-primary" onclick="addPreferredReq()">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep()">
+                        <i class="fas fa-arrow-left"></i> Previous
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="nextStep()">
+                        Next <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Step 3: Skills -->
+            <div class="form-section" data-section="3">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Skills & Requirements</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Add Skills</label>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" id="skillInput" placeholder="Skill name">
+                                </div>
+                                <div class="col-md-3">
+                                    <select class="form-select" id="skillProficiency">
+                                        <option value="any">Any Level</option>
+                                        <option value="beginner">Beginner</option>
+                                        <option value="intermediate">Intermediate</option>
+                                        <option value="expert">Expert</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" id="skillMandatory">
+                                        <label class="form-check-label" for="skillMandatory">Mandatory</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="button" class="btn btn-primary w-100" onclick="addSkill()">
+                                        <i class="fas fa-plus"></i> Add Skill
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="skillsList"></div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep()">
+                        <i class="fas fa-arrow-left"></i> Previous
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="nextStep()">
+                        Next <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Step 4: Review -->
+            <div class="form-section" data-section="4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Review & Submit</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="reviewContent"></div>
+                        
+                        <div class="mt-4">
+                            <label class="form-label">Job Status</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="status" id="statusDraft" value="draft" checked>
+                                <label class="form-check-label" for="statusDraft">
+                                    Save as Draft (you can publish later)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="status" id="statusOpen" value="open">
+                                <label class="form-check-label" for="statusOpen">
+                                    Publish Now (job will be visible immediately)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep()">
+                        <i class="fas fa-arrow-left"></i> Previous
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="submitJob()">
+                        <i class="fas fa-check"></i> Create Job
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Quill Rich Text Editor -->
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <script>
+        let currentStep = 1;
+        const responsibilities = [];
+        const mandatoryReqs = [];
+        const preferredReqs = [];
+        const skills = [];
+        let uploadedFile = null;
+        let quillEditor = null;
+
+        // Initialize Quill Rich Text Editor
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Quill
+            quillEditor = new Quill('#descriptionEditor', {
+                theme: 'snow',
+                placeholder: 'Describe the role, responsibilities, and what makes this position exciting...',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'indent': '-1'}, { 'indent': '+1' }],
+                        ['link'],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'align': [] }],
+                        ['clean']
+                    ]
+                }
+            });
+
+            // Sync Quill content to hidden input
+            quillEditor.on('text-change', function() {
+                const html = quillEditor.root.innerHTML;
+                document.getElementById('description').value = html;
+            });
+            
+            // Handle file upload
+            const fileInput = document.getElementById('jobDocument');
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                const fileInfo = document.getElementById('fileInfo');
+                
+                if (file) {
+                    // Validate file size (5MB max)
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('File size must be less than 5MB');
+                        fileInput.value = '';
+                        fileInfo.innerHTML = '';
+                        uploadedFile = null;
+                        return;
+                    }
+                    
+                    // Validate file type
+                    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+                    if (!allowedTypes.includes(file.type)) {
+                        alert('Only PDF, DOC, and DOCX files are allowed');
+                        fileInput.value = '';
+                        fileInfo.innerHTML = '';
+                        uploadedFile = null;
+                        return;
+                    }
+                    
+                    uploadedFile = file;
+                    fileInfo.innerHTML = `
+                        <div class="alert alert-success py-2">
+                            <i class="fas fa-file-alt"></i> <strong>${file.name}</strong> (${(file.size / 1024).toFixed(2)} KB)
+                            <button type="button" class="btn btn-sm btn-danger float-end" onclick="removeFile()">
+                                <i class="fas fa-times"></i> Remove
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    uploadedFile = null;
+                    fileInfo.innerHTML = '';
+                }
+            });
+        });
+
+        function removeFile() {
+            document.getElementById('jobDocument').value = '';
+            document.getElementById('fileInfo').innerHTML = '';
+            uploadedFile = null;
+        }
+
+        function nextStep() {
+            if (validateStep(currentStep)) {
+                currentStep++;
+                updateStepDisplay();
+                if (currentStep === 4) {
+                    showReview();
+                }
+            }
+        }
+
+        function prevStep() {
+            currentStep--;
+            updateStepDisplay();
+        }
+
+        function updateStepDisplay() {
+            // Update step indicators
+            document.querySelectorAll('.step').forEach((step, index) => {
+                step.classList.remove('active', 'completed');
+                if (index + 1 === currentStep) {
+                    step.classList.add('active');
+                } else if (index + 1 < currentStep) {
+                    step.classList.add('completed');
+                }
+            });
+
+            // Update form sections
+            document.querySelectorAll('.form-section').forEach((section, index) => {
+                section.classList.remove('active');
+                if (index + 1 === currentStep) {
+                    section.classList.add('active');
+                }
+            });
+
+            window.scrollTo(0, 0);
+        }
+
+        function validateStep(step) {
+            if (step === 1) {
+                const title = document.getElementById('title').value;
+                if (!title || title.length < 3) {
+                    alert('Please enter a job title (minimum 3 characters)');
+                    return false;
+                }
+            } else if (step === 2) {
+                const hasFile = uploadedFile !== null;
+                const textLength = quillEditor.getText().trim().length;
+                
+                // Either description text OR uploaded file is required
+                if (!hasFile && textLength < 50) {
+                    alert('Please either:\n• Type a job description (minimum 50 characters)\nOR\n• Upload a job description document');
+                    return false;
+                }
+                
+                // If both are provided, that's fine too
+            }
+            return true;
+        }
+
+        function addResponsibility() {
+            const input = document.getElementById('responsibilityInput');
+            if (input.value.trim()) {
+                responsibilities.push(input.value.trim());
+                renderList('responsibilitiesList', responsibilities, removeResponsibility);
+                input.value = '';
+            }
+        }
+
+        function removeResponsibility(index) {
+            responsibilities.splice(index, 1);
+            renderList('responsibilitiesList', responsibilities, removeResponsibility);
+        }
+
+        function addMandatoryReq() {
+            const input = document.getElementById('mandatoryReqInput');
+            if (input.value.trim()) {
+                mandatoryReqs.push(input.value.trim());
+                renderList('mandatoryReqList', mandatoryReqs, removeMandatoryReq);
+                input.value = '';
+            }
+        }
+
+        function removeMandatoryReq(index) {
+            mandatoryReqs.splice(index, 1);
+            renderList('mandatoryReqList', mandatoryReqs, removeMandatoryReq);
+        }
+
+        function addPreferredReq() {
+            const input = document.getElementById('preferredReqInput');
+            if (input.value.trim()) {
+                preferredReqs.push(input.value.trim());
+                renderList('preferredReqList', preferredReqs, removePreferredReq);
+                input.value = '';
+            }
+        }
+
+        function removePreferredReq(index) {
+            preferredReqs.splice(index, 1);
+            renderList('preferredReqList', preferredReqs, removePreferredReq);
+        }
+
+        function addSkill() {
+            const name = document.getElementById('skillInput').value.trim();
+            const proficiency = document.getElementById('skillProficiency').value;
+            const isMandatory = document.getElementById('skillMandatory').checked;
+
+            if (name) {
+                skills.push({ name, proficiency_level: proficiency, is_mandatory: isMandatory });
+                renderSkills();
+                document.getElementById('skillInput').value = '';
+                document.getElementById('skillMandatory').checked = false;
+            }
+        }
+
+        function removeSkill(index) {
+            skills.splice(index, 1);
+            renderSkills();
+        }
+
+        function renderList(elementId, items, removeFunc) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = items.map((item, index) => `
+                <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                    <span>${item}</span>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="${removeFunc.name}(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function renderSkills() {
+            const element = document.getElementById('skillsList');
+            element.innerHTML = skills.map((skill, index) => `
+                <span class="skill-tag">
+                    ${skill.name} (${skill.proficiency_level})
+                    ${skill.is_mandatory ? '<span class="badge bg-danger">Required</span>' : ''}
+                    <span class="remove-skill" onclick="removeSkill(${index})">×</span>
+                </span>
+            `).join('');
+        }
+
+        function showReview() {
+            const title = document.getElementById('title').value;
+            const department = document.getElementById('department').value;
+            const descriptionHTML = document.getElementById('description').value;
+            const descriptionText = quillEditor.getText().trim();
+
+            const reviewContent = `
+                <h5>${title}</h5>
+                <p><strong>Department:</strong> ${department || 'N/A'}</p>
+                ${descriptionText ? `
+                    <div class="mb-3">
+                        <strong>Description:</strong>
+                        <div class="border p-3 mt-2" style="max-height: 200px; overflow-y: auto;">
+                            ${descriptionHTML}
+                        </div>
+                    </div>
+                ` : ''}
+                ${uploadedFile ? `
+                    <div class="alert alert-info py-2">
+                        <i class="fas fa-file-alt"></i> <strong>Job Description Document:</strong> ${uploadedFile.name} (${(uploadedFile.size / 1024).toFixed(2)} KB)
+                    </div>
+                ` : ''}
+                <p><strong>Responsibilities:</strong> ${responsibilities.length}</p>
+                <p><strong>Mandatory Requirements:</strong> ${mandatoryReqs.length}</p>
+                <p><strong>Preferred Requirements:</strong> ${preferredReqs.length}</p>
+                <p><strong>Skills:</strong> ${skills.length}</p>
+            `;
+
+            document.getElementById('reviewContent').innerHTML = reviewContent;
+        }
+
+        async function submitJob() {
+            const workType = document.querySelector('input[name="workType"]:checked').value;
+            const status = document.querySelector('input[name="status"]:checked').value;
+
+            // Build salary range only if values are provided
+            const salaryMin = document.getElementById('salaryMin').value;
+            const salaryMax = document.getElementById('salaryMax').value;
+            let salaryRange = null;
+            
+            if (salaryMin || salaryMax) {
+                salaryRange = {
+                    min: salaryMin ? parseFloat(salaryMin) : null,
+                    max: salaryMax ? parseFloat(salaryMax) : null,
+                    currency: document.getElementById('salaryCurrency').value,
+                    period: document.getElementById('salaryPeriod').value
+                };
+            }
+
+            // Get description - use typed text or placeholder if file uploaded
+            let description = document.getElementById('description').value;
+            if (!description && uploadedFile) {
+                description = `Job description provided in attached document: ${uploadedFile.name}`;
+            }
+
+            const jobData = {
+                title: document.getElementById('title').value,
+                department: document.getElementById('department').value || null,
+                location: {
+                    city: document.getElementById('locationCity').value || null,
+                    state: document.getElementById('locationState').value || null,
+                    country: document.getElementById('locationCountry').value || 'USA',
+                    is_remote: workType === 'remote'
+                },
+                work_type: workType,
+                employment_type: document.getElementById('employmentType').value,
+                num_openings: parseInt(document.getElementById('numOpenings').value),
+                salary_range: salaryRange,
+                description: description,
+                responsibilities: responsibilities,
+                requirements: {
+                    mandatory: mandatoryReqs,
+                    preferred: preferredReqs
+                },
+                skills: skills,
+                closing_date: document.getElementById('closingDate').value || null,
+                assigned_recruiters: [],
+                status: status
+            };
+
+            console.log('Submitting job data:', jobData);
+
+            try {
+                const token = localStorage.getItem('access_token');
+                
+                if (!token) {
+                    alert('You are not logged in. Please login first.');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const response = await fetch('/api/jobs', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(jobData)
+                });
+
+                const result = await response.json();
+                console.log('Response:', result);
+
+                if (!response.ok) {
+                    // Handle validation errors
+                    if (response.status === 422) {
+                        const errors = result.detail;
+                        let errorMsg = 'Validation errors:\n';
+                        if (Array.isArray(errors)) {
+                            errors.forEach(err => {
+                                errorMsg += `- ${err.loc.join('.')}: ${err.msg}\n`;
+                            });
+                        } else {
+                            errorMsg = JSON.stringify(errors, null, 2);
+                        }
+                        alert(errorMsg);
+                    } else if (response.status === 401) {
+                        alert('Authentication failed. Please login again.');
+                        window.location.href = '/login';
+                    } else if (response.status === 403) {
+                        alert('You do not have permission to create jobs. Only managers and admins can create jobs.');
+                    } else {
+                        alert('Error: ' + (result.detail || result.message || 'Failed to create job'));
+                    }
+                    return;
+                }
+
+                alert('Job created successfully!');
+                window.location.href = '/jobs';
+            } catch (error) {
+                console.error('Error creating job:', error);
+                alert('Network error: ' + error.message + '\n\nPlease check your connection and try again.');
+            }
+        }
+    </script>
+</body>
+</html>

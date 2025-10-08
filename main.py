@@ -11,11 +11,14 @@ import aiofiles
 
 from core.config import settings
 from core.cache import SimpleCache
+from core.database import init_db, close_db
+from core.redis_client import redis_client
 from models.schemas import ResumeAnalysis, JobDescription, AuthenticityScore, MatchingScore
 from services.document_processor import DocumentProcessor
 from services.resume_analyzer import ResumeAuthenticityAnalyzer
 from services.jd_matcher import JDMatcher
 from services.result_storage import ResultStorage
+from api import auth, resumes, candidates, jobs, jobs_management, users
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -23,9 +26,17 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.app_name,
-    description="Resume authenticity scanning and JD matching system",
+    description="AI-powered HR recruitment system with resume authenticity scanning and JD matching",
     version="1.0.0"
 )
+
+# Include routers
+app.include_router(auth.router)
+app.include_router(resumes.router)
+app.include_router(candidates.router)
+app.include_router(jobs.router)
+app.include_router(jobs_management.router)  # NEW: Jobs Management feature
+app.include_router(users.router)  # NEW: User Management feature
 
 # Mount static files (only if directory exists)
 if os.path.exists("static"):
@@ -46,6 +57,41 @@ os.makedirs(settings.upload_dir, exist_ok=True)
 os.makedirs(settings.results_dir, exist_ok=True)
 os.makedirs(settings.temp_dir, exist_ok=True)
 
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on startup"""
+    try:
+        # Initialize database
+        await init_db()
+        logger.info("Database initialized successfully")
+        
+        # Connect to Redis
+        await redis_client.connect(settings.redis_url)
+        logger.info("Redis connection established")
+        
+        logger.info("Application started successfully")
+    except Exception as e:
+        logger.error(f"Error during startup: {str(e)}")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    try:
+        # Close database connections
+        await close_db()
+        logger.info("Database connections closed")
+        
+        # Disconnect from Redis
+        await redis_client.disconnect()
+        logger.info("Redis disconnected")
+        
+        logger.info("Application shutdown complete")
+    except Exception as e:
+        logger.error(f"Error during shutdown: {str(e)}")
+
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     """Main dashboard"""
@@ -55,6 +101,106 @@ async def home(request: Request):
 async def upload_form(request: Request):
     """Resume upload form"""
     return templates.TemplateResponse("upload.html", {"request": request})
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """Login page"""
+    return templates.TemplateResponse("auth/login.html", {"request": request})
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    """Registration page"""
+    return templates.TemplateResponse("auth/register.html", {"request": request})
+
+@app.get("/forgot-password", response_class=HTMLResponse)
+async def forgot_password_page(request: Request):
+    """Forgot password page"""
+    return templates.TemplateResponse("auth/forgot_password.html", {"request": request})
+
+@app.get("/reset-password", response_class=HTMLResponse)
+async def reset_password_page(request: Request):
+    """Reset password page"""
+    return templates.TemplateResponse("auth/reset_password.html", {"request": request})
+
+@app.get("/resumes", response_class=HTMLResponse)
+async def resumes_list_page(request: Request):
+    """Resume list page"""
+    return templates.TemplateResponse("resumes/list.html", {"request": request})
+
+@app.get("/resumes/upload-new", response_class=HTMLResponse)
+async def resume_upload_new_page(request: Request):
+    """New resume upload page"""
+    return templates.TemplateResponse("resumes/upload_new.html", {"request": request})
+
+@app.get("/candidates", response_class=HTMLResponse)
+async def candidates_list_page(request: Request):
+    """Candidates list page"""
+    return templates.TemplateResponse("candidates/list.html", {"request": request})
+
+@app.get("/candidates/{candidate_id}", response_class=HTMLResponse)
+async def candidate_detail_page(request: Request, candidate_id: str):
+    """Candidate detail page"""
+    return templates.TemplateResponse("candidates/detail.html", {"request": request})
+
+@app.get("/candidates/{candidate_id}/edit", response_class=HTMLResponse)
+async def candidate_edit_page(request: Request, candidate_id: str):
+    """Candidate edit page"""
+    return templates.TemplateResponse("candidates/edit.html", {"request": request, "candidate_id": candidate_id})
+
+@app.get("/jobs", response_class=HTMLResponse)
+async def jobs_list_page(request: Request):
+    """Jobs list page"""
+    return templates.TemplateResponse("jobs/job_list.html", {"request": request})
+
+@app.get("/debug-auth", response_class=HTMLResponse)
+async def debug_auth_page(request: Request):
+    """Debug authentication page"""
+    return templates.TemplateResponse("debug_auth.html", {"request": request})
+
+@app.get("/make-admin", response_class=HTMLResponse)
+async def make_admin_page(request: Request):
+    """Make user admin page"""
+    return templates.TemplateResponse("make_admin.html", {"request": request})
+
+@app.get("/jobs/create", response_class=HTMLResponse)
+async def job_create_page(request: Request):
+    """Job creation page"""
+    return templates.TemplateResponse("jobs/job_create.html", {"request": request})
+
+@app.get("/jobs/{job_id}", response_class=HTMLResponse)
+async def job_detail_page(request: Request, job_id: str):
+    """Job detail page"""
+    return templates.TemplateResponse("jobs/job_detail.html", {"request": request, "job_id": job_id})
+
+@app.get("/jobs/{job_id}/edit", response_class=HTMLResponse)
+async def job_edit_page(request: Request, job_id: str):
+    """Job edit page"""
+    return templates.TemplateResponse("jobs/job_edit.html", {"request": request, "job_id": job_id})
+
+@app.get("/jobs-management/dashboard", response_class=HTMLResponse)
+async def jobs_management_dashboard_page(request: Request):
+    """Jobs Management dashboard page"""
+    return templates.TemplateResponse("jobs_management/dashboard.html", {"request": request})
+
+@app.get("/jobs-management/{job_id}/analytics", response_class=HTMLResponse)
+async def jobs_analytics_page(request: Request, job_id: str):
+    """Job analytics page"""
+    return templates.TemplateResponse("jobs_management/analytics.html", {"request": request, "job_id": job_id})
+
+@app.get("/jobs-management/{job_id}/audit-log", response_class=HTMLResponse)
+async def jobs_audit_log_page(request: Request, job_id: str):
+    """Job audit log page"""
+    return templates.TemplateResponse("jobs_management/audit_log.html", {"request": request, "job_id": job_id})
+
+@app.get("/users", response_class=HTMLResponse)
+async def users_dashboard_page(request: Request):
+    """User Management dashboard page"""
+    return templates.TemplateResponse("users/dashboard.html", {"request": request})
+
+@app.get("/users/{user_id}", response_class=HTMLResponse)
+async def user_detail_page(request: Request, user_id: str):
+    """User detail page"""
+    return templates.TemplateResponse("users/detail.html", {"request": request, "user_id": user_id})
 
 @app.post("/api/scan-resume")
 async def scan_resume(
