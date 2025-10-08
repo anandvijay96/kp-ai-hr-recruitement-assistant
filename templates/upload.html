@@ -308,8 +308,32 @@
                 // Process files with progress updates
                 const results = await processBatchWithProgress(formData);
                 
+                // Stop the timer
+                clearInterval(uploadState.progressInterval);
+                
+                // Format results for display
+                const successfulResults = results.filter(r => !r.error);
+                const errors = results.filter(r => r.error).map(r => `${r.filename}: ${r.error}`);
+                
+                const batchResult = {
+                    total_processed: results.length,
+                    successful: successfulResults.length,
+                    failed: errors.length,
+                    results: successfulResults,
+                    errors: errors
+                };
+                
                 // Show final results
-                displayBatchResults(results);
+                displayBatchResults(batchResult);
+                
+                // Hide progress section after a short delay to show completion
+                setTimeout(() => {
+                    document.getElementById('progressSection').style.display = 'none';
+                    document.getElementById('results').style.display = 'block';
+                    
+                    // Scroll to results
+                    document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+                }, 2000);
                 
             } catch (error) {
                 console.error('Batch upload error:', error);
@@ -628,8 +652,16 @@
                 statusText = 'Upload cancelled';
             } else if (uploadState.completed === totalFiles && uploadState.failed === 0) {
                 statusText = 'All files completed successfully';
+                // Stop progress bar animation when complete
+                if (progressBar) {
+                    progressBar.classList.remove('progress-bar-animated');
+                }
             } else if (uploadState.completed + uploadState.failed === totalFiles) {
                 statusText = `Processing complete (${uploadState.completed} successful, ${uploadState.failed} failed)`;
+                // Stop progress bar animation when complete
+                if (progressBar) {
+                    progressBar.classList.remove('progress-bar-animated');
+                }
             } else if (uploadState.processing > 0) {
                 statusText = `Processing ${uploadState.processing} file${uploadState.processing > 1 ? 's' : ''}...`;
             }
