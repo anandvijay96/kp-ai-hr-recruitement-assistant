@@ -98,6 +98,11 @@ async def settings_page(request: Request):
     """User settings page"""
     return templates.TemplateResponse("settings.html", {"request": request})
 
+@app.get("/candidates")
+def candidates_list_page(request: Request):
+    """Candidates list/search page."""
+    return templates.TemplateResponse("candidate_search.html", {"request": request})
+
 @app.get("/search")
 def search_page(request: Request):
     """Candidate search and filtering page."""
