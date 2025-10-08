@@ -84,9 +84,20 @@
                 <!-- Batch Upload -->
                 <div class="card">
                     <div class="card-header">
-                        <h5><i class="bi bi-files me-2"></i>Batch Resume Analysis</h5>
+                        <h5><i class="bi bi-files me-2"></i>Batch Resume Upload</h5>
+                        <small class="text-muted">Upload resumes directly to database (or from vetting approval)</small>
                     </div>
                     <div class="card-body">
+                        <!-- Source Selection -->
+                        <div class="alert alert-info" id="vettingAlert" style="display: none;">
+                            <i class="bi bi-shield-check me-2"></i>
+                            <strong>Pre-Approved Resumes Detected!</strong>
+                            <span id="approvedCount"></span> resumes from vetting are ready to upload.
+                            <button class="btn btn-sm btn-primary ms-3" onclick="loadApprovedResumes()">
+                                <i class="bi bi-database-add"></i> Load Approved Resumes
+                            </button>
+                        </div>
+
                         <form id="batchUploadForm" enctype="multipart/form-data" action="javascript:void(0);">
                             <div class="mb-3">
                                 <label for="resumeFiles" class="form-label">
@@ -723,6 +734,49 @@
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
+
+        function checkForApprovedResumes() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const source = urlParams.get('source');
+            
+            if (source === 'vetting') {
+                const approvedData = sessionStorage.getItem('approved_resumes');
+                if (approvedData) {
+                    const approved = JSON.parse(approvedData);
+                    document.getElementById('vettingAlert').style.display = 'block';
+                    document.getElementById('approvedCount').textContent = `${approved.length}`;
+                }
+            }
+        }
+
+        function loadApprovedResumes() {
+            const approvedData = sessionStorage.getItem('approved_resumes');
+            const sessionId = sessionStorage.getItem('vetting_session_id');
+            
+            if (!approvedData) {
+                alert('No approved resumes found');
+                return;
+            }
+
+            const approved = JSON.parse(approvedData);
+            
+            // Show confirmation
+            if (!confirm(`Upload ${approved.length} approved resumes to database?`)) {
+                return;
+            }
+
+            // Display message
+            alert(`This will upload ${approved.length} pre-vetted resumes.\\n\\nNote: Direct batch upload from approved resumes will be fully implemented in the next update. For now, please use the vetting page at /vet-resumes`);
+            
+            // Clear session storage
+            sessionStorage.removeItem('approved_resumes');
+            sessionStorage.removeItem('vetting_session_id');
+            
+            // Redirect back to vetting
+            window.location.href = '/vet-resumes';
+        }
+
+        function generateSessionId() { return 'vet_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); }
 
         // Event handlers
         document.getElementById('cancelUploadBtn').addEventListener('click', function() {
