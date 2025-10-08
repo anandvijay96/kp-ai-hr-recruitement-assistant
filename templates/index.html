@@ -33,7 +33,10 @@
                         <a class="nav-link active" href="/">Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/upload">Resume Analysis</a>
+                        <a class="nav-link" href="/vet-resumes">Vet Resumes</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/upload">Upload to Database</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/candidates">Candidate Database</a>
@@ -48,7 +51,10 @@
         <div class="container text-center">
             <h1 class="display-4 mb-4">AI-Powered HR Resume Analysis</h1>
             <p class="lead mb-4">Detect fake resumes and match candidates with job descriptions using advanced AI</p>
-            <a href="/upload" class="btn btn-light btn-lg">Get Started</a>
+            <div class="d-flex gap-3 justify-content-center">
+                <a href="/vet-resumes" class="btn btn-light btn-lg">🔍 Vet Resumes</a>
+                <a href="/upload" class="btn btn-outline-light btn-lg">📤 Upload Directly</a>
+            </div>
         </div>
     </section>
 
@@ -57,15 +63,27 @@
         <div class="container">
             <h2 class="text-center mb-5">Resume Management Features</h2>
             <div class="row g-4">
-                <div class="col-md-4">
+                <div class="col-md-3">
+                    <div class="card feature-card h-100">
+                        <div class="card-body text-center">
+                            <div class="mb-3">
+                                <span style="font-size: 3rem;">🛡️</span>
+                            </div>
+                            <h5 class="card-title">Resume Vetting</h5>
+                            <p class="card-text">Scan resumes for authenticity BEFORE adding to database. Review and approve only genuine candidates.</p>
+                            <a href="/vet-resumes" class="btn btn-success btn-sm mt-2">Start Vetting</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
                     <div class="card feature-card h-100">
                         <div class="card-body text-center">
                             <div class="mb-3">
                                 <span style="font-size: 3rem;">🔍</span>
                             </div>
-                            <h5 class="card-title">Resume Authenticity Scanner</h5>
-                            <p class="card-text">Advanced AI algorithms detect fake resumes by analyzing font consistency, grammar patterns, and formatting irregularities.</p>
-                            <a href="/upload" class="btn btn-primary btn-sm mt-2">Analyze Resumes</a>
+                            <h5 class="card-title">Authenticity Analysis</h5>
+                            <p class="card-text">AI algorithms detect fake resumes by analyzing font consistency, grammar patterns, and formatting.</p>
+                            <a href="/vet-resumes" class="btn btn-primary btn-sm mt-2">Analyze Resumes</a>
                         </div>
                     </div>
                 </div>

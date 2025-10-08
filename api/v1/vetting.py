@@ -78,8 +78,18 @@ async def scan_resume(
         # Extract text from resume
         extracted_text = document_processor.extract_text(temp_file_path)
         
+        # Get structure info (basic for now)
+        structure_info = {
+            'font_analysis': {},
+            'layout_analysis': {},
+            'page_count': 1
+        }
+        
         # Analyze authenticity
-        authenticity_result = resume_analyzer.analyze(extracted_text)
+        authenticity_result = resume_analyzer.analyze_authenticity(
+            text_content=extracted_text,
+            structure_info=structure_info
+        )
         
         # JD matching if job description provided
         matching_result = None
