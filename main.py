@@ -98,10 +98,15 @@ async def settings_page(request: Request):
     """User settings page"""
     return templates.TemplateResponse("settings.html", {"request": request})
 
-@app.get("/candidates", response_class=HTMLResponse)
-async def candidate_dashboard(request: Request):
-    """Candidate filtering dashboard"""
-    return templates.TemplateResponse("candidate_dashboard.html", {"request": request})
+@app.get("/search")
+def search_page():
+    """Candidate search and filtering page."""
+    return templates.TemplateResponse("candidate_search.html", {"request": request})
+
+@app.get("/candidates/{candidate_id}")
+def candidate_detail_page(candidate_id: int):
+    """Candidate detail page."""
+    return templates.TemplateResponse("candidate_detail.html", {"request": request})
 
 @app.post("/api/scan-resume")
 async def scan_resume(

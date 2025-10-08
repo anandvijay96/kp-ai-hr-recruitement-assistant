@@ -94,3 +94,132 @@ def check_duplicate_candidate(
         )
     
     return candidate_service.check_duplicate(email, phone, name, db)
+
+@router.post("/export/csv")
+def export_candidates_csv(
+    filters: CandidateFilter,
+    include_scores: bool = True,
+    db: Session = Depends(get_db)
+):
+    """
+    Export filtered candidates to CSV format.
+    
+    Args:
+        filters: Filter criteria (same as search endpoint)
+        include_scores: Include authenticity/match scores in export
+    
+    Returns:
+        CSV file download
+    """
+    # Get filtered candidates (all results, no pagination)
+    if filters.search_query:
+        results = filter_service.full_text_search(filters.search_query, db, page=1, page_size=10000)
+    else:
+        results = filter_service.search_candidates(filters, db, page=1, page_size=10000)
+    
+    # Export to CSV
+    csv_content = export_service.export_to_csv(results['results'], include_scores=include_scores)
+    
+    # Return as downloadable file
+    return StreamingResponse(
+        io.StringIO(csv_content),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=candidates_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        }
+    )
+
+@router.post("/export/excel")
+def export_candidates_excel(
+    filters: CandidateFilter,
+    include_scores: bool = True,
+    db: Session = Depends(get_db)
+):
+    """
+    Export filtered candidates to Excel format with formatting.
+    
+    Args:
+        filters: Filter criteria (same as search endpoint)
+        include_scores: Include authenticity/match scores in export
+    
+    Returns:
+        Excel file download
+    """
+    # Get filtered candidates (all results, no pagination)
+    if filters.search_query:
+        results = filter_service.full_text_search(filters.search_query, db, page=1, page_size=10000)
+    else:
+        results = filter_service.search_candidates(filters, db, page=1, page_size=10000)
+    
+    # Export to Excel
+    excel_bytes = export_service.export_to_excel(results['results'], include_scores=include_scores)
+    
+    # Return as downloadable file
+    return StreamingResponse(
+        io.BytesIO(excel_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename=candidates_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        }
+    )
+
+@router.get("/export/csv")
+def export_all_candidates_csv(
+    include_scores: bool = True,
+    db: Session = Depends(get_db)
+):
+    """
+    Export all candidates to CSV format.
+    
+    Args:
+        include_scores: Include authenticity/match scores in export
+    
+    Returns:
+        CSV file download
+    """
+    # Get all candidates
+    empty_filter = CandidateFilter()
+    results = filter_service.search_candidates(empty_filter, db, page=1, page_size=10000)
+    
+    # Export to CSV
+    csv_content = export_service.export_to_csv(results['results'], include_scores=include_scores)
+    
+    # Return as downloadable file
+    return StreamingResponse(
+        io.StringIO(csv_content),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=all_candidates_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        }
+    )
+
+@router.get("/export/excel")
+def export_all_candidates_excel(
+    include_scores: bool = True,
+    db: Session = Depends(get_db)
+):
+    """
+    Export all candidates to Excel format.
+    
+    Args:
+        include_scores: Include authenticity/match scores in export
+    
+    Returns:
+        Excel file download
+    """
+    # Get all candidates
+    empty_filter = CandidateFilter()
+    results = filter_service.search_candidates(empty_filter, db, page=1, page_size=10000)
+    
+    # Export to Excel
+    excel_bytes = export_service.export_to_excel(results['results'], include_scores=include_scores)
+    
+    # Return as downloadable file
+    from datetime import datetime
+    return StreamingResponse(
+        io.BytesIO(excel_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename=all_candidates_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        }
+    )

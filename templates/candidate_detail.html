@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candidate Details - AI HR Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #366092;
+            --secondary-color: #4a90e2;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .detail-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .info-icon {
+            width: 40px;
+            height: 40px;
+            background: #e7f3ff;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-color);
+            font-size: 18px;
+        }
+        
+        .info-content {
+            flex: 1;
+        }
+        
+        .info-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .info-value {
+            font-size: 14px;
+            color: #212529;
+            font-weight: 500;
+        }
+        
+        .skill-badge {
+            display: inline-block;
+            background: #e7f3ff;
+            color: var(--primary-color);
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .timeline-item {
+            position: relative;
+            padding-left: 40px;
+            margin-bottom: 24px;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 9px;
+            top: 24px;
+            bottom: -24px;
+            width: 2px;
+            background: #e9ecef;
+        }
+        
+        .timeline-item:last-child::before {
+            display: none;
+        }
+        
+        .timeline-dot {
+            position: absolute;
+            left: 0;
+            top: 8px;
+            width: 20px;
+            height: 20px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+        }
+        
+        .timeline-content {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        
+        .timeline-title {
+            font-weight: 600;
+            color: #212529;
+            margin-bottom: 4px;
+        }
+        
+        .timeline-subtitle {
+            color: var(--primary-color);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .timeline-date {
+            color: #6c757d;
+            font-size: 12px;
+        }
+        
+        .resume-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .resume-item:hover {
+            background: #e7f3ff;
+            border-color: var(--primary-color);
+            transform: translateX(4px);
+        }
+        
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-new { background: #e3f2fd; color: #1976d2; }
+        .status-screened { background: #fff3e0; color: #f57c00; }
+        .status-interviewed { background: #f3e5f5; color: #7b1fa2; }
+        .status-hired { background: #e8f5e9; color: #388e3c; }
+        .status-rejected { background: #ffebee; color: #d32f2f; }
+        
+        .score-circle {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 18px;
+            color: white;
+        }
+        
+        .score-excellent { background: #28a745; }
+        .score-good { background: #17a2b8; }
+        .score-average { background: #ffc107; color: #212529; }
+        .score-poor { background: #dc3545; }
+        
+        .loading-spinner {
+            text-align: center;
+            padding: 60px;
+            color: #6c757d;
+        }
+        
+        .error-message {
+            text-align: center;
+            padding: 60px;
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/search">
+                <i class="bi bi-arrow-left me-2"></i>
+                Back to Search
+            </a>
+            <div class="d-flex gap-2">
+                <button class="btn btn-light btn-sm" id="editBtn">
+                    <i class="bi bi-pencil me-1"></i> Edit
+                </button>
+                <button class="btn btn-success btn-sm" id="contactBtn">
+                    <i class="bi bi-envelope me-1"></i> Contact
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Loading State -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Loading candidate details...</p>
+        </div>
+
+        <!-- Error State -->
+        <div class="error-message" id="errorMessage" style="display: none;">
+            <i class="bi bi-exclamation-triangle" style="font-size: 48px;"></i>
+            <h5 class="mt-3">Candidate Not Found</h5>
+            <p>The candidate you're looking for doesn't exist or has been removed.</p>
+            <a href="/search" class="btn btn-primary">
+                <i class="bi bi-search me-1"></i> Back to Search
+            </a>
+        </div>
+
+        <!-- Candidate Details -->
+        <div id="candidateContent" style="display: none;">
+            <div class="row">
+                <!-- Main Content -->
+                <div class="col-lg-8">
+                    <!-- Personal Information -->
+                    <div class="detail-card">
+                        <h5 class="section-title">
+                            <i class="bi bi-person me-2"></i>
+                            Personal Information
+                        </h5>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-icon">
+                                    <i class="bi bi-person"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">Full Name</div>
+                                    <div class="info-value" id="candidateName">-</div>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-icon">
+                                    <i class="bi bi-envelope"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">Email</div>
+                                    <div class="info-value" id="candidateEmail">-</div>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-icon">
+                                    <i class="bi bi-telephone"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">Phone</div>
+                                    <div class="info-value" id="candidatePhone">-</div>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-icon">
+                                    <i class="bi bi-geo-alt"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">Location</div>
+                                    <div class="info-value" id="candidateLocation">-</div>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-icon">
+                                    <i class="bi bi-linkedin"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">LinkedIn</div>
+                                    <div class="info-value" id="candidateLinkedIn">
+                                        <a href="#" target="_blank" id="linkedinLink">View Profile</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-icon">
+                                    <i class="bi bi-github"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">GitHub</div>
+                                    <div class="info-value" id="candidateGithub">
+                                        <a href="#" target="_blank" id="githubLink">View Profile</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h6 class="mb-3">Professional Summary</h6>
+                            <p class="text-muted" id="candidateSummary">-</p>
+                        </div>
+                    </div>
+
+                    <!-- Skills -->
+                    <div class="detail-card">
+                        <h5 class="section-title">
+                            <i class="bi bi-code-slash me-2"></i>
+                            Skills
+                        </h5>
+                        <div id="candidateSkills">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Work Experience -->
+                    <div class="detail-card">
+                        <h5 class="section-title">
+                            <i class="bi bi-briefcase me-2"></i>
+                            Work Experience
+                        </h5>
+                        <div id="candidateExperience">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Education -->
+                    <div class="detail-card">
+                        <h5 class="section-title">
+                            <i class="bi bi-mortarboard me-2"></i>
+                            Education
+                        </h5>
+                        <div id="candidateEducation">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Certifications -->
+                    <div class="detail-card">
+                        <h5 class="section-title">
+                            <i class="bi bi-award me-2"></i>
+                            Certifications
+                        </h5>
+                        <div id="candidateCertifications">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="col-lg-4">
+                    <!-- Resumes -->
+                    <div class="detail-card">
+                        <h5 class="section-title">
+                            <i class="bi bi-file-earmark-text me-2"></i>
+                            Resumes
+                        </h5>
+                        <div id="candidateResumes">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Assessment Scores -->
+                    <div class="detail-card">
+                        <h5 class="section-title">
+                            <i class="bi bi-speedometer2 me-2"></i>
+                            Assessment Scores
+                        </h5>
+                        <div class="d-flex justify-content-around mb-4">
+                            <div class="text-center">
+                                <div class="score-circle" id="authenticityScore">
+                                    <span>-</span>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">Authenticity</small>
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <div class="score-circle" id="matchScore">
+                                    <span>-</span>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">Match Score</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <button class="btn btn-outline-primary btn-sm" id="viewDetailsBtn">
+                                <i class="bi bi-eye me-1"></i> View Detailed Analysis
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="detail-card">
+                        <h5 class="section-title">
+                            <i class="bi bi-lightning me-2"></i>
+                            Quick Actions
+                        </h5>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" id="scheduleInterviewBtn">
+                                <i class="bi bi-calendar-check me-1"></i> Schedule Interview
+                            </button>
+                            <button class="btn btn-success" id="addToShortlistBtn">
+                                <i class="bi bi-star me-1"></i> Add to Shortlist
+                            </button>
+                            <button class="btn btn-outline-danger" id="rejectBtn">
+                                <i class="bi bi-x-circle me-1"></i> Reject Candidate
+                            </button>
+                            <button class="btn btn-outline-secondary" id="exportBtn">
+                                <i class="bi bi-download me-1"></i> Export Profile
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Get candidate ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const candidateId = urlParams.get('id');
+        
+        // Initialize on page load
+        $(document).ready(function() {
+            if (candidateId) {
+                loadCandidateDetails();
+            } else {
+                showError();
+            }
+        });
+        
+        // Load candidate details from API
+        async function loadCandidateDetails() {
+            try {
+                const response = await fetch(`/api/v1/candidates/${candidateId}`);
+                
+                if (!response.ok) {
+                    throw new Error('Candidate not found');
+                }
+                
+                const data = await response.json();
+                
+                // Hide loading, show content
+                $('#loadingSpinner').hide();
+                $('#candidateContent').show();
+                
+                // Display candidate data
+                displayCandidateDetails(data);
+                
+            } catch (error) {
+                console.error('Error loading candidate:', error);
+                showError();
+            }
+        }
+        
+        // Display candidate details
+        function displayCandidateDetails(candidate) {
+            // Personal Information
+            $('#candidateName').text(candidate.full_name || '-');
+            $('#candidateEmail').text(candidate.email || '-');
+            $('#candidatePhone').text(candidate.phone_number || '-');
+            $('#candidateLocation').text(candidate.location || '-');
+            $('#candidateSummary').text(candidate.professional_summary || 'No professional summary available.');
+            
+            // LinkedIn
+            if (candidate.linkedin_url) {
+                $('#linkedinLink').attr('href', candidate.linkedin_url).text('View Profile');
+            } else {
+                $('#candidateLinkedIn').text('-');
+            }
+            
+            // GitHub
+            if (candidate.github_url) {
+                $('#githubLink').attr('href', candidate.github_url).text('View Profile');
+            } else {
+                $('#candidateGithub').text('-');
+            }
+            
+            // Skills
+            if (candidate.skills && candidate.skills.length > 0) {
+                const skillsHtml = candidate.skills.map(skill => 
+                    `<span class="skill-badge">${skill}</span>`
+                ).join('');
+                $('#candidateSkills').html(skillsHtml);
+            } else {
+                $('#candidateSkills').html('<p class="text-muted">No skills listed</p>');
+            }
+            
+            // Work Experience
+            if (candidate.work_experience && candidate.work_experience.length > 0) {
+                const expHtml = candidate.work_experience.map(exp => `
+                    <div class="timeline-item">
+                        <div class="timeline-dot">
+                            <i class="bi bi-briefcase"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">${exp.job_title || '-'}</div>
+                            <div class="timeline-subtitle">${exp.company || '-'}</div>
+                            <div class="text-muted small">
+                                ${formatDate(exp.start_date)} - ${exp.is_current ? 'Present' : formatDate(exp.end_date)}
+                                ${exp.location ? ` • ${exp.location}` : ''}
+                            </div>
+                            ${exp.description ? `<div class="mt-2">${exp.description}</div>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+                $('#candidateExperience').html(expHtml);
+            } else {
+                $('#candidateExperience').html('<p class="text-muted">No work experience listed</p>');
+            }
+            
+            // Education
+            if (candidate.education && candidate.education.length > 0) {
+                const eduHtml = candidate.education.map(edu => `
+                    <div class="timeline-item">
+                        <div class="timeline-dot">
+                            <i class="bi bi-mortarboard"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">${edu.degree || '-'}</div>
+                            <div class="timeline-subtitle">${edu.institution || '-'}</div>
+                            <div class="text-muted small">
+                                ${edu.field_of_study ? `${edu.field_of_study} • ` : ''}
+                                ${edu.graduation_year || '-'}
+                                ${edu.grade ? ` • GPA: ${edu.grade}` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                $('#candidateEducation').html(eduHtml);
+            } else {
+                $('#candidateEducation').html('<p class="text-muted">No education information listed</p>');
+            }
+            
+            // Certifications
+            if (candidate.certifications && candidate.certifications.length > 0) {
+                const certHtml = candidate.certifications.map(cert => `
+                    <div class="timeline-item">
+                        <div class="timeline-dot">
+                            <i class="bi bi-award"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">${cert.name || '-'}</div>
+                            <div class="timeline-subtitle">${cert.issuing_organization || '-'}</div>
+                            <div class="text-muted small">
+                                ${cert.issue_year || '-'}
+                                ${cert.expiry_year ? ` • Expires: ${cert.expiry_year}` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                $('#candidateCertifications').html(certHtml);
+            } else {
+                $('#candidateCertifications').html('<p class="text-muted">No certifications listed</p>');
+            }
+            
+            // Resumes
+            if (candidate.resumes && candidate.resumes.length > 0) {
+                const resumesHtml = candidate.resumes.map(resume => `
+                    <div class="resume-item">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <div class="fw-bold">${resume.file_name}</div>
+                                <small class="text-muted">Uploaded: ${formatDateTime(resume.uploaded_at)}</small>
+                            </div>
+                            <span class="status-badge status-${resume.upload_status.toLowerCase()}">${resume.upload_status}</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewResume(${resume.id})">
+                                <i class="bi bi-eye me-1"></i> View
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="downloadResume(${resume.id})">
+                                <i class="bi bi-download me-1"></i> Download
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+                $('#candidateResumes').html(resumesHtml);
+            } else {
+                $('#candidateResumes').html('<p class="text-muted">No resumes uploaded</p>');
+            }
+            
+            // Assessment Scores
+            updateScoreDisplay('authenticityScore', candidate.authenticity_score);
+            updateScoreDisplay('matchScore', candidate.jd_match_score);
+        }
+        
+        // Update score display with color coding
+        function updateScoreDisplay(elementId, score) {
+            const element = $(`#${elementId}`);
+            element.find('span').text(score || '-');
+            
+            if (score) {
+                element.removeClass('score-excellent score-good score-average score-poor');
+                
+                if (score >= 85) {
+                    element.addClass('score-excellent');
+                } else if (score >= 70) {
+                    element.addClass('score-good');
+                } else if (score >= 50) {
+                    element.addClass('score-average');
+                } else {
+                    element.addClass('score-poor');
+                }
+            }
+        }
+        
+        // Show error state
+        function showError() {
+            $('#loadingSpinner').hide();
+            $('#errorMessage').show();
+        }
+        
+        // Format date
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+        }
+        
+        // Format date time
+        function formatDateTime(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // View resume
+        function viewResume(resumeId) {
+            window.open(`/api/v1/resumes/${resumeId}/view`, '_blank');
+        }
+        
+        // Download resume
+        function downloadResume(resumeId) {
+            window.open(`/api/v1/resumes/${resumeId}/download`, '_blank');
+        }
+        
+        // Event listeners
+        $('#viewDetailsBtn').click(() => {
+            // Navigate to detailed analysis page
+            window.location.href = `/candidates/${candidateId}/analysis`;
+        });
+        
+        $('#exportBtn').click(() => {
+            // Export candidate profile
+            window.open(`/api/v1/candidates/${candidateId}/export`, '_blank');
+        });
+        
+        $('#scheduleInterviewBtn').click(() => {
+            // Open interview scheduling modal
+            alert('Interview scheduling feature coming soon!');
+        });
+        
+        $('#addToShortlistBtn').click(() => {
+            // Add to shortlist
+            alert('Add to shortlist feature coming soon!');
+        });
+        
+        $('#rejectBtn').click(() => {
+            // Reject candidate
+            if (confirm('Are you sure you want to reject this candidate?')) {
+                alert('Reject candidate feature coming soon!');
+            }
+        });
+    </script>
+</body>
+</html>
