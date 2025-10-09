@@ -7,16 +7,18 @@ from sqlalchemy.orm import Session
 from typing import Optional
 import logging
 
-from models.database import get_db
-from models.user import User, UserAPICredential
+from core.database import get_db  # Fixed: use core.database not models.database
+from models.database import User  # Note: User model is in models/database.py
 from services.auth_service import AuthService
+from services.password_service import PasswordService
 from core.security import decode_access_token, credential_encryptor
 from pydantic import BaseModel, EmailStr
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-auth_service = AuthService()
+
+# AuthService needs database session and password service - instantiate in endpoints via dependency injection
 
 
 # Pydantic models

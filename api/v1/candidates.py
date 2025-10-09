@@ -12,10 +12,13 @@ from services.export_service import ExportService
 from models.filter_models import CandidateFilter, FilterPresetCreate, FilterPresetResponse
 
 router = APIRouter()
+
+# Services that don't need database session can be instantiated globally
 filter_service = FilterService()
 preset_service = PresetService()
-candidate_service = CandidateService()
 export_service = ExportService()
+
+# CandidateService needs database session - instantiate in endpoints via dependency injection
 
 @router.post("/search")
 def search_candidates(filters: CandidateFilter, page: int = 1, page_size: int = 20, db: Session = Depends(get_db)) -> Dict[str, Any]:

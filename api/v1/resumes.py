@@ -18,9 +18,12 @@ from services.resume_service import ResumeService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# Services that don't need database session can be instantiated globally
 duplicate_detector = DuplicateDetector()
-candidate_service = CandidateService()
-resume_service = ResumeService()
+
+# Services that need database session (CandidateService, ResumeService) 
+# will be instantiated in endpoint functions via dependency injection
 
 # Create uploads directory if it doesn't exist
 os.makedirs(settings.upload_dir, exist_ok=True)
