@@ -1,7 +1,8 @@
 from models.filter_models import CandidateFilter
 from typing import List, Dict, Any, Optional
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func, or_, and_, extract, text
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+from sqlalchemy import select, func, or_, and_, extract, text
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from models.db import Candidate, Resume, Skill, Education, WorkExperience
 import logging
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 class FilterService:
     """Service for filtering and searching candidates using database queries"""
     
-    def full_text_search(self, query: str, db: Session, 
+    async def full_text_search(self, query: str, db: AsyncSession, 
                         page: int = 1, page_size: int = 20) -> Dict[str, Any]:
         """
         Perform full-text search across candidates and resumes using PostgreSQL FTS.
@@ -32,19 +33,19 @@ class FilterService:
             # Parse query and create tsquery
             tsquery = self._parse_search_query(query)
             
-            # Search in candidates table
-            query_obj = db.query(Candidate).options(
-                joinedload(Candidate.resumes),
-                joinedload(Candidate.skills),
-                joinedload(Candidate.education),
-                joinedload(Candidate.work_experience)
+            # Search in candidates table using async select()
+            stmt = select(Candidate).options(
+                selectinload(Candidate.resumes),
+                selectinload(Candidate.skills),
+                selectinload(Candidate.education),
+                selectinload(Candidate.work_experience)
             )
             
             # Join with resumes for comprehensive search
-            query_obj = query_obj.outerjoin(Candidate.resumes)
+            stmt = stmt.outerjoin(Candidate.resumes)
             
             # Apply full-text search filter
-            query_obj = query_obj.filter(
+            stmt = stmt.filter(
                 or_(
                     Candidate.search_vector.op('@@')(func.to_tsquery('english', tsquery)),
                     Resume.search_vector.op('@@')(func.to_tsquery('english', tsquery))
@@ -52,11 +53,15 @@ class FilterService:
             ).distinct()
             
             # Get total count
-            total_count = query_obj.count()
+            count_stmt = select(func.count()).select_from(stmt.alias())
+            count_result = await db.execute(count_stmt)
+            total_count = count_result.scalar() or 0
             
             # Apply pagination
             offset = (page - 1) * page_size
-            candidates = query_obj.offset(offset).limit(page_size).all()
+            stmt = stmt.offset(offset).limit(page_size)
+            result = await db.execute(stmt)
+            candidates = result.scalars().all()
             
             # Format results
             results = self._format_candidate_results(candidates)
@@ -76,7 +81,7 @@ class FilterService:
             logger.error(f"Error in full-text search: {str(e)}")
             raise
     
-    def search_candidates(self, filters: CandidateFilter, db: Session, 
+    async def search_candidates(self, filters: CandidateFilter, db: AsyncSession, 
                          page: int = 1, page_size: int = 20) -> Dict[str, Any]:
         """
         Filters candidates based on the provided criteria using database queries.
@@ -91,74 +96,48 @@ class FilterService:
             Dict with results and pagination info
         """
         try:
-            # Base query with eager loading
-            query = db.query(Candidate).options(
-                joinedload(Candidate.resumes),
-                joinedload(Candidate.skills),
-                joinedload(Candidate.education),
-                joinedload(Candidate.work_experience)
+            # Base query with eager loading using async select()
+            stmt = select(Candidate).options(
+                selectinload(Candidate.resumes),
+                selectinload(Candidate.skills),
+                selectinload(Candidate.education),
+                selectinload(Candidate.work_experience)
             )
             
             # Filter by skills (if any match)
             if filters.skills:
-                query = query.join(Candidate.skills).filter(
+                stmt = stmt.join(Candidate.skills).filter(
                     Skill.name.in_([skill.lower() for skill in filters.skills])
                 ).distinct()
             
-            # Filter by experience years (calculate from work_experience)
-            if filters.min_experience is not None or filters.max_experience is not None:
-                # Subquery to calculate total experience
-                exp_subquery = (
-                    db.query(
-                        WorkExperience.candidate_id,
-                        func.sum(
-                            func.coalesce(
-                                extract('year', WorkExperience.end_date) - extract('year', WorkExperience.start_date),
-                                extract('year', func.now()) - extract('year', WorkExperience.start_date)
-                            )
-                        ).label('total_years')
-                    )
-                    .group_by(WorkExperience.candidate_id)
-                    .subquery()
-                )
-                
-                query = query.outerjoin(exp_subquery, Candidate.id == exp_subquery.c.candidate_id)
-                
-                if filters.min_experience is not None:
-                    query = query.filter(
-                        func.coalesce(exp_subquery.c.total_years, 0) >= filters.min_experience
-                    )
-                if filters.max_experience is not None:
-                    query = query.filter(
-                        func.coalesce(exp_subquery.c.total_years, 999) <= filters.max_experience
-                    )
-            
             # Filter by education level
             if filters.education:
-                query = query.join(Candidate.education).filter(
+                stmt = stmt.join(Candidate.education).filter(
                     Education.degree.in_(filters.education)
                 ).distinct()
             
             # Filter by location (search in work_experience or candidate data if available)
             if filters.location:
-                # For now, filter by work experience location
-                # In future, could add location field to Candidate model
-                query = query.join(Candidate.work_experience).filter(
+                stmt = stmt.join(Candidate.work_experience).filter(
                     WorkExperience.location.ilike(f"%{filters.location}%")
                 ).distinct()
             
             # Filter by status (from resume table)
             if filters.status:
-                query = query.join(Candidate.resumes).filter(
+                stmt = stmt.join(Candidate.resumes).filter(
                     Resume.upload_status.in_(filters.status)
                 ).distinct()
             
             # Get total count before pagination
-            total_count = query.count()
+            count_stmt = select(func.count()).select_from(stmt.alias())
+            count_result = await db.execute(count_stmt)
+            total_count = count_result.scalar() or 0
             
             # Apply pagination
             offset = (page - 1) * page_size
-            candidates = query.offset(offset).limit(page_size).all()
+            stmt = stmt.offset(offset).limit(page_size)
+            result = await db.execute(stmt)
+            candidates = result.scalars().all()
             
             # Format results
             results = self._format_candidate_results(candidates)
@@ -185,7 +164,7 @@ class FilterService:
             logger.error(f"Error searching candidates: {str(e)}")
             raise
     
-    def get_filter_options(self, db: Session) -> Dict[str, List]:
+    async def get_filter_options(self, db: AsyncSession) -> Dict[str, List]:
         """
         Retrieves distinct values for filter options from the database.
         
@@ -197,18 +176,21 @@ class FilterService:
         """
         try:
             # Get distinct skills
-            skills = db.query(Skill.name).distinct().order_by(Skill.name).all()
-            skills_list = [skill[0] for skill in skills]
+            skills_stmt = select(Skill.name).distinct().order_by(Skill.name)
+            skills_result = await db.execute(skills_stmt)
+            skills_list = [skill[0] for skill in skills_result.all()]
             
             # Get distinct education levels
-            education_levels = db.query(Education.degree).distinct().order_by(Education.degree).all()
-            education_list = [edu[0] for edu in education_levels if edu[0]]
+            edu_stmt = select(Education.degree).distinct().order_by(Education.degree)
+            edu_result = await db.execute(edu_stmt)
+            education_list = [edu[0] for edu in edu_result.all() if edu[0]]
             
             # Get distinct locations from work experience
-            locations = db.query(WorkExperience.location).distinct().filter(
+            loc_stmt = select(WorkExperience.location).distinct().filter(
                 WorkExperience.location.isnot(None)
-            ).order_by(WorkExperience.location).all()
-            location_list = [loc[0] for loc in locations if loc[0]]
+            ).order_by(WorkExperience.location)
+            loc_result = await db.execute(loc_stmt)
+            location_list = [loc[0] for loc in loc_result.all() if loc[0]]
             
             # Get available statuses
             statuses = ["New", "Screened", "Interviewed", "Rejected", "Hired"]

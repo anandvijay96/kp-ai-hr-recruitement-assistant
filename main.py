@@ -196,6 +196,22 @@ async def register_page(request: Request):
     """Registration page."""
     return templates.TemplateResponse("auth/register.html", {"request": request})
 
+# Shortcut routes (redirect to /auth/* paths)
+@app.get("/login", response_class=HTMLResponse)
+async def login_shortcut(request: Request):
+    """Shortcut for login page."""
+    return templates.TemplateResponse("auth/login.html", {"request": request})
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_shortcut(request: Request):
+    """Shortcut for registration page."""
+    return templates.TemplateResponse("auth/register.html", {"request": request})
+
+@app.get("/forgot-password", response_class=HTMLResponse)
+async def forgot_password_page(request: Request):
+    """Forgot password page."""
+    return templates.TemplateResponse("auth/forgot_password.html", {"request": request})
+
 @app.post("/api/scan-resume")
 async def scan_resume(
     request: Request,

@@ -21,20 +21,20 @@ export_service = ExportService()
 # CandidateService needs database session - instantiate in endpoints via dependency injection
 
 @router.post("/search")
-def search_candidates(filters: CandidateFilter, page: int = 1, page_size: int = 20, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def search_candidates(filters: CandidateFilter, page: int = 1, page_size: int = 20, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
     Searches and filters candidates using database queries.
     If search_query is provided, uses full-text search with optional filters.
     """
     # If search_query is provided, use full-text search
     if filters.search_query:
-        return filter_service.full_text_search(filters.search_query, db, page, page_size)
+        return await filter_service.full_text_search(filters.search_query, db, page, page_size)
     
     # Otherwise use traditional filtering
-    return filter_service.search_candidates(filters, db, page, page_size)
+    return await filter_service.search_candidates(filters, db, page, page_size)
 
 @router.get("/full-text-search")
-def full_text_search(q: str, page: int = 1, page_size: int = 20, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def full_text_search(q: str, page: int = 1, page_size: int = 20, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
     Perform full-text search across all candidate data.
     
@@ -42,16 +42,16 @@ def full_text_search(q: str, page: int = 1, page_size: int = 20, db: Session = D
     - Simple search: "Python developer"
     - Boolean AND: "Python AND React"
     - Boolean OR: "Java OR Kotlin"
-    - Boolean NOT: "Python NOT Django"
+    - Boolean NOT: "Python NOT Junior"
     - Phrase search: "senior software engineer"
     - Complex: "(Python OR Java) AND React NOT PHP"
     """
-    return filter_service.full_text_search(q, db, page, page_size)
+    return await filter_service.full_text_search(q, db, page, page_size)
 
 @router.get("/filter-options")
-def get_filter_options(db: Session = Depends(get_db)) -> Dict[str, List]:
+async def get_filter_options(db: Session = Depends(get_db)) -> Dict[str, List]:
     """Retrieves available options for filters from the database."""
-    return filter_service.get_filter_options(db)
+    return await filter_service.get_filter_options(db)
 
 @router.post("/filter-presets", response_model=FilterPresetResponse)
 def create_filter_preset(preset_data: FilterPresetCreate, user_id: int = 1) -> FilterPresetResponse: # Assuming user_id=1 for demo
@@ -99,26 +99,23 @@ def check_duplicate_candidate(
     return candidate_service.check_duplicate(email, phone, name, db)
 
 @router.post("/export/csv")
-def export_candidates_csv(
+async def export_candidates_csv(
     filters: CandidateFilter,
     include_scores: bool = True,
     db: Session = Depends(get_db)
-):
+) -> StreamingResponse:
     """
     Export filtered candidates to CSV format.
     
     Args:
         filters: Filter criteria (same as search endpoint)
         include_scores: Include authenticity/match scores in export
-    
-    Returns:
-        CSV file download
     """
     # Get filtered candidates (all results, no pagination)
     if filters.search_query:
-        results = filter_service.full_text_search(filters.search_query, db, page=1, page_size=10000)
+        results = await filter_service.full_text_search(filters.search_query, db, page=1, page_size=10000)
     else:
-        results = filter_service.search_candidates(filters, db, page=1, page_size=10000)
+        results = await filter_service.search_candidates(filters, db, page=1, page_size=10000)
     
     # Export to CSV
     csv_content = export_service.export_to_csv(results['results'], include_scores=include_scores)
@@ -133,26 +130,23 @@ def export_candidates_csv(
     )
 
 @router.post("/export/excel")
-def export_candidates_excel(
+async def export_candidates_excel(
     filters: CandidateFilter,
     include_scores: bool = True,
     db: Session = Depends(get_db)
-):
+) -> StreamingResponse:
     """
     Export filtered candidates to Excel format with formatting.
     
     Args:
         filters: Filter criteria (same as search endpoint)
         include_scores: Include authenticity/match scores in export
-    
-    Returns:
-        Excel file download
     """
     # Get filtered candidates (all results, no pagination)
     if filters.search_query:
-        results = filter_service.full_text_search(filters.search_query, db, page=1, page_size=10000)
+        results = await filter_service.full_text_search(filters.search_query, db, page=1, page_size=10000)
     else:
-        results = filter_service.search_candidates(filters, db, page=1, page_size=10000)
+        results = await filter_service.search_candidates(filters, db, page=1, page_size=10000)
     
     # Export to Excel
     excel_bytes = export_service.export_to_excel(results['results'], include_scores=include_scores)
@@ -167,22 +161,19 @@ def export_candidates_excel(
     )
 
 @router.get("/export/csv")
-def export_all_candidates_csv(
+async def export_all_candidates_csv(
     include_scores: bool = True,
     db: Session = Depends(get_db)
-):
+) -> StreamingResponse:
     """
     Export all candidates to CSV format.
     
     Args:
         include_scores: Include authenticity/match scores in export
-    
-    Returns:
-        CSV file download
     """
     # Get all candidates
     empty_filter = CandidateFilter()
-    results = filter_service.search_candidates(empty_filter, db, page=1, page_size=10000)
+    results = await filter_service.search_candidates(empty_filter, db, page=1, page_size=10000)
     
     # Export to CSV
     csv_content = export_service.export_to_csv(results['results'], include_scores=include_scores)
@@ -197,22 +188,21 @@ def export_all_candidates_csv(
     )
 
 @router.get("/export/excel")
-def export_all_candidates_excel(
+async def export_all_candidates_excel(
     include_scores: bool = True,
     db: Session = Depends(get_db)
-):
+) -> StreamingResponse:
     """
     Export all candidates to Excel format.
     
     Args:
         include_scores: Include authenticity/match scores in export
-    
     Returns:
         Excel file download
     """
     # Get all candidates
     empty_filter = CandidateFilter()
-    results = filter_service.search_candidates(empty_filter, db, page=1, page_size=10000)
+    results = await filter_service.search_candidates(empty_filter, db, page=1, page_size=10000)
     
     # Export to Excel
     excel_bytes = export_service.export_to_excel(results['results'], include_scores=include_scores)
