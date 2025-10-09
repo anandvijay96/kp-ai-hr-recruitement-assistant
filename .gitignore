@@ -92,3 +92,5 @@ samples/
 test_files/
 demo_files/
 *.sample.*
+
+!Business Requirements Document 1.pdf

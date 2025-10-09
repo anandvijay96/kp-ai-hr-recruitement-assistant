@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Details - HR Recruitment System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">HR Recruitment System</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/jobs">Jobs</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/candidates">Candidates</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 id="jobTitle">Loading...</h1>
+            <div>
+                <div id="actionButtons"></div>
+                <a href="/jobs" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Jobs
+                </a>
+            </div>
+        </div>
+
+        <div id="jobDetails">
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const jobId = '{{ job_id }}';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadJobDetails();
+        });
+
+        async function loadJobDetails() {
+            try {
+                const response = await fetch(`/api/jobs/${jobId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to load job');
+
+                const data = await response.json();
+                renderJobDetails(data.data);
+            } catch (error) {
+                console.error('Error loading job:', error);
+                document.getElementById('jobDetails').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i> Failed to load job details
+                    </div>
+                `;
+            }
+        }
+
+        function renderJobDetails(job) {
+            document.getElementById('jobTitle').textContent = job.title;
+            
+            // Render action buttons based on job status
+            let actionButtons = '';
+            if (job.status === 'draft') {
+                actionButtons = `
+                    <button onclick="publishJob('${job.id}', '${job.title}')" class="btn btn-success me-2">
+                        <i class="fas fa-paper-plane"></i> Publish
+                    </button>
+                    <a href="/jobs/${job.id}/edit" class="btn btn-secondary me-2">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <button onclick="deleteJob('${job.id}', '${job.title}')" class="btn btn-danger me-2">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                `;
+            } else if (job.status === 'open') {
+                actionButtons = `
+                    <button onclick="closeJob('${job.id}', '${job.title}')" class="btn btn-warning me-2">
+                        <i class="fas fa-times-circle"></i> Close Job
+                    </button>
+                `;
+            }
+            document.getElementById('actionButtons').innerHTML = actionButtons;
+            
+            document.getElementById('jobDetails').innerHTML = `
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5>Job Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Department:</strong> ${job.department || 'N/A'}</p>
+                                <p><strong>Location:</strong> ${formatLocation(job)}</p>
+                                <p><strong>Work Type:</strong> ${job.work_type}</p>
+                                <p><strong>Employment Type:</strong> ${job.employment_type}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Openings:</strong> ${job.num_openings}</p>
+                                <p><strong>Status:</strong> <span class="badge bg-success">${job.status}</span></p>
+                                <p><strong>Closing Date:</strong> ${job.closing_date || 'N/A'}</p>
+                            </div>
+                        </div>
+                        ${job.status === 'closed' ? `
+                            <hr>
+                            <div class="alert alert-warning">
+                                <h6><i class="fas fa-times-circle"></i> Job Closed</h6>
+                                ${job.closed_at ? `<p class="mb-1"><strong>Closed On:</strong> ${new Date(job.closed_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
+                                ${job.close_reason ? `<p class="mb-0"><strong>Reason:</strong> ${job.close_reason}</p>` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5>Description</h5>
+                    </div>
+                    <div class="card-body">
+                        <div>${job.description}</div>
+                    </div>
+                </div>
+
+                ${job.responsibilities && job.responsibilities.length > 0 ? `
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5>Responsibilities</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul>
+                            ${job.responsibilities.map(r => `<li>${r}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+                ` : ''}
+
+                ${job.skills && job.skills.length > 0 ? `
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5>Required Skills</h5>
+                    </div>
+                    <div class="card-body">
+                        ${job.skills.map(s => `
+                            <span class="badge ${s.is_mandatory ? 'bg-danger' : 'bg-secondary'} me-2">
+                                ${s.name} ${s.is_mandatory ? '(Required)' : '(Optional)'}
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+            `;
+        }
+
+        function formatLocation(job) {
+            const parts = [];
+            
+            if (job.location_city) {
+                parts.push(job.location_city);
+            }
+            if (job.location_state) {
+                parts.push(job.location_state);
+            }
+            if (job.location_country && job.location_country !== 'USA') {
+                parts.push(job.location_country);
+            }
+            
+            // If we have location parts, join them with comma
+            if (parts.length > 0) {
+                let location = parts.join(', ');
+                if (job.is_remote) {
+                    location += ' (Remote)';
+                }
+                return location;
+            }
+            
+            // If no location but remote, show "Remote"
+            if (job.is_remote) {
+                return 'Remote';
+            }
+            
+            // Otherwise show N/A
+            return 'N/A';
+        }
+
+        async function publishJob(jobId, jobTitle) {
+            if (!confirm(`Are you sure you want to publish "${jobTitle}"?\n\nThe job will become visible to candidates.`)) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    alert('You are not logged in. Please login first.');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const response = await fetch(`/api/jobs/${jobId}/publish`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        send_notifications: false
+                    })
+                });
+
+                let result;
+                try {
+                    result = await response.json();
+                } catch (e) {
+                    result = { detail: 'Failed to parse server response' };
+                }
+
+                console.log('Publish response:', { status: response.status, result });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        alert('Authentication failed. Please login again.');
+                        window.location.href = '/login';
+                    } else if (response.status === 403) {
+                        alert('You do not have permission to publish this job.');
+                    } else if (response.status === 422) {
+                        const errors = result.detail;
+                        let errorMsg = 'Validation errors:\n\n';
+                        if (Array.isArray(errors)) {
+                            errors.forEach(err => {
+                                errorMsg += `• ${err.loc.join('.')}: ${err.msg}\n`;
+                            });
+                        } else {
+                            errorMsg = JSON.stringify(errors, null, 2);
+                        }
+                        alert(errorMsg);
+                    } else {
+                        const errorMsg = typeof result.detail === 'string' 
+                            ? result.detail 
+                            : JSON.stringify(result.detail || result);
+                        alert('Error: ' + errorMsg);
+                    }
+                    return;
+                }
+
+                alert('Job published successfully!');
+                loadJobDetails(); // Reload to show updated status
+            } catch (error) {
+                console.error('Error publishing job:', error);
+                alert('Network error: ' + error.message + '\n\nCheck browser console for details.');
+            }
+        }
+
+        async function deleteJob(jobId, jobTitle) {
+            if (!confirm(`Are you sure you want to delete the job "${jobTitle}"?\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    alert('You are not logged in. Please login first.');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const response = await fetch(`/api/jobs/${jobId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        alert('Authentication failed. Please login again.');
+                        window.location.href = '/login';
+                    } else if (response.status === 403) {
+                        alert('You do not have permission to delete this job.');
+                    } else {
+                        alert('Error: ' + (result.detail || 'Failed to delete job'));
+                    }
+                    return;
+                }
+
+                alert('Job deleted successfully!');
+                window.location.href = '/jobs';
+            } catch (error) {
+                console.error('Error deleting job:', error);
+                alert('Network error: ' + error.message);
+            }
+        }
+
+        async function closeJob(jobId, jobTitle) {
+            // Ask for reason (optional)
+            const notes = prompt(`Why are you closing "${jobTitle}"?\n\nReason (optional):`);
+            
+            if (notes === null) {
+                return; // User cancelled
+            }
+
+            try {
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    alert('You are not logged in. Please login first.');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const closeData = {
+                    close_reason: 'filled',  // Default reason
+                    notes: notes || null
+                };
+
+                console.log('Closing job with data:', closeData);
+
+                const response = await fetch(`/api/jobs/${jobId}/close`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(closeData)
+                });
+
+                let result;
+                try {
+                    result = await response.json();
+                } catch (e) {
+                    result = { detail: 'Failed to parse server response' };
+                }
+
+                console.log('Close response:', { status: response.status, result });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        alert('Authentication failed. Please login again.');
+                        window.location.href = '/login';
+                    } else if (response.status === 403) {
+                        alert('You do not have permission to close this job.');
+                    } else if (response.status === 422) {
+                        const errors = result.detail;
+                        let errorMsg = 'Validation errors:\n\n';
+                        if (Array.isArray(errors)) {
+                            errors.forEach(err => {
+                                errorMsg += `• ${err.loc.join('.')}: ${err.msg}\n`;
+                            });
+                        } else {
+                            errorMsg = JSON.stringify(errors, null, 2);
+                        }
+                        alert(errorMsg);
+                    } else {
+                        const errorMsg = typeof result.detail === 'string' 
+                            ? result.detail 
+                            : JSON.stringify(result.detail || result);
+                        alert('Error: ' + errorMsg);
+                    }
+                    return;
+                }
+
+                alert('Job closed successfully!');
+                loadJobDetails(); // Reload to show updated status
+            } catch (error) {
+                console.error('Error closing job:', error);
+                alert('Network error: ' + error.message + '\n\nCheck browser console for details.');
+            }
+        }
+    </script>
+</body>
+</html>

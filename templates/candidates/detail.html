@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candidate Details - HR Recruitment System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .back-btn {
+            color: #4299e1;
+            text-decoration: none;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: #4299e1;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #718096;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+        
+        .profile-section {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .profile-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 20px;
+        }
+        
+        .profile-info h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .contact-info {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #4a5568;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .status-new { background: #bee3f8; color: #2c5282; }
+        .status-screened { background: #feebc8; color: #7c2d12; }
+        .status-interviewed { background: #d6bcfa; color: #44337a; }
+        .status-offered { background: #c6f6d5; color: #22543d; }
+        .status-hired { background: #9ae6b4; color: #22543d; }
+        .status-rejected { background: #fed7d7; color: #742a2a; }
+        
+        .section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #1a202c;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .item-card {
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .item-card:last-child {
+            margin-bottom: 0;
+        }
+        
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .item-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: #1a202c;
+        }
+        
+        .item-subtitle {
+            color: #4a5568;
+            font-size: 14px;
+        }
+        
+        .item-meta {
+            color: #718096;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+        
+        .skills-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .skill-tag {
+            background: #edf2f7;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #2d3748;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #a0aec0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #718096;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/candidates" class="back-btn">← Back to Candidates</a>
+            <div class="actions">
+                <button class="btn btn-primary" onclick="editCandidate()">Edit</button>
+                <button class="btn btn-secondary" onclick="downloadResume()">Download Resume</button>
+                <button class="btn btn-danger" onclick="deleteCandidate()">Delete</button>
+            </div>
+        </div>
+        
+        <div id="candidateContent">
+            <div class="loading">Loading candidate details...</div>
+        </div>
+    </div>
+    
+    <script>
+        const candidateId = window.location.pathname.split('/').pop();
+        
+        async function loadCandidate() {
+            try {
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    console.log('No token found, redirecting to login');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                console.log('Fetching candidate:', candidateId);
+                const response = await fetch(`/api/candidates/${candidateId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    alert('Your session has expired. Please login again.');
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error('Error response:', errorData);
+                    throw new Error(errorData.detail || `HTTP ${response.status}: Failed to load candidate`);
+                }
+                
+                const data = await response.json();
+                console.log('Candidate data:', data);
+                
+                if (!data.success || !data.data) {
+                    throw new Error('Invalid response format from server');
+                }
+                
+                displayCandidate(data.data);
+            } catch (error) {
+                console.error('Error loading candidate:', error);
+                document.getElementById('candidateContent').innerHTML = `
+                    <div class="section">
+                        <div class="empty-state" style="padding: 40px; text-align: center;">
+                            <h3 style="color: #e53e3e; margin-bottom: 10px;">Error loading candidate</h3>
+                            <p style="color: #718096; margin-bottom: 20px;">${error.message}</p>
+                            <button onclick="loadCandidate()" class="btn btn-primary">Retry</button>
+                            <a href="/candidates" class="btn btn-secondary" style="margin-left: 10px;">Back to Candidates</a>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        function displayCandidate(candidate) {
+            const content = document.getElementById('candidateContent');
+            
+            content.innerHTML = `
+                <div class="profile-section">
+                    <div class="profile-header">
+                        <div class="profile-info">
+                            <h1>${candidate.full_name}</h1>
+                            <span class="status-badge status-${candidate.status}">${candidate.status}</span>
+                            <div class="contact-info">
+                                ${candidate.email ? `<div class="contact-item">📧 ${candidate.email}</div>` : ''}
+                                ${candidate.phone ? `<div class="contact-item">📱 ${candidate.phone}</div>` : ''}
+                                ${candidate.location ? `<div class="contact-item">📍 ${candidate.location}</div>` : ''}
+                                ${candidate.linkedin_url ? `<div class="contact-item">🔗 <a href="${candidate.linkedin_url}" target="_blank">LinkedIn</a></div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="section">
+                        <h2 class="section-title">🎓 Education</h2>
+                        ${displayEducation(candidate.education)}
+                    </div>
+                    
+                    <div class="section">
+                        <h2 class="section-title">💼 Work Experience</h2>
+                        ${displayExperience(candidate.experience)}
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2 class="section-title">🛠️ Skills</h2>
+                    ${displaySkills(candidate.skills)}
+                </div>
+                
+                <div class="section">
+                    <h2 class="section-title">📜 Certifications</h2>
+                    ${displayCertifications(candidate.certifications)}
+                </div>
+            `;
+        }
+        
+        function displayEducation(education) {
+            if (!education || education.length === 0) {
+                return '<div class="empty-state">No education information available</div>';
+            }
+            
+            return education.map(edu => `
+                <div class="item-card">
+                    <div class="item-title">${edu.degree || 'Degree'}</div>
+                    <div class="item-subtitle">${edu.institution || 'Institution'}</div>
+                    <div class="item-meta">
+                        ${edu.field ? `Field: ${edu.field} • ` : ''}
+                        ${edu.start_date || edu.end_date ? `${edu.start_date || ''} - ${edu.end_date || ''}` : ''}
+                        ${edu.gpa ? ` • GPA: ${edu.gpa}` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function displayExperience(experience) {
+            if (!experience || experience.length === 0) {
+                return '<div class="empty-state">No work experience available</div>';
+            }
+            
+            return experience.map(exp => `
+                <div class="item-card">
+                    <div class="item-header">
+                        <div>
+                            <div class="item-title">${exp.title || 'Position'}</div>
+                            <div class="item-subtitle">${exp.company || 'Company'}</div>
+                        </div>
+                        ${exp.is_current ? '<span class="status-badge status-new">Current</span>' : ''}
+                    </div>
+                    <div class="item-meta">
+                        ${exp.location ? `${exp.location} • ` : ''}
+                        ${exp.start_date || exp.end_date ? `${exp.start_date || ''} - ${exp.end_date || exp.is_current ? 'Present' : ''}` : ''}
+                        ${exp.duration_months ? ` • ${Math.floor(exp.duration_months / 12)} years ${exp.duration_months % 12} months` : ''}
+                    </div>
+                    ${exp.description ? `<p style="margin-top: 10px; color: #4a5568;">${exp.description}</p>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        function displaySkills(skills) {
+            if (!skills || skills.length === 0) {
+                return '<div class="empty-state">No skills listed</div>';
+            }
+            
+            return `
+                <div class="skills-grid">
+                    ${skills.map(skill => `
+                        <div class="skill-tag">
+                            ${skill.name}
+                            ${skill.proficiency ? ` (${skill.proficiency})` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        function displayCertifications(certifications) {
+            if (!certifications || certifications.length === 0) {
+                return '<div class="empty-state">No certifications available</div>';
+            }
+            
+            return certifications.map(cert => `
+                <div class="item-card">
+                    <div class="item-title">${cert.name}</div>
+                    ${cert.issuer ? `<div class="item-subtitle">${cert.issuer}</div>` : ''}
+                    <div class="item-meta">
+                        ${cert.issue_date ? `Issued: ${cert.issue_date}` : ''}
+                        ${cert.expiry_date ? ` • Expires: ${cert.expiry_date}` : ''}
+                        ${cert.credential_id ? ` • ID: ${cert.credential_id}` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function editCandidate() {
+            window.location.href = `/candidates/${candidateId}/edit`;
+        }
+        
+        function downloadResume() {
+            alert('Download resume functionality - to be implemented');
+        }
+        
+        async function deleteCandidate() {
+            if (!confirm('Are you sure you want to delete this candidate?')) {
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const response = await fetch(`/api/candidates/${candidateId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    alert('Your session has expired. Please login again.');
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                if (!response.ok) {
+                    throw new Error('Failed to delete candidate');
+                }
+                
+                alert('Candidate deleted successfully');
+                window.location.href = '/candidates';
+            } catch (error) {
+                console.error('Error deleting candidate:', error);
+                alert('Error deleting candidate: ' + error.message);
+            }
+        }
+        
+        // Load candidate on page load
+        document.addEventListener('DOMContentLoaded', loadCandidate);
+    </script>
+</body>
+</html>

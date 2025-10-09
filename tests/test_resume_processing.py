@@ -68,15 +68,16 @@ class TestDocumentProcessor:
         assert "page_count" in result
 
     @patch('services.document_processor.fitz')
-    def test_analyze_document_structure_pdf_with_mock(self, mock_fitz):
-        """Test PDF structure analysis with a mocked PyMuPDF"""
+    def test_pdf_structure_analysis_with_fitz(self, mock_fitz):
+        """Test PDF structure analysis when PyMuPDF is available"""
         # Mock fitz.open to return a mock document
         mock_doc = Mock()
         mock_page = Mock()
         mock_fitz.open.return_value = mock_doc
         mock_doc.page_count = 2
         mock_doc.load_page.return_value = mock_page
-        mock_page.get_text.return_value = {"blocks": []}
+        mock_page.get_text.return_value = "Sample text"
+        mock_page.get_text.return_value.__getitem__ = Mock(return_value={"blocks": []})
 
         with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
             tmp_path = tmp.name
@@ -90,9 +91,9 @@ class TestDocumentProcessor:
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
 
-    @patch('docx.Document')
-    def test_analyze_document_structure_docx_with_mock(self, mock_document_class):
-        """Test DOCX structure analysis with a mocked python-docx"""
+    @patch('services.document_processor.Document')
+    def test_docx_structure_analysis_with_docx(self, mock_document_class):
+        """Test DOCX structure analysis when python-docx is available"""
         # Mock Document class
         mock_doc = Mock()
         mock_paragraph = Mock()
@@ -153,19 +154,8 @@ class TestResumeAnalysis:
             id="test-123",
             filename="test_resume.pdf",
             file_size=1024,
-            authenticity_score=AuthenticityScore(
-                overall_score=85.0,
-                font_consistency=80.0,
-                grammar_score=90.0,
-                formatting_score=85.0,
-                visual_consistency=85.0
-            ),
-            matching_score=MatchingScore(
-                overall_match=75.0,
-                skills_match=70.0,
-                experience_match=80.0,
-                education_match=75.0
-            )
+            authenticity_score=AuthenticityScore(overall_score=85.0),
+            matching_score=MatchingScore(overall_match=75.0)
         )
 
         assert analysis.id == "test-123"

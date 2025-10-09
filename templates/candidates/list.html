@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candidates - HR Recruitment System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        h1 {
+            font-size: 28px;
+            color: #1a202c;
+        }
+        
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .filter-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            font-size: 14px;
+            color: #4a5568;
+        }
+        
+        .filter-group input,
+        .filter-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #4299e1;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #3182ce;
+        }
+        
+        .btn-secondary {
+            background: #718096;
+            color: white;
+        }
+        
+        .candidates-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        thead {
+            background: #f7fafc;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            color: #4a5568;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        tbody tr:hover {
+            background: #f7fafc;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-new { background: #bee3f8; color: #2c5282; }
+        .status-screened { background: #feebc8; color: #7c2d12; }
+        .status-interviewed { background: #d6bcfa; color: #44337a; }
+        .status-offered { background: #c6f6d5; color: #22543d; }
+        .status-hired { background: #9ae6b4; color: #22543d; }
+        .status-rejected { background: #fed7d7; color: #742a2a; }
+        
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 20px;
+        }
+        
+        .page-btn {
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .page-btn.active {
+            background: #4299e1;
+            color: white;
+            border-color: #4299e1;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #718096;
+        }
+        
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Candidates</h1>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <a href="/resumes" class="btn btn-secondary">View Resumes</a>
+                <a href="/resumes/upload-new" class="btn btn-primary">+ Upload Resume</a>
+            </div>
+        </div>
+        
+        <div class="filters">
+            <div class="filter-group">
+                <label>Search</label>
+                <input type="text" id="searchInput" placeholder="Name, email, or phone...">
+            </div>
+            <div class="filter-group">
+                <label>Status</label>
+                <select id="statusFilter">
+                    <option value="">All Statuses</option>
+                    <option value="new">New</option>
+                    <option value="screened">Screened</option>
+                    <option value="interviewed">Interviewed</option>
+                    <option value="offered">Offered</option>
+                    <option value="hired">Hired</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+            <div class="filter-group" style="display: flex; align-items: flex-end;">
+                <button class="btn btn-primary" onclick="loadCandidates()">Search</button>
+            </div>
+        </div>
+        
+        <div class="candidates-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Location</th>
+                        <th>Experience</th>
+                        <th>Skills</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="candidatesBody">
+                    <tr>
+                        <td colspan="9" class="loading">Loading candidates...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="pagination" id="pagination"></div>
+    </div>
+    
+    <script>
+        let currentPage = 1;
+        const limit = 20;
+        
+        async function loadCandidates(page = 1) {
+            const search = document.getElementById('searchInput').value;
+            const status = document.getElementById('statusFilter').value;
+            
+            const tbody = document.getElementById('candidatesBody');
+            tbody.innerHTML = '<tr><td colspan="9" class="loading">Loading...</td></tr>';
+            
+            try {
+                const params = new URLSearchParams({
+                    page: page,
+                    limit: limit
+                });
+                
+                if (search) params.append('search', search);
+                if (status) params.append('status', status);
+                
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const response = await fetch(`/api/candidates?${params}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                // Check for authentication errors
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    alert('Your session has expired. Please login again.');
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load candidates');
+                }
+                
+                const data = await response.json();
+                displayCandidates(data.data.candidates);
+                displayPagination(data.data.pagination);
+                currentPage = page;
+            } catch (error) {
+                console.error('Error loading candidates:', error);
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><h3>Error loading candidates</h3><p>' + error.message + '</p></td></tr>';
+            }
+        }
+        
+        function displayCandidates(candidates) {
+            const tbody = document.getElementById('candidatesBody');
+            
+            if (candidates.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><h3>No candidates found</h3><p>Try adjusting your search filters</p></td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = candidates.map(candidate => `
+                <tr>
+                    <td><strong>${candidate.full_name}</strong></td>
+                    <td>${candidate.email || '-'}</td>
+                    <td>${candidate.phone || '-'}</td>
+                    <td>${candidate.location || '-'}</td>
+                    <td>${candidate.total_experience_months ? Math.floor(candidate.total_experience_months / 12) + ' years' : '-'}</td>
+                    <td>${candidate.skills_count || 0} skills</td>
+                    <td><span class="status-badge status-${candidate.status}">${candidate.status}</span></td>
+                    <td>${new Date(candidate.created_at).toLocaleDateString()}</td>
+                    <td class="actions">
+                        <button class="btn btn-primary btn-sm" onclick="viewCandidate('${candidate.id}')">View</button>
+                        <button class="btn btn-secondary btn-sm" onclick="editCandidate('${candidate.id}')">Edit</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function displayPagination(pagination) {
+            const paginationDiv = document.getElementById('pagination');
+            
+            if (pagination.total_pages <= 1) {
+                paginationDiv.innerHTML = '';
+                return;
+            }
+            
+            let html = '<button class="page-btn" onclick="loadCandidates(' + (pagination.page - 1) + ')" ' + (pagination.page === 1 ? 'disabled' : '') + '>Previous</button>';
+            
+            for (let i = 1; i <= pagination.total_pages; i++) {
+                if (i === 1 || i === pagination.total_pages || (i >= pagination.page - 2 && i <= pagination.page + 2)) {
+                    html += '<button class="page-btn ' + (i === pagination.page ? 'active' : '') + '" onclick="loadCandidates(' + i + ')">' + i + '</button>';
+                } else if (i === pagination.page - 3 || i === pagination.page + 3) {
+                    html += '<span>...</span>';
+                }
+            }
+            
+            html += '<button class="page-btn" onclick="loadCandidates(' + (pagination.page + 1) + ')" ' + (pagination.page === pagination.total_pages ? 'disabled' : '') + '>Next</button>';
+            
+            paginationDiv.innerHTML = html;
+        }
+        
+        function viewCandidate(id) {
+            window.location.href = `/candidates/${id}`;
+        }
+        
+        function editCandidate(id) {
+            window.location.href = `/candidates/${id}/edit`;
+        }
+        
+        // Load candidates on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCandidates();
+        });
+        
+        // Search on Enter key
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loadCandidates();
+            }
+        });
+    </script>
+</body>
+</html>

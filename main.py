@@ -28,6 +28,21 @@ except ImportError:
     VETTING_ENABLED = False
     logger = logging.getLogger(__name__)
     logger.warning("Vetting module not available")
+
+# Import new API modules from feature/job-creation branch
+try:
+    from api import auth as api_auth
+    from api import jobs as api_jobs
+    from api import jobs_management as api_jobs_management
+    from api import users as api_users
+    from api import resumes as api_resumes
+    from api import candidates as api_candidates
+    API_V2_ENABLED = True
+except ImportError as e:
+    API_V2_ENABLED = False
+    logger = logging.getLogger(__name__)
+    logger.warning(f"New API modules not available: {e}")
+
 from core.database import init_db
 
 # Configure logging
@@ -86,10 +101,21 @@ os.makedirs(settings.upload_dir, exist_ok=True)
 os.makedirs(settings.results_dir, exist_ok=True)
 os.makedirs(settings.temp_dir, exist_ok=True)
 
-app.include_router(resumes_v1.router, prefix="/api/v1/resumes", tags=["resumes"])
-app.include_router(candidates_v1.router, prefix="/api/v1/candidates", tags=["candidates"])
-app.include_router(auth_v1.router, prefix="/auth", tags=["authentication"])
-app.include_router(vetting_v1.router, prefix="/api/v1/vetting", tags=["vetting"])
+# Include v1 API routers (vetting features)
+app.include_router(resumes_v1.router, prefix="/api/v1/resumes", tags=["resumes-v1"])
+app.include_router(candidates_v1.router, prefix="/api/v1/candidates", tags=["candidates-v1"])
+app.include_router(auth_v1.router, prefix="/auth", tags=["authentication-v1"])
+if VETTING_ENABLED:
+    app.include_router(vetting_v1.router, prefix="/api/v1/vetting", tags=["vetting"])
+
+# Include new API routers (job management, user management features)
+if API_V2_ENABLED:
+    app.include_router(api_auth.router, prefix="/api/auth", tags=["auth"])
+    app.include_router(api_jobs.router, prefix="/api/jobs", tags=["jobs"])
+    app.include_router(api_jobs_management.router, prefix="/api/jobs-management", tags=["jobs-management"])
+    app.include_router(api_users.router, prefix="/api/users", tags=["users"])
+    app.include_router(api_resumes.router, prefix="/api/resumes", tags=["resumes"])
+    app.include_router(api_candidates.router, prefix="/api/candidates", tags=["candidates"])
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -133,6 +159,42 @@ def candidate_detail_page(candidate_id: int, request: Request):
 def resume_preview_page(resume_id: int, request: Request):
     """Resume preview page."""
     return templates.TemplateResponse("resume_preview.html", {"request": request})
+
+# New routes for job and user management features
+@app.get("/jobs", response_class=HTMLResponse)
+async def jobs_list_page(request: Request):
+    """Jobs list page."""
+    return templates.TemplateResponse("jobs/job_list.html", {"request": request})
+
+@app.get("/jobs/create", response_class=HTMLResponse)
+async def job_create_page(request: Request):
+    """Job creation page."""
+    return templates.TemplateResponse("jobs/job_create.html", {"request": request})
+
+@app.get("/jobs/{job_id}", response_class=HTMLResponse)
+async def job_detail_page(job_id: str, request: Request):
+    """Job detail page."""
+    return templates.TemplateResponse("jobs/job_detail.html", {"request": request, "job_id": job_id})
+
+@app.get("/jobs-management", response_class=HTMLResponse)
+async def jobs_management_dashboard(request: Request):
+    """Jobs management dashboard."""
+    return templates.TemplateResponse("jobs_management/dashboard.html", {"request": request})
+
+@app.get("/users", response_class=HTMLResponse)
+async def users_dashboard(request: Request):
+    """User management dashboard."""
+    return templates.TemplateResponse("users/dashboard.html", {"request": request})
+
+@app.get("/auth/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """Login page."""
+    return templates.TemplateResponse("auth/login.html", {"request": request})
+
+@app.get("/auth/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    """Registration page."""
+    return templates.TemplateResponse("auth/register.html", {"request": request})
 
 @app.post("/api/scan-resume")
 async def scan_resume(

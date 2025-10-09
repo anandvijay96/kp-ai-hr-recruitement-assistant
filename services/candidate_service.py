@@ -1,200 +1,529 @@
+"""Service for managing candidates and their related data"""
 import logging
 from typing import Optional, List, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, or_, and_
+import uuid
 
-from models.db import Candidate, Resume, Education, WorkExperience, Skill
-from services.duplicate_detector import DuplicateDetector
+from models.database import (
+    Candidate, Education, WorkExperience, Skill, CandidateSkill,
+    Certification, Resume
+)
+from models.candidate_schemas import (
+    ParsedResumeData, CandidateCreate, CandidateUpdate,
+    CandidateResponse, EducationResponse, WorkExperienceResponse,
+    SkillResponse, CertificationResponse, CandidateListItem
+)
 
 logger = logging.getLogger(__name__)
 
 
 class CandidateService:
-    """
-    Handles candidate-related business logic.
-    """
+    """Service for managing candidate records"""
     
-    def __init__(self):
-        """Initialize candidate service with duplicate detector"""
-        self.duplicate_detector = DuplicateDetector(similarity_threshold=0.85)
+    def __init__(self, db_session: AsyncSession):
+        self.db = db_session
     
-    def check_duplicate(
-        self, 
-        email: Optional[str], 
-        phone: Optional[str],
-        name: Optional[str],
-        db: Session
-    ) -> Dict[str, Any]:
+    async def create_candidate_from_parsed_data(
+        self,
+        parsed_data: ParsedResumeData,
+        created_by: str,
+        resume_id: Optional[str] = None
+    ) -> str:
         """
-        Check for duplicate candidates using advanced detection.
+        Create a candidate record from parsed resume data
         
         Args:
-            email: Candidate email
-            phone: Candidate phone number  
-            name: Candidate full name
-            db: Database session
+            parsed_data: Parsed resume data
+            created_by: User ID who created the candidate
+            resume_id: Optional resume ID to link
             
         Returns:
-            Dict with duplicate detection results
-        """
-        return self.duplicate_detector.check_duplicate_candidate(
-            email=email,
-            phone=phone,
-            name=name,
-            db=db
-        )
-    
-    def find_duplicate(self, email: str, phone: str, db: Session) -> Optional[Candidate]:
-        """
-        Checks for duplicate candidates by email or phone number.
-        
-        Args:
-            email: Email address to check
-            phone: Phone number to check
-            db: Database session
-            
-        Returns:
-            Candidate if found, None otherwise
+            Candidate ID
         """
         try:
-            filters = []
-            if email:
-                filters.append(Candidate.email == email)
-            if phone:
-                filters.append(Candidate.phone_number == phone)
-            
-            if not filters:
-                return None
-            
-            candidate = db.query(Candidate).filter(or_(*filters)).first()
-            return candidate
-        
-        except Exception as e:
-            logger.error(f"Error finding duplicate candidate: {str(e)}")
-            return None
-    
-    def create_candidate(self, data: Dict[str, Any], db: Session) -> Candidate:
-        """
-        Creates a new candidate profile in the database.
-        
-        Args:
-            data: Candidate data dict
-            db: Database session
-            
-        Returns:
-            Created Candidate object
-        """
-        try:
+            # Create candidate
             candidate = Candidate(
-                full_name=data.get('full_name', 'Unknown'),
-                email=data.get('email'),
-                phone_number=data.get('phone_number'),
-                linkedin_url=data.get('linkedin_url'),
+                id=str(uuid.uuid4()),
+                uuid=str(uuid.uuid4()),
+                full_name=parsed_data.personal_info.name,
+                email=parsed_data.personal_info.email,
+                phone=parsed_data.personal_info.phone,
+                linkedin_url=parsed_data.personal_info.linkedin_url,
+                location=parsed_data.personal_info.location,
+                source="upload",
+                status="new",
+                created_by=created_by
             )
-            db.add(candidate)
-            db.commit()
-            db.refresh(candidate)
+            self.db.add(candidate)
+            await self.db.flush()  # Get candidate ID
             
-            logger.info(f"Created candidate: {candidate.id} - {candidate.email}")
-            return candidate
-        
+            # Add education records
+            for edu_data in parsed_data.education:
+                education = Education(
+                    id=str(uuid.uuid4()),
+                    candidate_id=candidate.id,
+                    degree=edu_data.degree,
+                    field=edu_data.field,
+                    institution=edu_data.institution,
+                    location=edu_data.location,
+                    start_date=edu_data.start_date,
+                    end_date=edu_data.end_date,
+                    gpa=edu_data.gpa,
+                    confidence_score=str(edu_data.confidence) if edu_data.confidence else None
+                )
+                self.db.add(education)
+            
+            # Add work experience records
+            for exp_data in parsed_data.experience:
+                is_current = exp_data.end_date and exp_data.end_date.lower() in ['present', 'current']
+                experience = WorkExperience(
+                    id=str(uuid.uuid4()),
+                    candidate_id=candidate.id,
+                    company=exp_data.company,
+                    title=exp_data.title,
+                    location=exp_data.location,
+                    start_date=exp_data.start_date,
+                    end_date=exp_data.end_date if not is_current else None,
+                    is_current=is_current,
+                    duration_months=exp_data.duration_months,
+                    description=exp_data.description,
+                    confidence_score=str(exp_data.confidence) if exp_data.confidence else None
+                )
+                self.db.add(experience)
+            
+            # Add skills
+            for skill_data in parsed_data.skills:
+                # Check if skill exists
+                result = await self.db.execute(
+                    select(Skill).where(Skill.name == skill_data.name)
+                )
+                skill = result.scalar_one_or_none()
+                
+                if not skill:
+                    # Create new skill
+                    skill = Skill(
+                        id=str(uuid.uuid4()),
+                        name=skill_data.name,
+                        category=skill_data.category
+                    )
+                    self.db.add(skill)
+                    await self.db.flush()
+                
+                # Link skill to candidate
+                candidate_skill = CandidateSkill(
+                    candidate_id=candidate.id,
+                    skill_id=skill.id,
+                    proficiency=skill_data.proficiency,
+                    confidence_score=str(skill_data.confidence) if skill_data.confidence else None
+                )
+                self.db.add(candidate_skill)
+            
+            # Add certifications
+            for cert_data in parsed_data.certifications:
+                certification = Certification(
+                    id=str(uuid.uuid4()),
+                    candidate_id=candidate.id,
+                    name=cert_data.name,
+                    issuer=cert_data.issuer,
+                    issue_date=cert_data.date,
+                    expiry_date=cert_data.expiry_date,
+                    credential_id=cert_data.credential_id,
+                    confidence_score=str(cert_data.confidence) if cert_data.confidence else None
+                )
+                self.db.add(certification)
+            
+            # Link resume if provided
+            if resume_id:
+                result = await self.db.execute(
+                    select(Resume).where(Resume.id == resume_id)
+                )
+                resume = result.scalar_one_or_none()
+                if resume:
+                    resume.candidate_id = candidate.id
+            
+            await self.db.commit()
+            logger.info(f"Created candidate {candidate.id} from parsed data")
+            return candidate.id
+            
         except Exception as e:
-            logger.error(f"Error creating candidate: {str(e)}")
-            db.rollback()
+            await self.db.rollback()
+            logger.error(f"Error creating candidate from parsed data: {str(e)}")
             raise
     
-    def get_candidate_by_id(self, candidate_id: int, db: Session) -> Optional[Dict[str, Any]]:
+    async def get_candidate_by_id(
+        self,
+        candidate_id: str,
+        include_relations: bool = True
+    ) -> Optional[Dict[str, Any]]:
         """
         Get candidate by ID with all related data
         
+        Args:
+            candidate_id: Candidate ID
+            include_relations: Whether to include education, experience, etc.
+            
         Returns:
-            Dict with candidate data including skills, education, work_experience, resumes
+            Candidate data dictionary or None
         """
-        from sqlalchemy.orm import joinedload
-        
-        candidate = db.query(Candidate).options(
-            joinedload(Candidate.skills),
-            joinedload(Candidate.education),
-            joinedload(Candidate.work_experience),
-            joinedload(Candidate.resumes)
-        ).filter(Candidate.id == candidate_id).first()
-        
-        if not candidate:
-            return None
-        
-        # Convert to dict with all relationships
-        return {
-            "id": candidate.id,
-            "full_name": candidate.full_name,
-            "email": candidate.email,
-            "phone_number": candidate.phone_number,
-            "linkedin_url": candidate.linkedin_url,
-            "github_url": candidate.github_url,
-            "portfolio_url": candidate.portfolio_url,
-            "location": candidate.location,
-            "professional_summary": candidate.professional_summary,
-            "created_at": candidate.created_at.isoformat() if candidate.created_at else None,
-            "updated_at": candidate.updated_at.isoformat() if candidate.updated_at else None,
-            "skills": [{"id": s.id, "name": s.name, "category": s.category} for s in candidate.skills],
-            "education": [{
-                "id": e.id,
-                "degree": e.degree,
-                "field_of_study": e.field_of_study,
-                "institution": e.institution,
-                "grade": e.grade,
-                "start_date": e.start_date.isoformat() if e.start_date else None,
-                "end_date": e.end_date.isoformat() if e.end_date else None
-            } for e in candidate.education],
-            "work_experience": [{
-                "id": w.id,
-                "job_title": w.job_title,
-                "company": w.company,
-                "location": w.location,
-                "start_date": w.start_date.isoformat() if w.start_date else None,
-                "end_date": w.end_date.isoformat() if w.end_date else None,
-                "is_current": w.is_current,
-                "description": w.description
-            } for w in candidate.work_experience],
-            "resumes": [{
-                "id": r.id,
-                "file_name": r.file_name,
-                "uploaded_at": r.uploaded_at.isoformat() if r.uploaded_at else None,
-                "authenticity_score": r.authenticity_score,
-                "upload_status": r.upload_status
-            } for r in candidate.resumes]
-        }
-    
-    def get_candidate_by_email(self, email: str, db: Session) -> Optional[Candidate]:
-        """Get candidate by email"""
-        return db.query(Candidate).filter(Candidate.email == email).first()
-    
-    def get_all_candidates(self, db: Session, skip: int = 0, limit: int = 100) -> List[Candidate]:
-        """Get all candidates with pagination"""
-        return db.query(Candidate).offset(skip).limit(limit).all()
-    
-    def update_candidate(self, candidate_id: int, data: Dict[str, Any], db: Session) -> Optional[Candidate]:
-        """Update candidate information"""
         try:
-            candidate = self.get_candidate_by_id(candidate_id, db)
+            query = select(Candidate).where(Candidate.id == candidate_id)
+            
+            result = await self.db.execute(query)
+            candidate = result.scalar_one_or_none()
+            
+            if not candidate:
+                return None
+            
+            # Build response
+            candidate_data = {
+                "id": candidate.id,
+                "uuid": candidate.uuid,
+                "full_name": candidate.full_name,
+                "email": candidate.email,
+                "phone": candidate.phone,
+                "linkedin_url": candidate.linkedin_url,
+                "location": candidate.location,
+                "source": candidate.source,
+                "status": candidate.status,
+                "created_at": candidate.created_at.isoformat() if candidate.created_at else None,
+                "updated_at": candidate.updated_at.isoformat() if candidate.updated_at else None
+            }
+            
+            if include_relations:
+                # Get education
+                edu_result = await self.db.execute(
+                    select(Education).where(Education.candidate_id == candidate_id)
+                )
+                education_list = []
+                for edu in edu_result.scalars().all():
+                    edu_dict = {
+                        "id": edu.id,
+                        "degree": edu.degree,
+                        "field": edu.field,
+                        "institution": edu.institution,
+                        "location": edu.location,
+                        "start_date": edu.start_date,
+                        "end_date": edu.end_date,
+                        "gpa": edu.gpa,
+                        "confidence_score": edu.confidence_score
+                    }
+                    education_list.append(edu_dict)
+                candidate_data["education"] = education_list
+                
+                # Get experience
+                exp_result = await self.db.execute(
+                    select(WorkExperience).where(WorkExperience.candidate_id == candidate_id)
+                )
+                experience_list = []
+                for exp in exp_result.scalars().all():
+                    exp_dict = {
+                        "id": exp.id,
+                        "company": exp.company,
+                        "title": exp.title,
+                        "location": exp.location,
+                        "start_date": exp.start_date,
+                        "end_date": exp.end_date,
+                        "is_current": exp.is_current,
+                        "duration_months": exp.duration_months,
+                        "description": exp.description,
+                        "confidence_score": exp.confidence_score
+                    }
+                    experience_list.append(exp_dict)
+                candidate_data["experience"] = experience_list
+                
+                # Get skills
+                skills_result = await self.db.execute(
+                    select(Skill, CandidateSkill)
+                    .join(CandidateSkill, Skill.id == CandidateSkill.skill_id)
+                    .where(CandidateSkill.candidate_id == candidate_id)
+                )
+                candidate_data["skills"] = [
+                    {
+                        "id": skill.id,
+                        "name": skill.name,
+                        "category": skill.category,
+                        "proficiency": cs.proficiency,
+                        "confidence_score": cs.confidence_score
+                    }
+                    for skill, cs in skills_result.all()
+                ]
+                
+                # Get certifications
+                cert_result = await self.db.execute(
+                    select(Certification).where(Certification.candidate_id == candidate_id)
+                )
+                certifications_list = []
+                for cert in cert_result.scalars().all():
+                    cert_dict = {
+                        "id": cert.id,
+                        "name": cert.name,
+                        "issuer": cert.issuer,
+                        "issue_date": cert.issue_date,
+                        "expiry_date": cert.expiry_date,
+                        "credential_id": cert.credential_id,
+                        "confidence_score": cert.confidence_score
+                    }
+                    certifications_list.append(cert_dict)
+                candidate_data["certifications"] = certifications_list
+            
+            return candidate_data
+            
+        except Exception as e:
+            logger.error(f"Error getting candidate {candidate_id}: {str(e)}")
+            raise
+    
+    async def update_candidate(
+        self,
+        candidate_id: str,
+        update_data: CandidateUpdate
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Update candidate information
+        
+        Args:
+            candidate_id: Candidate ID
+            update_data: Update data
+            
+        Returns:
+            Updated candidate data or None
+        """
+        try:
+            result = await self.db.execute(
+                select(Candidate).where(Candidate.id == candidate_id)
+            )
+            candidate = result.scalar_one_or_none()
+            
             if not candidate:
                 return None
             
             # Update fields
-            if 'full_name' in data:
-                candidate.full_name = data['full_name']
-            if 'email' in data:
-                candidate.email = data['email']
-            if 'phone_number' in data:
-                candidate.phone_number = data['phone_number']
-            if 'linkedin_url' in data:
-                candidate.linkedin_url = data['linkedin_url']
+            update_dict = update_data.model_dump(exclude_unset=True)
+            for field, value in update_dict.items():
+                setattr(candidate, field, value)
             
-            db.commit()
-            db.refresh(candidate)
+            await self.db.commit()
+            await self.db.refresh(candidate)
             
-            return candidate
-        
+            logger.info(f"Updated candidate {candidate_id}")
+            return await self.get_candidate_by_id(candidate_id)
+            
         except Exception as e:
-            logger.error(f"Error updating candidate: {str(e)}")
-            db.rollback()
+            await self.db.rollback()
+            logger.error(f"Error updating candidate {candidate_id}: {str(e)}")
+            raise
+    
+    async def search_candidates(
+        self,
+        search: Optional[str] = None,
+        status: Optional[str] = None,
+        page: int = 1,
+        limit: int = 20
+    ) -> Dict[str, Any]:
+        """
+        Search and filter candidates with pagination
+        
+        Args:
+            search: Search term (name, email, phone)
+            status: Filter by status
+            page: Page number
+            limit: Items per page
+            
+        Returns:
+            Paginated candidates list
+        """
+        try:
+            # Build query
+            query = select(Candidate)
+            
+            # Apply filters
+            filters = []
+            if search:
+                search_term = f"%{search}%"
+                filters.append(
+                    or_(
+                        Candidate.full_name.ilike(search_term),
+                        Candidate.email.ilike(search_term),
+                        Candidate.phone.ilike(search_term)
+                    )
+                )
+            
+            if status:
+                filters.append(Candidate.status == status)
+            
+            if filters:
+                query = query.where(and_(*filters))
+            
+            # Get total count
+            count_query = select(func.count()).select_from(Candidate)
+            if filters:
+                count_query = count_query.where(and_(*filters))
+            
+            total_result = await self.db.execute(count_query)
+            total = total_result.scalar()
+            
+            # Apply pagination
+            offset = (page - 1) * limit
+            query = query.offset(offset).limit(limit).order_by(Candidate.created_at.desc())
+            
+            result = await self.db.execute(query)
+            candidates = result.scalars().all()
+            
+            # Build response
+            candidate_list = []
+            for candidate in candidates:
+                # Get counts
+                edu_count = await self.db.execute(
+                    select(func.count()).select_from(Education).where(Education.candidate_id == candidate.id)
+                )
+                skills_count = await self.db.execute(
+                    select(func.count()).select_from(CandidateSkill).where(CandidateSkill.candidate_id == candidate.id)
+                )
+                
+                # Calculate total experience
+                exp_result = await self.db.execute(
+                    select(func.sum(WorkExperience.duration_months))
+                    .where(WorkExperience.candidate_id == candidate.id)
+                )
+                total_exp = exp_result.scalar() or 0
+                
+                candidate_list.append({
+                    "id": candidate.id,
+                    "uuid": candidate.uuid,
+                    "full_name": candidate.full_name,
+                    "email": candidate.email,
+                    "phone": candidate.phone,
+                    "location": candidate.location,
+                    "status": candidate.status,
+                    "created_at": candidate.created_at,
+                    "total_experience_months": total_exp,
+                    "education_count": edu_count.scalar(),
+                    "skills_count": skills_count.scalar()
+                })
+            
+            return {
+                "candidates": candidate_list,
+                "pagination": {
+                    "page": page,
+                    "limit": limit,
+                    "total": total,
+                    "total_pages": (total + limit - 1) // limit
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error searching candidates: {str(e)}")
+            raise
+    
+    async def merge_candidates(
+        self,
+        source_id: str,
+        target_id: str,
+        merged_by: str
+    ) -> str:
+        """
+        Merge two candidate records
+        
+        Args:
+            source_id: Source candidate ID (will be archived)
+            target_id: Target candidate ID (will be kept)
+            merged_by: User ID performing the merge
+            
+        Returns:
+            Target candidate ID
+        """
+        try:
+            # Get both candidates
+            source_result = await self.db.execute(
+                select(Candidate).where(Candidate.id == source_id)
+            )
+            source = source_result.scalar_one_or_none()
+            
+            target_result = await self.db.execute(
+                select(Candidate).where(Candidate.id == target_id)
+            )
+            target = target_result.scalar_one_or_none()
+            
+            if not source or not target:
+                raise ValueError("Source or target candidate not found")
+            
+            # Update all related records to point to target
+            await self.db.execute(
+                select(Education).where(Education.candidate_id == source_id)
+            )
+            await self.db.execute(
+                Education.__table__.update()
+                .where(Education.candidate_id == source_id)
+                .values(candidate_id=target_id)
+            )
+            
+            await self.db.execute(
+                WorkExperience.__table__.update()
+                .where(WorkExperience.candidate_id == source_id)
+                .values(candidate_id=target_id)
+            )
+            
+            await self.db.execute(
+                CandidateSkill.__table__.update()
+                .where(CandidateSkill.candidate_id == source_id)
+                .values(candidate_id=target_id)
+            )
+            
+            await self.db.execute(
+                Certification.__table__.update()
+                .where(Certification.candidate_id == source_id)
+                .values(candidate_id=target_id)
+            )
+            
+            await self.db.execute(
+                Resume.__table__.update()
+                .where(Resume.candidate_id == source_id)
+                .values(candidate_id=target_id)
+            )
+            
+            # Archive source candidate
+            source.status = "archived"
+            
+            await self.db.commit()
+            logger.info(f"Merged candidate {source_id} into {target_id}")
+            return target_id
+            
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error merging candidates: {str(e)}")
+            raise
+    
+    async def delete_candidate(
+        self,
+        candidate_id: str,
+        deleted_by: str
+    ) -> bool:
+        """
+        Delete a candidate (soft delete by archiving)
+        
+        Args:
+            candidate_id: Candidate ID
+            deleted_by: User ID performing deletion
+            
+        Returns:
+            True if successful
+        """
+        try:
+            result = await self.db.execute(
+                select(Candidate).where(Candidate.id == candidate_id)
+            )
+            candidate = result.scalar_one_or_none()
+            
+            if not candidate:
+                return False
+            
+            candidate.status = "archived"
+            await self.db.commit()
+            
+            logger.info(f"Deleted (archived) candidate {candidate_id}")
+            return True
+            
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error deleting candidate {candidate_id}: {str(e)}")
             raise

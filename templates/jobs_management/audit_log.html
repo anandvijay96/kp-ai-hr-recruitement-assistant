@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Log - Jobs Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #333;
+        }
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .filters select,
+        .filters input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .audit-timeline {
+            position: relative;
+            padding-left: 40px;
+        }
+        .audit-timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e9ecef;
+        }
+        .audit-entry {
+            position: relative;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 3px solid #007bff;
+        }
+        .audit-entry::before {
+            content: '';
+            position: absolute;
+            left: -33px;
+            top: 20px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #007bff;
+            border: 2px solid white;
+            box-shadow: 0 0 0 2px #e9ecef;
+        }
+        .audit-entry.status-change::before { background: #28a745; }
+        .audit-entry.delete::before { background: #dc3545; }
+        .audit-entry.bulk-update::before { background: #ffc107; }
+        .audit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .action-type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .action-type.create { background: #d4edda; color: #155724; }
+        .action-type.update { background: #cfe2ff; color: #084298; }
+        .action-type.status-change { background: #d1e7dd; color: #0f5132; }
+        .action-type.delete { background: #f8d7da; color: #842029; }
+        .action-type.bulk-update { background: #fff3cd; color: #997404; }
+        .timestamp {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            color: #495057;
+            font-size: 14px;
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #007bff;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .changes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .change-box {
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .change-box.old {
+            background: #fff5f5;
+            border: 1px solid #fed7d7;
+        }
+        .change-box.new {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+        }
+        .change-label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #718096;
+        }
+        .change-value {
+            color: #2d3748;
+            font-family: 'Courier New', monospace;
+        }
+        .reason {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e7f3ff;
+            border-left: 3px solid #007bff;
+            border-radius: 4px;
+        }
+        .reason-label {
+            font-weight: 600;
+            font-size: 12px;
+            color: #0066cc;
+            margin-bottom: 5px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        .btn {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 30px;
+        }
+        .pagination button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .pagination button:hover {
+            background: #f8f9fa;
+        }
+        .pagination button.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .ip-address {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #e9ecef;
+            border-radius: 3px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            color: #495057;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <button class="btn btn-secondary" onclick="window.location.href='/jobs-management/dashboard'">
+                    ← Back to Dashboard
+                </button>
+                <h1 style="margin-top: 15px;">Audit Log</h1>
+                <p id="job-title" style="color: #6c757d; margin: 5px 0 0 0;"></p>
+            </div>
+            <button class="btn btn-primary" onclick="exportAuditLog()">
+                📥 Export CSV
+            </button>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters">
+            <select id="action-filter" onchange="applyFilters()">
+                <option value="">All Actions</option>
+                <option value="create">Create</option>
+                <option value="update">Update</option>
+                <option value="status_change">Status Change</option>
+                <option value="delete">Delete</option>
+                <option value="bulk_update">Bulk Update</option>
+            </select>
+            
+            <input type="date" id="date-from" onchange="applyFilters()" placeholder="From Date">
+            <input type="date" id="date-to" onchange="applyFilters()" placeholder="To Date">
+            
+            <button class="btn btn-secondary" onclick="clearFilters()">Clear Filters</button>
+        </div>
+
+        <!-- Audit Timeline -->
+        <div id="audit-timeline" class="audit-timeline">
+            <div class="loading">Loading audit log...</div>
+        </div>
+
+        <!-- Pagination -->
+        <div id="pagination" class="pagination"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const jobId = window.location.pathname.split('/')[2];
+        let currentPage = 1;
+        let currentFilters = {};
+
+        // Load audit log on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadJobDetails();
+            loadAuditLog();
+        });
+
+        async function loadJobDetails() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`/api/jobs/${jobId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('job-title').textContent = 
+                        `Job: ${data.data.title || 'Unknown'} (${jobId})`;
+                }
+            } catch (error) {
+                console.error('Error loading job details:', error);
+            }
+        }
+
+        async function loadAuditLog(page = 1) {
+            try {
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const params = new URLSearchParams({
+                    page: page,
+                    limit: 20,
+                    ...currentFilters
+                });
+
+                const response = await fetch(`/api/jobs-management/${jobId}/audit-log?${params}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    alert('Session expired. Please login again.');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to load audit log');
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderAuditLog(data.entries);
+                    renderPagination(data.pagination);
+                    currentPage = page;
+                }
+            } catch (error) {
+                console.error('Error loading audit log:', error);
+                document.getElementById('audit-timeline').innerHTML = 
+                    `<div class="empty-state">
+                        <h3>Error loading audit log</h3>
+                        <p>${error.message}</p>
+                        <button class="btn btn-primary" onclick="loadAuditLog()">Retry</button>
+                    </div>`;
+            }
+        }
+
+        function renderAuditLog(entries) {
+            const timeline = document.getElementById('audit-timeline');
+            
+            if (entries.length === 0) {
+                timeline.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 48px; margin-bottom: 20px;">📋</div>
+                        <h3>No audit entries found</h3>
+                        <p>No actions have been logged for this job yet.</p>
+                    </div>`;
+                return;
+            }
+
+            timeline.innerHTML = entries.map(entry => {
+                const actionClass = entry.action_type.replace('_', '-');
+                const userInitials = entry.user_name ? entry.user_name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
+                
+                return `
+                    <div class="audit-entry ${actionClass}">
+                        <div class="audit-header">
+                            <span class="action-type ${actionClass}">${formatActionType(entry.action_type)}</span>
+                            <span class="timestamp">${formatTimestamp(entry.timestamp)}</span>
+                        </div>
+                        
+                        <div class="user-info">
+                            <div class="user-avatar">${userInitials}</div>
+                            <div>
+                                <strong>${escapeHtml(entry.user_name || 'Unknown')}</strong>
+                                <br>
+                                <small>${escapeHtml(entry.user_email || '')}</small>
+                            </div>
+                            ${entry.ip_address ? `<span class="ip-address">${entry.ip_address}</span>` : ''}
+                        </div>
+
+                        ${renderChanges(entry.old_values, entry.new_values, entry.action_type)}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderChanges(oldValues, newValues, actionType) {
+            if (!oldValues && !newValues) return '';
+
+            const old = typeof oldValues === 'string' ? JSON.parse(oldValues) : oldValues;
+            const newVal = typeof newValues === 'string' ? JSON.parse(newValues) : newValues;
+
+            let html = '<div class="changes">';
+            
+            if (old && Object.keys(old).length > 0) {
+                html += `
+                    <div class="change-box old">
+                        <div class="change-label">Old Values</div>
+                        <div class="change-value">${formatValues(old)}</div>
+                    </div>`;
+            }
+            
+            if (newVal && Object.keys(newVal).length > 0) {
+                html += `
+                    <div class="change-box new">
+                        <div class="change-label">New Values</div>
+                        <div class="change-value">${formatValues(newVal)}</div>
+                    </div>`;
+            }
+            
+            html += '</div>';
+
+            // Add reason if present
+            if (old && old.reason) {
+                html += `
+                    <div class="reason">
+                        <div class="reason-label">Reason:</div>
+                        <div>${escapeHtml(old.reason)}</div>
+                    </div>`;
+            }
+
+            return html;
+        }
+
+        function formatValues(values) {
+            return Object.entries(values)
+                .map(([key, value]) => `<strong>${key}:</strong> ${escapeHtml(String(value))}`)
+                .join('<br>');
+        }
+
+        function formatActionType(type) {
+            return type.replace('_', ' ');
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        function renderPagination(pagination) {
+            const container = document.getElementById('pagination');
+            
+            if (pagination.total_pages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = `
+                <button onclick="loadAuditLog(${pagination.page - 1})" 
+                        ${pagination.page === 1 ? 'disabled' : ''}>
+                    Previous
+                </button>
+            `;
+
+            for (let i = 1; i <= pagination.total_pages; i++) {
+                if (i === 1 || i === pagination.total_pages || 
+                    (i >= pagination.page - 2 && i <= pagination.page + 2)) {
+                    html += `
+                        <button onclick="loadAuditLog(${i})" 
+                                class="${i === pagination.page ? 'active' : ''}">
+                            ${i}
+                        </button>
+                    `;
+                } else if (i === pagination.page - 3 || i === pagination.page + 3) {
+                    html += '<span>...</span>';
+                }
+            }
+
+            html += `
+                <button onclick="loadAuditLog(${pagination.page + 1})" 
+                        ${pagination.page === pagination.total_pages ? 'disabled' : ''}>
+                    Next
+                </button>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function applyFilters() {
+            currentFilters = {};
+            
+            const actionFilter = document.getElementById('action-filter').value;
+            if (actionFilter) currentFilters.action_type = actionFilter;
+            
+            const dateFrom = document.getElementById('date-from').value;
+            if (dateFrom) currentFilters.date_from = dateFrom;
+            
+            const dateTo = document.getElementById('date-to').value;
+            if (dateTo) currentFilters.date_to = dateTo;
+            
+            loadAuditLog(1);
+        }
+
+        function clearFilters() {
+            document.getElementById('action-filter').value = '';
+            document.getElementById('date-from').value = '';
+            document.getElementById('date-to').value = '';
+            currentFilters = {};
+            loadAuditLog(1);
+        }
+
+        async function exportAuditLog() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`/api/jobs-management/audit-log/export/${jobId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `audit_log_${jobId}_${new Date().toISOString().split('T')[0]}.csv`;
+                    a.click();
+                } else {
+                    alert('Failed to export audit log');
+                }
+            } catch (error) {
+                console.error('Error exporting audit log:', error);
+                alert('Failed to export audit log');
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
