@@ -47,6 +47,25 @@ def get_async_session():
 engine = get_engine()
 AsyncSessionLocal = get_async_session()
 
+# Synchronous session for Celery tasks and other sync contexts
+# Note: This uses the sync SQLite driver, not aiosqlite
+def get_sync_session():
+    """Get or create a synchronous session factory for Celery tasks"""
+    from sqlalchemy import create_engine as create_sync_engine
+    from sqlalchemy.orm import sessionmaker
+    
+    # Convert async URL to sync URL
+    sync_url = settings.database_url.replace('+aiosqlite', '')
+    sync_engine = create_sync_engine(
+        sync_url,
+        echo=settings.debug,
+        connect_args={"check_same_thread": False}
+    )
+    return sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
+
+# Create sync session maker for Celery tasks
+SessionLocal = get_sync_session()
+
 
 async def get_db():
     """Dependency for getting database session"""
