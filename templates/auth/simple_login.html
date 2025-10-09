@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Login - HR Recruitment System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card shadow-lg">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <i class="bi bi-briefcase-fill text-primary" style="font-size: 3rem;"></i>
+                    <h3 class="mt-3">Welcome Back</h3>
+                    <p class="text-muted">Sign in to continue to HR Recruitment System</p>
+                </div>
+
+                <form id="loginForm" method="POST" action="/api/auth/simple-login">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" 
+                               value="hr@example.com" required>
+                        <small class="text-muted">For MVP demo: hr@example.com</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" 
+                               value="demo123" required>
+                        <small class="text-muted">For MVP demo: demo123</small>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember">
+                        <label class="form-check-label" for="remember">
+                            Remember me
+                        </label>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-box-arrow-in-right"></i> Sign In
+                        </button>
+                    </div>
+                </form>
+
+                <div class="text-center mt-4">
+                    <p class="text-muted mb-2">Don't have an account?</p>
+                    <a href="/register" class="text-primary">Create Account</a>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="text-center">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i> MVP Demo Credentials<br>
+                        Email: hr@example.com | Password: demo123
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    
+    try {
+        const response = await fetch('/api/auth/simple-login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: formData.get('email'),
+                password: formData.get('password')
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            // Redirect to dashboard
+            const urlParams = new URLSearchParams(window.location.search);
+            const next = urlParams.get('next') || '/';
+            window.location.href = next;
+        } else {
+            const error = await response.json();
+            alert('Login failed: ' + (error.detail || 'Invalid credentials'));
+        }
+    } catch (error) {
+        alert('Login failed: ' + error.message);
+    }
+});
+</script>
+{% endblock %}

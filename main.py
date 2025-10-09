@@ -23,6 +23,7 @@ from services.resume_data_extractor import ResumeDataExtractor
 from api.v1 import resumes as resumes_v1
 from api.v1 import candidates as candidates_v1
 from api.v1 import auth as auth_v1
+from api.v1 import simple_auth
 try:
     from api.v1 import vetting as vetting_v1
     VETTING_ENABLED = True
@@ -147,9 +148,11 @@ async def vet_resumes_page(request: Request):
     return templates.TemplateResponse("vet_resumes.html", {"request": request, "user": user})
 
 @app.get("/candidates")
-def candidates_list_page(request: Request):
-    """Candidates list/search page."""
-    return templates.TemplateResponse("candidate_search.html", {"request": request})
+@require_auth
+async def candidates_list_page(request: Request):
+    """Candidates list/search page - requires authentication"""
+    user = await get_current_user(request)
+    return templates.TemplateResponse("candidate_search.html", {"request": request, "user": user})
 
 @app.get("/search")
 def search_page(request: Request):
@@ -171,9 +174,11 @@ def resume_preview_page(resume_id: int, request: Request):
 
 # New routes for job and user management features
 @app.get("/jobs", response_class=HTMLResponse)
+@require_auth
 async def jobs_list_page(request: Request):
-    """Jobs list page."""
-    return templates.TemplateResponse("jobs/job_list.html", {"request": request})
+    """Jobs list page - requires authentication"""
+    user = await get_current_user(request)
+    return templates.TemplateResponse("jobs/job_list.html", {"request": request, "user": user})
 
 @app.get("/jobs/create", response_class=HTMLResponse)
 async def job_create_page(request: Request):
@@ -186,9 +191,11 @@ async def job_detail_page(job_id: str, request: Request):
     return templates.TemplateResponse("jobs/job_detail.html", {"request": request, "job_id": job_id})
 
 @app.get("/jobs-management", response_class=HTMLResponse)
+@require_auth
 async def jobs_management_dashboard(request: Request):
-    """Jobs management dashboard."""
-    return templates.TemplateResponse("jobs_management/dashboard.html", {"request": request})
+    """Jobs management dashboard - requires authentication"""
+    user = await get_current_user(request)
+    return templates.TemplateResponse("jobs_management/dashboard.html", {"request": request, "user": user})
 
 @app.get("/users", response_class=HTMLResponse)
 @require_auth
@@ -210,8 +217,8 @@ async def register_page(request: Request):
 # Shortcut routes (redirect to /auth/* paths)
 @app.get("/login", response_class=HTMLResponse)
 async def login_shortcut(request: Request):
-    """Shortcut for login page."""
-    return templates.TemplateResponse("auth/login.html", {"request": request})
+    """Shortcut for login page - simple MVP login."""
+    return templates.TemplateResponse("auth/simple_login.html", {"request": request})
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_shortcut(request: Request):
