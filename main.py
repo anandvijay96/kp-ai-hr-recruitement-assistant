@@ -124,7 +124,10 @@ def search_page(request: Request):
 @app.get("/candidates/{candidate_id}")
 def candidate_detail_page(candidate_id: int, request: Request):
     """Candidate detail page."""
-    return templates.TemplateResponse("candidate_detail.html", {"request": request})
+    return templates.TemplateResponse("candidate_detail.html", {
+        "request": request,
+        "candidate_id": candidate_id
+    })
 
 @app.get("/resumes/{resume_id}/preview")
 def resume_preview_page(resume_id: int, request: Request):

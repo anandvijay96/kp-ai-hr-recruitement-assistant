@@ -447,11 +447,10 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script>
-        // Get candidate ID from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const candidateId = urlParams.get('id');
+        // Get candidate ID from template (passed from backend)
+        const candidateId = {{ candidate_id }};
         
         // Initialize on page load
         $(document).ready(function() {
