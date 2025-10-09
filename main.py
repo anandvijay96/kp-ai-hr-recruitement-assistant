@@ -445,6 +445,138 @@ async def health_check():
         "version": "1.0.0"
     }
 
+@app.post("/api/setup/initial-admin")
+async def create_initial_admin():
+    """Create initial admin user - NO AUTHENTICATION REQUIRED"""
+    from core.database import get_db
+    from models.database import User
+    from services.password_service import PasswordService
+    from sqlalchemy import select
+    import uuid
+    from datetime import datetime
+    
+    try:
+        db = None
+        async for session in get_db():
+            db = session
+            break
+        
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        # Check if any users exist
+        result = await db.execute(select(User))
+        existing_users = result.scalars().all()
+        
+        if len(existing_users) > 0:
+            return {
+                "message": "Users already exist. Initial setup not allowed.",
+                "user_count": len(existing_users)
+            }
+        
+        # Create admin user
+        password_service = PasswordService()
+        password_hash = password_service.hash_password("Admin@123")
+        
+        admin_user = User(
+            id=str(uuid.uuid4()),
+            full_name="Admin User",
+            email="admin@example.com",
+            password_hash=password_hash,
+            role="admin",
+            status="active",
+            is_active=True,
+            email_verified=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        
+        db.add(admin_user)
+        await db.commit()
+        
+        return {
+            "message": "Initial admin user created successfully",
+            "email": "admin@example.com",
+            "password": "Admin@123",
+            "note": "Please change this password after login"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error creating initial admin: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to create admin user: {str(e)}")
+
+@app.post("/api/setup/create-user-no-auth")
+async def create_user_no_auth(user_data: dict):
+    """TEMPORARY: Create user without authentication for debugging"""
+    from core.database import get_db
+    from models.database import User
+    from services.password_service import PasswordService
+    from sqlalchemy import select, func
+    import uuid
+    from datetime import datetime
+    
+    try:
+        db = None
+        async for session in get_db():
+            db = session
+            break
+        
+        # Check if email already exists
+        result = await db.execute(
+            select(User).where(func.lower(User.email) == user_data.get("email", "").lower())
+        )
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Email already in use")
+        
+        # Get admin user as creator
+        admin_result = await db.execute(select(User).where(User.email == "admin@example.com"))
+        admin_user = admin_result.scalar_one_or_none()
+        
+        if not admin_user:
+            raise HTTPException(status_code=500, detail="Admin user not found. Run initial setup first.")
+        
+        # Generate password
+        password_service = PasswordService()
+        temp_password = user_data.get("temp_password", "TempPass@123")
+        password_hash = password_service.hash_password(temp_password)
+        
+        # Create user
+        new_user = User(
+            id=str(uuid.uuid4()),
+            full_name=user_data.get("full_name"),
+            email=user_data.get("email"),
+            mobile=user_data.get("mobile"),
+            password_hash=password_hash,
+            role=user_data.get("role", "recruiter"),
+            department=user_data.get("department"),
+            status="active",
+            is_active=True,
+            email_verified=True,
+            created_by=admin_user.id,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        
+        db.add(new_user)
+        await db.commit()
+        
+        return {
+            "message": "User created successfully",
+            "id": new_user.id,
+            "email": new_user.email,
+            "temporary_password": temp_password
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating user: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to create user: {str(e)}")
+
 @app.get("/api/results")
 async def get_all_results(limit: int = 50):
     """Get all stored analysis results"""

@@ -1,12 +1,14 @@
 """
-Apply Jobs Management Migration
-Run with: uv run python apply_migration.py
+Apply Database Migration
+Run with: python apply_migration.py <migration_file>
+Example: python apply_migration.py migrations/010_create_user_management_tables.sql
 """
 import asyncio
 import sqlite3
 import os
+import sys
 
-async def apply_migration():
+async def apply_migration(sql_file=None):
     """Apply the SQL migration to the database"""
     
     # Find the database file
@@ -19,7 +21,9 @@ async def apply_migration():
             return False
     
     # Read the SQL migration file
-    sql_file = "migrations/008_create_jobs_management_tables.sql"
+    if sql_file is None:
+        sql_file = "migrations/008_create_jobs_management_tables.sql"
+    
     if not os.path.exists(sql_file):
         print(f"❌ Migration file not found: {sql_file}")
         return False
@@ -97,5 +101,7 @@ async def apply_migration():
         return False
 
 if __name__ == "__main__":
-    success = asyncio.run(apply_migration())
+    # Get migration file from command line argument
+    migration_file = sys.argv[1] if len(sys.argv) > 1 else None
+    success = asyncio.run(apply_migration(migration_file))
     exit(0 if success else 1)

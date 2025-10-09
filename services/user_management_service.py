@@ -226,7 +226,10 @@ class UserManagementService:
             temporary_password = None
             activation_token = None
             
-            if user_data.password_option == "auto_generate":
+            # Handle both enum and string values for password_option
+            password_option = user_data.password_option.value if hasattr(user_data.password_option, 'value') else user_data.password_option
+            
+            if password_option == "auto_generate":
                 temporary_password = self._generate_secure_password()
                 password_hash = self.password_service.hash_password(temporary_password)
             else:
@@ -234,15 +237,19 @@ class UserManagementService:
                 password_hash = None  # Will be set on activation
             
             # Create user
+            # Handle both enum and string values
+            role_value = user_data.role.value if hasattr(user_data.role, 'value') else user_data.role
+            status_value = user_data.status.value if hasattr(user_data.status, 'value') else user_data.status
+            
             new_user = User(
                 full_name=user_data.full_name,
                 email=user_data.email,
                 mobile=user_data.mobile,
-                role=user_data.role.value,
+                role=role_value,
                 department=user_data.department,
                 password_hash=password_hash,
-                status=user_data.status.value,
-                is_active=True if user_data.status == "active" else False,
+                status=status_value,
+                is_active=True if status_value == "active" else False,
                 email_verified=True,  # Auto-verify for now
                 created_by=created_by.id,
                 created_at=datetime.utcnow()
