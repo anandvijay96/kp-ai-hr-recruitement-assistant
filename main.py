@@ -112,10 +112,10 @@ os.makedirs(settings.upload_dir, exist_ok=True)
 os.makedirs(settings.results_dir, exist_ok=True)
 os.makedirs(settings.temp_dir, exist_ok=True)
 
-# Include v1 API routers (vetting features)
-app.include_router(resumes_v1.router, prefix="/api/v1/resumes", tags=["resumes-v1"])
-app.include_router(candidates_v1.router, prefix="/api/v1/candidates", tags=["candidates-v1"])
-app.include_router(auth_v1.router, prefix="/auth", tags=["authentication-v1"])
+# Include API v1 routers
+app.include_router(resumes_v1.router, prefix="/api/v1/resumes", tags=["resumes"])
+app.include_router(candidates_v1.router, prefix="/api/v1/candidates", tags=["candidates"])
+app.include_router(simple_auth.router, prefix="/api/auth", tags=["auth"])
 if VETTING_ENABLED:
     app.include_router(vetting_v1.router, prefix="/api/v1/vetting", tags=["vetting"])
 
