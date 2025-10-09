@@ -393,7 +393,7 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     file_name=file_name,
                     file_path=permanent_file_path,
                     file_hash=file_hash,
-                    upload_status="pending",
+                    status="pending",  # Changed from upload_status to status
                     raw_text=extracted_text,
                     extracted_data=extracted_data
                 )
