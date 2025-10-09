@@ -357,7 +357,10 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 file_name = resume_data['file_name']
                 
                 # Check if already in database
-                existing = db.query(Resume).filter(Resume.file_hash == file_hash).first()
+                from sqlalchemy import select
+                stmt = select(Resume).filter(Resume.file_hash == file_hash)
+                result = await db.execute(stmt)
+                existing = result.scalar_one_or_none()
                 if existing:
                     failed.append({
                         "file_name": file_name,
