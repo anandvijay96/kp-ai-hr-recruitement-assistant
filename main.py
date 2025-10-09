@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from datetime import datetime
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 import os
 import uuid
 from typing import List
@@ -10,6 +11,7 @@ import logging
 import aiofiles
 
 from core.config import settings
+from core.auth import require_auth, get_current_user
 from core.cache import SimpleCache
 from models.schemas import ResumeAnalysis, JobDescription, AuthenticityScore, MatchingScore
 from services.document_processor import DocumentProcessor
@@ -53,6 +55,14 @@ app = FastAPI(
     title=settings.app_name,
     description="Resume authenticity scanning and JD matching system with OAuth",
     version="2.0.0"
+)
+
+# Add session middleware for authentication
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.secret_key if hasattr(settings, 'secret_key') else "your-secret-key-change-in-production-please",
+    session_cookie="hr_session",
+    max_age=86400  # 24 hours
 )
 
 # Initialize database on startup
@@ -118,24 +128,23 @@ if API_V2_ENABLED:
     app.include_router(api_candidates.router, prefix="/api/candidates", tags=["candidates"])
 
 @app.get("/", response_class=HTMLResponse)
+@require_auth
 async def home(request: Request):
-    """Main dashboard"""
-    return templates.TemplateResponse("index.html", {"request": request})
+    """Main dashboard - requires authentication"""
+    user = await get_current_user(request)
+    return templates.TemplateResponse("index.html", {"request": request, "user": user})
 
 @app.get("/upload", response_class=HTMLResponse)
 async def upload_form(request: Request):
     """Resume upload form"""
     return templates.TemplateResponse("upload.html", {"request": request})
 
-@app.get("/settings", response_class=HTMLResponse)
-async def settings_page(request: Request):
-    """User settings page"""
-    return templates.TemplateResponse("settings.html", {"request": request})
-
-@app.get("/vet-resumes")
-def vet_resumes_page(request: Request):
-    """Resume vetting page - scan without saving to database."""
-    return templates.TemplateResponse("vet_resumes.html", {"request": request})
+@app.get("/vet-resumes", response_class=HTMLResponse)
+@require_auth
+async def vet_resumes_page(request: Request):
+    """Resume vetting page - requires authentication"""
+    user = await get_current_user(request)
+    return templates.TemplateResponse("vet_resumes.html", {"request": request, "user": user})
 
 @app.get("/candidates")
 def candidates_list_page(request: Request):
@@ -182,9 +191,11 @@ async def jobs_management_dashboard(request: Request):
     return templates.TemplateResponse("jobs_management/dashboard.html", {"request": request})
 
 @app.get("/users", response_class=HTMLResponse)
+@require_auth
 async def users_dashboard(request: Request):
-    """User management dashboard."""
-    return templates.TemplateResponse("users/dashboard.html", {"request": request})
+    """User management dashboard - requires authentication"""
+    user = await get_current_user(request)
+    return templates.TemplateResponse("users/dashboard.html", {"request": request, "user": user})
 
 @app.get("/auth/login", response_class=HTMLResponse)
 async def login_page(request: Request):
