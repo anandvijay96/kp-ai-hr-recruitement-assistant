@@ -419,7 +419,7 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     "reason": str(e),
                     "status": "error"
                 })
-                db.rollback()
+                await db.rollback()
         
         return {
             "session_id": session_id,
