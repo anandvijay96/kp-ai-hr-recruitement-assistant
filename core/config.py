@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     temp_dir: str = "temp"
 
     # Database Settings
-    database_url: str = "sqlite+aiosqlite:////tmp/hr_recruitment.db"
+    database_url: str = "sqlite+aiosqlite:///./hr_recruitment.db"
     database_echo: bool = False
     
     # Redis Settings
