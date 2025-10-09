@@ -1,17 +1,29 @@
-from models.db.candidate import Candidate
-from models.db.resume import Resume
-from models.db.education import Education
-from models.db.work_experience import WorkExperience
-from models.db.skill import Skill
-from models.db.candidate_skill import candidate_skills
-from models.db.certification import Certification
+"""
+Database models for the Resume Upload & Vetting feature
+
+NOTE: This module now re-exports models from the consolidated models/database.py
+to maintain backward compatibility with code that imports from models.db
+"""
+
+# Import from consolidated models to avoid duplicate table definitions
+from models.database import (
+    Candidate,
+    Resume,
+    Education,
+    WorkExperience,
+    Skill,
+    Certification,
+    CandidateSkill as candidate_skills,  # Alias for compatibility
+    DuplicateCheck,
+)
 
 __all__ = [
-    "Candidate",
-    "Resume",
-    "Education",
-    "WorkExperience",
-    "Skill",
-    "candidate_skills",
-    "Certification"
+    'Candidate',
+    'Resume',
+    'Education',
+    'WorkExperience',
+    'Skill',
+    'Certification',
+    'candidate_skills',
+    'DuplicateCheck',
 ]
