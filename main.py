@@ -68,10 +68,10 @@ app.add_middleware(
 
 # Initialize database on startup
 @app.on_event("startup")
-def on_startup():
+async def on_startup():
     """Initialize database tables on startup"""
     try:
-        init_db()
+        await init_db()
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
