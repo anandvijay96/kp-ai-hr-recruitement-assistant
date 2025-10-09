@@ -105,7 +105,7 @@ Make this PRD comprehensive but actionable - detailed enough for a developer to 
 
 ### **📝 Prompt 2: Technical Implementation Planning**
 ```
-You are a senior software architect planning the technical implementation for a new feature in our FastAPI-based HR application.
+You are a senior software architect planning the technical implementation for a new feature in our HR application.
 
 For the feature: [FEATURE NAME]
 
@@ -156,7 +156,7 @@ Focus on making this implementable - provide concrete examples of code structure
 
 ### **📝 Prompt 3: Code Implementation**
 ```
-You are an expert Python/FastAPI developer implementing a new feature for an HR recruitment application.
+You are an expert Senior developer implementing a new feature for an HR recruitment application.
 
 Implement the following feature based on the PRD: [FEATURE NAME]
 

@@ -139,7 +139,9 @@ class AuthService:
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Registration error: {str(e)}")
-            raise ValueError("Registration failed")
+            import traceback
+            traceback.print_exc()
+            raise ValueError(f"Registration failed: {str(e)}")
     
     async def login_user(
         self,

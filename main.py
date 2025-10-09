@@ -55,24 +55,65 @@ analysis_cache = SimpleCache(ttl_minutes=30)  # Cache results for 30 minutes
 # Create necessary directories
 os.makedirs(settings.upload_dir, exist_ok=True)
 os.makedirs(settings.results_dir, exist_ok=True)
-os.makedirs(settings.temp_dir, exist_ok=True)
-
-
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
     try:
         # Initialize database
         await init_db()
-        logger.info("Database initialized successfully")
+        logger.info("✓ Database initialized")
         
-        # Connect to Redis
-        await redis_client.connect(settings.redis_url)
-        logger.info("Redis connection established")
+        # Auto-apply migration if needed
+        import sqlite3
         
-        logger.info("Application started successfully")
+        db_path = "hr_recruitment.db"
+        if os.path.exists(db_path):
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            # Check if users table exists first
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+            if not cursor.fetchone():
+                logger.warning("⚠️  Users table doesn't exist - creating...")
+            
+            # Check if status column exists
+            cursor.execute("PRAGMA table_info(users)")
+            columns = [row[1] for row in cursor.fetchall()]
+            
+            if 'status' not in columns:
+                logger.warning("⚠️  Status column missing - Auto-applying migration...")
+                
+                # Read and apply migration
+                sql_file = "migrations/010_create_user_management_tables.sql"
+                if os.path.exists(sql_file):
+                    with open(sql_file, 'r') as f:
+                        sql_script = f.read()
+                    
+                    statements = [s.strip() for s in sql_script.split(';') if s.strip() and not s.strip().startswith('--')]
+                    
+                    applied_count = 0
+                    for statement in statements:
+                        try:
+                            cursor.execute(statement)
+                            applied_count += 1
+                        except sqlite3.OperationalError as e:
+                            if 'duplicate column' not in str(e).lower() and 'already exists' not in str(e).lower():
+                                logger.error(f"Migration error: {e}")
+                    
+                    conn.commit()
+                    logger.info(f"✅ Migration applied successfully! ({applied_count} statements executed)")
+                else:
+                    logger.error("❌ Migration file not found!")
+            else:
+                logger.info("✅ Database schema is up to date")
+            
+            conn.close()
+        
+        logger.info(f"✅ {settings.app_name} started successfully")
     except Exception as e:
-        logger.error(f"Error during startup: {str(e)}")
+        logger.error(f"❌ Error during startup: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
 
 @app.on_event("shutdown")
@@ -192,10 +233,19 @@ async def jobs_audit_log_page(request: Request, job_id: str):
     """Job audit log page"""
     return templates.TemplateResponse("jobs_management/audit_log.html", {"request": request, "job_id": job_id})
 
+@app.get("/setup-check", response_class=HTMLResponse)
+async def setup_check_page(request: Request):
+    """Database setup checker page"""
+    return templates.TemplateResponse("setup_check.html", {"request": request})
+
 @app.get("/users", response_class=HTMLResponse)
 async def users_dashboard_page(request: Request):
     """User Management dashboard page"""
-    return templates.TemplateResponse("users/dashboard.html", {"request": request})
+    import time
+    return templates.TemplateResponse("users/dashboard.html", {
+        "request": request,
+        "cache_bust": int(time.time())  # Force browser to reload JS
+    })
 
 @app.get("/users/{user_id}", response_class=HTMLResponse)
 async def user_detail_page(request: Request, user_id: str):
@@ -507,9 +557,158 @@ async def create_initial_admin():
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to create admin user: {str(e)}")
 
+@app.post("/api/setup/apply-migration")
+async def apply_migration_api():
+    """Apply database migration via API"""
+    import sqlite3
+    import os
+    
+    try:
+        db_path = "hr_recruitment.db"
+        sql_file = "migrations/010_create_user_management_tables.sql"
+        
+        if not os.path.exists(sql_file):
+            raise HTTPException(status_code=404, detail="Migration file not found")
+        
+        # Read migration SQL
+        with open(sql_file, 'r') as f:
+            sql_script = f.read()
+        
+        # Apply migration
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Split and execute statements
+        statements = [s.strip() for s in sql_script.split(';') if s.strip() and not s.strip().startswith('--')]
+        
+        results = []
+        for statement in statements:
+            try:
+                cursor.execute(statement)
+                if 'CREATE TABLE' in statement.upper():
+                    table_name = statement.split('CREATE TABLE')[1].split('(')[0].strip()
+                    results.append(f"Created table: {table_name}")
+                elif 'ALTER TABLE' in statement.upper() and 'ADD COLUMN' in statement.upper():
+                    results.append("Added column to users table")
+            except sqlite3.OperationalError as e:
+                if 'duplicate column' in str(e).lower() or 'already exists' in str(e).lower():
+                    results.append(f"Skipped (already exists): {str(e)}")
+                else:
+                    results.append(f"Warning: {str(e)}")
+        
+        conn.commit()
+        conn.close()
+        
+        return {
+            "success": True,
+            "message": "Migration applied successfully!",
+            "details": results
+        }
+        
+    except Exception as e:
+        import traceback
+        return {
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+
+@app.get("/api/setup/check-database")
+async def check_database():
+    """Check database setup status"""
+    import sqlite3
+    import os
+    
+    try:
+        db_path = "hr_recruitment.db"
+        if not os.path.exists(db_path):
+            return {
+                "database_exists": False,
+                "error": "Database file not found",
+                "action_needed": "Run: python apply_migration.py migrations/010_create_user_management_tables.sql"
+            }
+        
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Check if users table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+        users_table_exists = cursor.fetchone() is not None
+        
+        # Check if users table has status column
+        has_status_column = False
+        if users_table_exists:
+            cursor.execute("PRAGMA table_info(users)")
+            columns = [row[1] for row in cursor.fetchall()]
+            has_status_column = 'status' in columns
+        
+        # Check if admin user exists
+        admin_exists = False
+        if users_table_exists:
+            cursor.execute("SELECT COUNT(*) FROM users WHERE email = 'admin@example.com'")
+            admin_exists = cursor.fetchone()[0] > 0
+        
+        conn.close()
+        
+        status = {
+            "database_exists": True,
+            "users_table_exists": users_table_exists,
+            "status_column_exists": has_status_column,
+            "admin_user_exists": admin_exists,
+            "migration_needed": not has_status_column,
+            "columns": columns if users_table_exists else []
+        }
+        
+        if not has_status_column:
+            status["action_needed"] = "Run: python apply_migration.py migrations/010_create_user_management_tables.sql"
+        elif not admin_exists:
+            status["action_needed"] = "Run: python create_admin_user.py OR use POST /api/setup/initial-admin"
+        else:
+            status["status"] = "ready"
+            status["action_needed"] = "None - system is ready!"
+        
+        return status
+        
+    except Exception as e:
+        return {
+            "error": str(e),
+            "traceback": str(e.__class__.__name__)
+        }
+
 @app.post("/api/setup/create-user-no-auth")
 async def create_user_no_auth(user_data: dict):
     """TEMPORARY: Create user without authentication for debugging"""
+    import sqlite3
+    
+    # CRITICAL: Fix database schema FIRST before any SQLAlchemy operations
+    try:
+        db_path = "hr_recruitment.db"
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Check if status column exists
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [row[1] for row in cursor.fetchall()]
+        
+        if 'status' not in columns:
+            logger.info("🔧 Applying missing columns to users table...")
+            cursor.execute("ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active'")
+            cursor.execute("ALTER TABLE users ADD COLUMN deactivation_reason TEXT")
+            cursor.execute("ALTER TABLE users ADD COLUMN last_activity_at TIMESTAMP")
+            cursor.execute("ALTER TABLE users ADD COLUMN locked_until TIMESTAMP")
+            conn.commit()
+            logger.info("✅ Database schema updated successfully!")
+        
+        conn.close()
+    except sqlite3.OperationalError as e:
+        if 'duplicate column' not in str(e).lower():
+            logger.error(f"Schema fix error: {e}")
+            raise HTTPException(status_code=500, detail=f"Database schema error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Database check error: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    
+    # NOW import and use SQLAlchemy
     from core.database import get_db
     from models.database import User
     from services.password_service import PasswordService
@@ -530,12 +729,29 @@ async def create_user_no_auth(user_data: dict):
         if result.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Email already in use")
         
-        # Get admin user as creator
+        # Get admin user as creator (optional - create if doesn't exist)
         admin_result = await db.execute(select(User).where(User.email == "admin@example.com"))
         admin_user = admin_result.scalar_one_or_none()
         
+        # If no admin exists, create one first
         if not admin_user:
-            raise HTTPException(status_code=500, detail="Admin user not found. Run initial setup first.")
+            logger.info("Creating initial admin user...")
+            password_service_temp = PasswordService()
+            admin_user = User(
+                id=str(uuid.uuid4()),
+                full_name="Admin User",
+                email="admin@example.com",
+                password_hash=password_service_temp.hash_password("Admin@123"),
+                role="admin",
+                status="active",
+                is_active=True,
+                email_verified=True,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            db.add(admin_user)
+            await db.flush()
+            logger.info("✅ Admin user created automatically!")
         
         # Generate password
         password_service = PasswordService()

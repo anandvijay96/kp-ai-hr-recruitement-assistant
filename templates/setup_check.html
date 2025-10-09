@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Setup Checker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔍 Database Setup Checker</h1>
+        <p>This page will check if your database is properly set up for the User Management feature.</p>
+        
+        <button onclick="checkDatabase()">Check Database Status</button>
+        <button onclick="window.location.href='/users'">Go to User Management</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function checkDatabase() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="loading">Checking database...</div>';
+            
+            try {
+                const response = await fetch('/api/setup/check-database');
+                const data = await response.json();
+                
+                let html = '<h2>Database Status</h2>';
+                
+                // Database exists check
+                if (!data.database_exists) {
+                    html += '<div class="status error">❌ Database file does not exist!</div>';
+                    html += '<p><strong>Action needed:</strong> ' + data.action_needed + '</p>';
+                    resultDiv.innerHTML = html;
+                    return;
+                }
+                
+                html += '<div class="status success">✅ Database file exists</div>';
+                
+                // Users table check
+                if (data.users_table_exists) {
+                    html += '<div class="status success">✅ Users table exists</div>';
+                } else {
+                    html += '<div class="status error">❌ Users table does not exist</div>';
+                }
+                
+                // Status column check
+                if (data.status_column_exists) {
+                    html += '<div class="status success">✅ Status column exists (migration applied)</div>';
+                } else {
+                    html += '<div class="status error">❌ Status column missing (migration NOT applied)</div>';
+                    html += '<div class="status warning"><strong>This is why you\'re getting errors!</strong></div>';
+                }
+                
+                // Admin user check
+                if (data.admin_user_exists) {
+                    html += '<div class="status success">✅ Admin user exists</div>';
+                } else {
+                    html += '<div class="status warning">⚠️ Admin user does not exist</div>';
+                }
+                
+                // Migration needed
+                if (data.migration_needed) {
+                    html += '<h3 style="color: #dc3545;">⚠️ Migration Required!</h3>';
+                    html += '<p><strong>You need to run the migration to fix the errors.</strong></p>';
+                    html += '<div style="margin: 20px 0;">';
+                    html += '<button onclick="applyMigration()" style="background: #28a745; font-size: 18px; padding: 15px 30px;">🔧 Apply Migration Now (One Click Fix!)</button>';
+                    html += '</div>';
+                    html += '<details><summary>Or run manually in terminal</summary>';
+                    html += '<pre>' + data.action_needed + '</pre>';
+                    html += '<p>Run this command in your WSL terminal:</p>';
+                    html += '<pre>cd /mnt/c/Users/HP/kp-ai-hr-recruitement-assistant\n';
+                    html += 'source venv/bin/activate\n';
+                    html += 'python apply_migration.py migrations/010_create_user_management_tables.sql</pre>';
+                    html += '</details>';
+                } else if (!data.admin_user_exists) {
+                    html += '<h3 style="color: #f0ad4e;">Create Admin User</h3>';
+                    html += '<button onclick="createAdmin()">Create Admin User Now</button>';
+                } else {
+                    html += '<h3 style="color: #28a745;">✅ Everything is Ready!</h3>';
+                    html += '<p>Your database is properly set up. You can now use the User Management feature.</p>';
+                    html += '<button onclick="window.location.href=\'/users\'">Go to User Management</button>';
+                }
+                
+                // Show column details
+                if (data.columns && data.columns.length > 0) {
+                    html += '<details><summary>Database Columns (' + data.columns.length + ')</summary>';
+                    html += '<pre>' + JSON.stringify(data.columns, null, 2) + '</pre>';
+                    html += '</details>';
+                }
+                
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="status error">❌ Error checking database: ' + error.message + '</div>';
+            }
+        }
+        
+        async function applyMigration() {
+            const resultDiv = document.getElementById('result');
+            if (!confirm('This will apply the database migration. Continue?')) {
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="loading">Applying migration... Please wait...</div>';
+            
+            try {
+                const response = await fetch('/api/setup/apply-migration', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Migration applied successfully!\n\n' + data.details.join('\n'));
+                    checkDatabase(); // Recheck status
+                } else {
+                    alert('❌ Migration failed:\n' + data.error);
+                    resultDiv.innerHTML = '<div class="status error">Migration failed: ' + data.error + '</div>';
+                }
+            } catch (error) {
+                alert('Error applying migration: ' + error.message);
+                resultDiv.innerHTML = '<div class="status error">Error: ' + error.message + '</div>';
+            }
+        }
+        
+        async function createAdmin() {
+            try {
+                const response = await fetch('/api/setup/initial-admin', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                alert('Admin user created!\nEmail: ' + data.email + '\nPassword: ' + data.password);
+                checkDatabase();
+            } catch (error) {
+                alert('Error creating admin: ' + error.message);
+            }
+        }
+        
+        // Auto-check on page load
+        window.onload = () => checkDatabase();
+    </script>
+</body>
+</html>

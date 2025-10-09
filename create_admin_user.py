@@ -55,13 +55,14 @@ def create_admin_user():
         
         cursor.execute("""
             INSERT INTO users (
-                id, full_name, email, password_hash, role, status, 
+                id, full_name, email, mobile, password_hash, role, status, 
                 is_active, email_verified, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             user_id,
             "Admin User",
             "admin@example.com",
+            "+919999999999",  # Default mobile number
             password_hash,
             "admin",
             "active",

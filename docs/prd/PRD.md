@@ -333,6 +333,7 @@ This PRD outlines requirements for an AI-powered HR Resume Tracker portal that s
 - Application tracking
 - Bulk operations
 - Audit logging
+- Post job to external portals (LinkedIn, Naukri, Indeed)
 
 **Data Schema** (job_analytics table):
 ```
