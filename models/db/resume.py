@@ -1,6 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, func
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import TSVECTOR
 from core.database import Base
 
 class Resume(Base):
@@ -17,7 +16,7 @@ class Resume(Base):
     upload_status = Column(String(20), nullable=False, default="pending", index=True)  # pending, processing, completed, failed
     raw_text = Column(Text, nullable=True)
     extracted_data = Column(JSON, nullable=True)  # Store extracted structured data as JSON
-    search_vector = Column(TSVECTOR, nullable=True)  # Full-text search vector
+    search_vector = Column(Text, nullable=True)  # Full-text search vector (Text for SQLite compatibility)
     
     # Authenticity Analysis Results
     authenticity_score = Column(Integer, nullable=True)  # Overall score 0-100
