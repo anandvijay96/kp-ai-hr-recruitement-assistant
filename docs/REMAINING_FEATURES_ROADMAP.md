@@ -1,33 +1,103 @@
 # Remaining Features Roadmap
-**Generated:** October 8, 2025 at 11:14 PM IST  
+**Last Updated:** October 10, 2025 at 2:16 AM IST  
 **Branch:** feature/resume-upload  
-**Status:** Post Feature 2 Enhancements
+**Status:** Post Vetting System Implementation
 
 ---
 
-## 🎉 Today's Accomplishments (17 Commits)
+## 🎉 Recent Accomplishments (Oct 8-10, 2025)
 
-### ✅ Feature 2: Resume Upload & Data Extraction - **MAJOR PROGRESS**
+### ✅ Feature 2: Resume Upload & Data Extraction - **COMPLETE** ✨
+**Status:** 100% Complete | **Completion Date:** Oct 10, 2025
+
+#### **2.1 Resume Vetting System** ✅
+- ✅ **Scan & analyze before upload** - Authenticity scoring at vetting stage
+- ✅ **Approve/Reject workflow** - Manual review before database upload
+- ✅ **Bulk vetting UI** - Process multiple resumes simultaneously
+- ✅ **Session-based vetting** - Temporary storage for review
+- ✅ **Duplicate detection at vetting** - Prevent duplicates before upload
+- ✅ **Bootstrap modals** - Professional confirmation/success/error dialogs
+- ✅ **Detailed duplicate feedback** - Shows which resumes were skipped and why
+
+#### **2.2 Resume Upload & Processing** ✅
 - ✅ **Bulk upload system** (up to 50 files simultaneously)
 - ✅ **Duplicate detection** (4 strategies: email, phone, content similarity, file hash)
-- ✅ **Enhanced data extraction** (95%+ accuracy target)
+- ✅ **Enhanced data extraction** (working, needs improvement)
   - 200+ skills in categorized database
   - Advanced degree/certification patterns
   - Education with GPA, field of study, dates
-  - Work experience with responsibilities, dates
-  - GitHub, portfolio, location extraction
+  - Work experience extraction (needs refinement)
+  - GitHub, portfolio, location extraction (needs refinement)
   - Professional summary extraction
-- ✅ **Database models:** Added Certification model, enhanced Candidate model
-- ✅ **UI enhancements:** 
-  - Fixed LinkedIn verification display (separate Resume/Online sections)
-  - Fixed batch UI flag overflow
-  - Fixed LinkedIn URL protocol prefix
+- ✅ **Background processing** - Celery tasks for async processing
+- ✅ **Database models:** Certification model, enhanced Candidate model
+- ✅ **Data preservation** - Vetting data stored and reused (partial)
+
+#### **2.3 Resume Preview** ✅
+- ✅ **In-browser PDF viewer** with zoom controls
+- ✅ **Text file preview** with full content display
+- ✅ **Resume metadata sidebar**
+- ✅ **Download functionality**
+- ✅ **Delete resume action**
+
+#### **2.4 Candidate Management** ✅
+- ✅ **Candidate detail page** - Full profile view
+- ✅ **Skills display** - Fixed object rendering issue
+- ✅ **Work experience timeline**
+- ✅ **Education timeline** - Fixed date display
+- ✅ **Resume list with actions** - View/Download buttons
+- ✅ **Authenticity scores** - Display from vetting data
+- ✅ **Candidate search page** - List all candidates
+- ✅ **Fixed "Unknown" names** - Migration script for old data
 
 ### ✅ Feature 3: Advanced Resume Filtering - **PARTIAL**
-- ✅ **Database integration** - Replaced mock data with real queries
+**Status:** 40% Complete | **Remaining:** 60%
+
+- ✅ **Database integration** - Real queries with SQLAlchemy
 - ✅ **SQLAlchemy joins** with eager loading
 - ✅ **Dynamic filter options** from database
 - ✅ **Pagination support**
+- ✅ **Basic search interface**
+
+---
+
+## ⚠️ **KNOWN ISSUES & TECHNICAL DEBT**
+
+### **Feature 2 Enhancements Needed** (See: CANDIDATE_DETAIL_PAGE_IMPROVEMENTS.md)
+
+#### **🔴 CRITICAL - Data Consistency Issues**
+- [ ] **Preserve vetting authenticity scores** (HIGH PRIORITY)
+  - Current: Vetting shows 70+ score, detail page shows 37
+  - Issue: Background task re-analyzes instead of using vetting data
+  - Fix: Store vetting scores in Resume record during upload
+  - Impact: User confusion, inconsistent data
+
+- [ ] **Fix data extraction quality** (HIGH PRIORITY)
+  - Work experience descriptions contain entire resume text
+  - Location field sometimes shows candidate name
+  - Need to improve `EnhancedResumeExtractor` logic
+
+#### **🟡 MEDIUM - Candidate Detail Page**
+- [ ] **View Detailed Analysis button** - Not implemented
+  - Create `/candidates/{id}/analysis` page
+  - Show authenticity breakdown from vetting
+  - Display red flags, recommendations
+
+- [ ] **Edit candidate details** - Not implemented
+  - Edit personal information
+  - Edit skills, experience, education
+  - Validation and update API
+
+- [ ] **Quick Actions** - UI only, no backend
+  - Schedule Interview
+  - Add to Shortlist
+  - Send Email
+  - Export Profile
+
+#### **🟢 LOW - Nice to Have**
+- [ ] **Resume comparison** - Multiple resumes per candidate
+- [ ] **Activity timeline** - Track all candidate interactions
+- [ ] **JD Match scores** - Not currently stored
 
 ---
 
@@ -35,20 +105,18 @@
 
 ### 🔥 **HIGH PRIORITY - Week 1-2**
 
-#### **Feature 2 Completion** (1 week)
-**Status:** 95% Complete | **Remaining:** 5%
+#### **Feature 2 Technical Debt Resolution** (3-4 days)
+**Status:** Critical fixes needed before moving forward
 
-- [ ] **Progress Tracking UI** (2 days)
-  - Real-time batch upload progress
-  - WebSocket or polling implementation
-  - Progress bars per file
-  - Status indicators (processing, completed, failed)
-  - Cancel batch operation
+- [ ] **Fix authenticity score preservation** (1 day)
+  - Modify `upload_approved` endpoint to store vetting scores
+  - Update background task to skip re-analysis if data exists
+  - Verify scores match between vetting and detail page
 
-- [ ] **Resume Preview** (1 day)
-  - View original resume in browser
-  - PDF/DOC viewer integration
-  - Download original file
+- [ ] **Improve data extraction** (2 days)
+  - Fix work experience description extraction
+  - Fix location vs name parsing
+  - Test with diverse resume formats
 
 ---
 
@@ -434,38 +502,66 @@ Based on today's work, we need to create migrations for:
 
 ---
 
-## 📊 **Updated Feature Completion Status**
+## 📊 **Feature Completion Status**
 
-| Feature | Before Today | After Today | Remaining |
-|---------|--------------|-------------|-----------|
-| **Feature 1:** Authenticity Analysis | 100% | 100% | 0% ✅ |
-| **Feature 2:** Resume Upload | 60% | **95%** | 5% 🔥 |
-| **Feature 3:** Advanced Filtering | 40% | **75%** | 25% 🔥 |
-| **Feature 4:** Candidate Tracking | 0% | 0% | 100% |
-| **Feature 5:** Manual Rating | 0% | 0% | 100% |
-| **Feature 6:** Job Creation | N/A | N/A | Other Branch 🔒 |
-| **Feature 7:** AI Matching | 30% | 30% | 70% ⚠️ Blocked |
-| **Feature 8:** Jobs Dashboard | N/A | N/A | Other Branch 🔒 |
-| **Feature 9:** Ranking | 0% | 0% | 100% ⚠️ Blocked |
-| **Feature 10:** User Management | N/A | N/A | Other Branch 🔒 |
+| Feature | Oct 8 | Oct 10 | Status | Notes |
+|---------|-------|--------|--------|-------|
+| **Feature 1:** Authenticity Analysis | 100% | 100% | ✅ Complete | Production ready |
+| **Feature 2:** Resume Upload & Vetting | 60% | **100%** | ✅ Complete | Has tech debt (see above) |
+| **Feature 3:** Advanced Filtering | 40% | **40%** | 🚧 In Progress | Need FTS, export |
+| **Feature 4:** Candidate Tracking | 0% | 0% | ⏳ Not Started | Depends on F6 |
+| **Feature 5:** Manual Rating | 0% | 0% | ⏳ Not Started | Independent |
+| **Feature 6:** Job Creation | N/A | N/A | 🔒 Other Branch | Blocking F4, F7 |
+| **Feature 7:** AI Matching | 30% | 30% | ⚠️ Blocked | Needs F6 |
+| **Feature 8:** Jobs Dashboard | N/A | N/A | 🔒 Other Branch | Depends on F6 |
+| **Feature 9:** Ranking | 0% | 0% | ⚠️ Blocked | Needs F5, F7 |
+| **Feature 10:** User Management | N/A | N/A | 🔒 Other Branch | Independent |
 
-**Overall Progress:** 25% → **45%** (20% increase today!) 🎉
+**Overall Progress:** 25% (Oct 8) → **50%** (Oct 10) 🎉
+
+**Key Achievements:**
+- ✅ Feature 2 functionally complete (vetting system, upload, preview, candidate management)
+- ⚠️ Technical debt identified and documented
+- 📝 Candidate detail page improvements documented
 
 ---
 
-## 🎉 **Summary**
+## 🎉 **Summary (Oct 8-10, 2025)**
 
-### **Today's Achievement:**
-- **17 commits** pushed
-- **Major progress** on Features 2 & 3
-- **Production-ready** bulk upload, duplicate detection, and enhanced extraction
-- **20% overall progress increase**
+### **Major Achievements:**
+- ✅ **Feature 2 Complete** - Resume vetting, upload, preview, candidate management
+- ✅ **Vetting System** - Scan → Approve/Reject → Upload workflow
+- ✅ **Duplicate Detection** - Working at vetting stage with clear feedback
+- ✅ **Candidate Detail Page** - Full profile view with skills, experience, education
+- ✅ **Resume Preview** - In-browser PDF viewer with download
+- ✅ **Data Migration** - Fixed "Unknown" names for existing candidates
+- ✅ **25% → 50% overall progress** (25% increase in 2 days!)
 
-### **Immediate Next Steps:**
-I recommend **Option A** - Complete Feature 3 (Filtering) because:
-- ✅ No blockers or dependencies
-- ✅ Builds directly on today's database integration work
-- ✅ Critical P0 feature for recruiters
-- ✅ Enables powerful resume search capabilities
+### **Technical Debt Identified:**
+- ⚠️ Authenticity scores inconsistent (vetting vs detail page)
+- ⚠️ Data extraction quality needs improvement
+- ⚠️ Candidate detail page needs enhancements (edit, analysis, quick actions)
 
-Would you like to proceed with Feature 3 completion (Full-Text Search + Boolean Operators + Export)?
+### **Recommended Next Steps:**
+
+**Option A: Fix Technical Debt First** (RECOMMENDED)
+- Fix authenticity score preservation (1 day)
+- Improve data extraction quality (2 days)
+- Implement "View Detailed Analysis" page (1 day)
+- **Timeline:** 4 days | **Impact:** HIGH for data consistency
+
+**Option B: Continue with Feature 3** (Alternative)
+- Complete Full-Text Search (3 days)
+- Add Boolean operators (2 days)
+- Build export functionality (2 days)
+- **Timeline:** 7 days | **Impact:** HIGH for recruiter productivity
+
+**Option C: Start Feature 5** (Rating System)
+- Independent feature, no blockers
+- Build rating database & API (3 days)
+- Create rating UI (2 days)
+- **Timeline:** 5 days | **Impact:** MEDIUM for evaluation
+
+---
+
+**Recommendation:** Address technical debt (Option A) before moving to new features to ensure data consistency and user trust.
