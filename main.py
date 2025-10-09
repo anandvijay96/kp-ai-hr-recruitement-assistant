@@ -28,7 +28,7 @@ except ImportError:
     VETTING_ENABLED = False
     logger = logging.getLogger(__name__)
     logger.warning("Vetting module not available")
-from models.database import init_db
+from core.database import init_db
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
