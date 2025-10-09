@@ -511,7 +511,7 @@
             // Skills
             if (candidate.skills && candidate.skills.length > 0) {
                 const skillsHtml = candidate.skills.map(skill => 
-                    `<span class="skill-badge">${skill}</span>`
+                    `<span class="skill-badge">${typeof skill === 'object' ? skill.name : skill}</span>`
                 ).join('');
                 $('#candidateSkills').html(skillsHtml);
             } else {
@@ -553,7 +553,7 @@
                             <div class="timeline-subtitle">${edu.institution || '-'}</div>
                             <div class="text-muted small">
                                 ${edu.field_of_study ? `${edu.field_of_study} • ` : ''}
-                                ${edu.graduation_year || '-'}
+                                ${formatDate(edu.start_date)} - ${formatDate(edu.end_date)}
                                 ${edu.grade ? ` • GPA: ${edu.grade}` : ''}
                             </div>
                         </div>
@@ -612,9 +612,27 @@
                 $('#candidateResumes').html('<p class="text-muted">No resumes uploaded</p>');
             }
             
-            // Assessment Scores
-            updateScoreDisplay('authenticityScore', candidate.authenticity_score);
-            updateScoreDisplay('matchScore', candidate.jd_match_score);
+            // Assessment Scores - Use latest resume's scores
+            if (candidate.resumes && candidate.resumes.length > 0) {
+                const latestResume = candidate.resumes.reduce((latest, resume) => {
+                    return new Date(resume.uploaded_at) > new Date(latest.uploaded_at) ? resume : latest;
+                });
+                updateScoreDisplay('authenticityScore', latestResume.authenticity_score);
+                updateScoreDisplay('matchScore', 0); // JD match not stored in candidate
+            } else {
+                updateScoreDisplay('authenticityScore', null);
+                updateScoreDisplay('matchScore', null);
+            }
+        }
+        
+        // View resume
+        function viewResume(resumeId) {
+            window.open(`/resumes/${resumeId}/preview`, '_blank');
+        }
+        
+        // Download resume
+        function downloadResume(resumeId) {
+            window.location.href = `/api/v1/resumes/${resumeId}/download`;
         }
         
         // Update score display with color coding

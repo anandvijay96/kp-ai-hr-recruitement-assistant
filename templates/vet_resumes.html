@@ -806,7 +806,9 @@
                 
                 const data = await response.json();
                 
-                if (data.uploaded === 0 && data.failed.length === 0) {
+                const failedList = data.failed_resumes || [];
+                
+                if (data.uploaded === 0 && failedList.length === 0) {
                     showErrorModal(`No resumes were uploaded.`);
                     return;
                 }
@@ -819,11 +821,11 @@
                     message += `<p><i class="bi bi-info-circle text-info me-2"></i>They are now being processed in the background.</p>`;
                 }
                 
-                if (data.failed.length > 0) {
+                if (failedList.length > 0) {
                     message += `<hr><div class="alert alert-warning mb-0">`;
-                    message += `<h6><i class="bi bi-exclamation-triangle me-2"></i>Skipped Resumes (${data.failed.length})</h6>`;
+                    message += `<h6><i class="bi bi-exclamation-triangle me-2"></i>Skipped Resumes (${failedList.length})</h6>`;
                     message += `<ul class="mb-0 small">`;
-                    data.failed.forEach(fail => {
+                    failedList.forEach(fail => {
                         const icon = fail.status === 'duplicate' ? '🔄' : '❌';
                         message += `<li>${icon} <strong>${fail.file_name}</strong>: ${fail.reason}</li>`;
                     });
