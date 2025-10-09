@@ -3,7 +3,7 @@ import hashlib
 from datetime import datetime
 from sqlalchemy.orm import Session
 from core.celery_app import celery_app
-from core.database import get_async_session
+from core.database import SessionLocal
 from models.db import Resume, Candidate, Education, WorkExperience, Skill, Certification
 from services.document_processor import DocumentProcessor
 from services.enhanced_resume_extractor import EnhancedResumeExtractor
