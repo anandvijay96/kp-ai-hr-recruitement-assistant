@@ -134,6 +134,9 @@ class Resume(Base):
     # Candidate Link (NEW)
     candidate_id = Column(String(36), ForeignKey("candidates.id", ondelete="SET NULL"), index=True)
     
+    # Relationship
+    candidate = relationship("Candidate", back_populates="resumes")
+    
     # Parsed Data
     extracted_text = Column(Text)
     parsed_data = Column(JSON)  # Use JSON for SQLite, JSONB for PostgreSQL
@@ -205,7 +208,6 @@ class BulkUploadSession(Base):
         CheckConstraint("status IN ('in_progress', 'completed', 'cancelled', 'failed')", name="chk_session_status"),
     )
 
-
 class Candidate(Base):
     """Candidate model for storing candidate information"""
     __tablename__ = "candidates"
@@ -228,8 +230,11 @@ class Candidate(Base):
     created_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"))
     
     # Relationships
+    resumes = relationship("Resume", back_populates="candidate", foreign_keys="Resume.candidate_id")
+    skills = relationship("CandidateSkill")
     education = relationship("Education", back_populates="candidate", cascade="all, delete-orphan")
-    experience = relationship("WorkExperience", back_populates="candidate", cascade="all, delete-orphan")
+    work_experience = relationship("WorkExperience", back_populates="candidate", cascade="all, delete-orphan")  # Add alias
+    experience = relationship("WorkExperience", back_populates="candidate", cascade="all, delete-orphan", overlaps="work_experience")
     certifications = relationship("Certification", back_populates="candidate", cascade="all, delete-orphan")
     
     __table_args__ = (

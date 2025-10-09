@@ -389,17 +389,27 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 extracted_data = scan_result.get('extracted_data', {})
                 
                 # Create resume record with extracted data
+                # Get file info
+                file_size = os.path.getsize(permanent_file_path)
+                file_ext = os.path.splitext(file_name)[1].lower().replace('.', '')
+                
                 resume = Resume(
                     file_name=file_name,
+                    original_file_name=file_name,
                     file_path=permanent_file_path,
+                    file_size=file_size,
+                    file_type=file_ext,
                     file_hash=file_hash,
-                    status="pending",  # Changed from upload_status to status
-                    raw_text=extracted_text,
-                    extracted_data=extracted_data
+                    mime_type=f"application/{file_ext}",
+                    status="uploaded",
+                    processing_status="pending",
+                    extracted_text=extracted_text,
+                    parsed_data=extracted_data,
+                    uploaded_by="system"  # For MVP, use system user
                 )
                 db.add(resume)
-                db.commit()
-                db.refresh(resume)
+                await db.commit()
+                await db.refresh(resume)
                 
                 # Trigger background processing
                 process_resume.delay(resume.id)
