@@ -124,13 +124,20 @@ You should see the enhanced dashboard with 8 feature cards!
 
 ## ⚠️ Known Issues
 
-### Current Import Error
+### Fixed Import Error ✅
 ```
 sqlalchemy.exc.InvalidRequestError: The asyncio extension requires an async driver
 ```
 
-**Cause:** `aiosqlite` package not installed  
-**Solution:** Run `pip install -r requirements.txt`
+**Cause:** `.env` file had incorrect database URL format (`sqlite://` instead of `sqlite+aiosqlite://`)  
+**Solution:** ✅ **FIXED** - Updated `.env` to use `sqlite+aiosqlite:///./hr_recruitment.db`
+
+**Verification:**
+```bash
+python test_import.py
+```
+
+This should now show all imports successful!
 
 ### Other Issues to Watch
 1. **Authenticity Score Inconsistency** (from vetting vs detail page)
