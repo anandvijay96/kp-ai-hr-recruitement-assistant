@@ -89,6 +89,7 @@ async def scan_resume(
         candidate_name = None
         candidate_email = None
         candidate_phone = None
+        extracted_data = None
         try:
             extracted_data = resume_data_extractor.extract_all(extracted_text)
             if extracted_data:
@@ -112,14 +113,16 @@ async def scan_resume(
         if job_description:
             matching_result = jd_matcher.match(extracted_text, job_description)
         
-        # Build scan result
+        # Build scan result (INCLUDE extracted_data for later use)
         scan_result = {
             "filename": file.filename,
             "file_hash": file_hash,
             "file_size": len(content),
             "authenticity_score": authenticity_result,
             "matching_score": matching_result,
-            "extracted_text_length": len(extracted_text)
+            "extracted_text_length": len(extracted_text),
+            "extracted_text": extracted_text,  # Store for database upload
+            "extracted_data": extracted_data   # Store candidate info for database upload
         }
         
         # Store in vetting session
@@ -377,12 +380,19 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 permanent_file_path = os.path.join(settings.upload_dir, f"{uuid.uuid4()}_{file_name}")
                 shutil.copy2(temp_file_path, permanent_file_path)
                 
-                # Create resume record
+                # Get extracted data from scan result
+                scan_result = resume_data.get('scan_result', {})
+                extracted_text = scan_result.get('extracted_text', '')
+                extracted_data = scan_result.get('extracted_data', {})
+                
+                # Create resume record with extracted data
                 resume = Resume(
                     file_name=file_name,
                     file_path=permanent_file_path,
                     file_hash=file_hash,
-                    upload_status="pending"
+                    upload_status="pending",
+                    raw_text=extracted_text,
+                    extracted_data=extracted_data
                 )
                 db.add(resume)
                 db.commit()

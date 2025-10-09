@@ -141,6 +141,55 @@
         </div>
     </div>
 
+    <!-- Success Modal -->
+    <div class="modal fade" id="uploadSuccessModal" tabindex="-1" aria-labelledby="uploadSuccessModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="uploadSuccessModalLabel">
+                        <i class="bi bi-check-circle-fill me-2"></i>Upload Successful!
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
+                    </div>
+                    <div id="uploadSuccessMessage"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="location.reload()">Stay Here</button>
+                    <button type="button" class="btn btn-primary" onclick="window.location.href='/candidates'">
+                        <i class="bi bi-people me-1"></i>View Candidates
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div class="modal fade" id="uploadErrorModal" tabindex="-1" aria-labelledby="uploadErrorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="uploadErrorModalLabel">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Upload Failed
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <i class="bi bi-x-circle text-danger" style="font-size: 4rem;"></i>
+                    </div>
+                    <div id="uploadErrorMessage"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let sessionId = null;
@@ -716,29 +765,42 @@
                 
                 if (!response.ok) {
                     const error = await response.json();
-                    alert(`Upload failed: ${error.detail || 'Unknown error'}`);
+                    showErrorModal(`Upload failed: ${error.detail || 'Unknown error'}`);
                     return;
                 }
                 
                 const data = await response.json();
                 
                 if (data.uploaded === 0) {
-                    alert('No resumes were uploaded. ' + (data.failed.length > 0 ? `${data.failed.length} failed.` : ''));
+                    showErrorModal(`No resumes were uploaded. ${data.failed.length > 0 ? `${data.failed.length} failed.` : ''}`);
                     return;
                 }
                 
-                alert(`Successfully uploaded ${data.uploaded} resume(s) to database!\n\nThey are now being processed in the background.\n\nFailed: ${data.failed.length}`);
+                // Show success modal with details
+                const message = `
+                    <p class="lead"><strong>${data.uploaded}</strong> resume(s) successfully uploaded to database!</p>
+                    <hr>
+                    <p><i class="bi bi-info-circle text-info me-2"></i>They are now being processed in the background.</p>
+                    ${data.failed.length > 0 ? `<p class="text-warning"><i class="bi bi-exclamation-triangle me-2"></i><strong>${data.failed.length}</strong> resume(s) failed to upload.</p>` : ''}
+                `;
+                showSuccessModal(message);
                 
-                // Redirect to candidates page to see the results
-                if (confirm('Go to Candidates page to view uploaded resumes?')) {
-                    window.location.href = '/candidates';
-                } else {
-                    location.reload();
-                }
             } catch (error) {
                 console.error('Upload error:', error);
-                alert('Upload failed: ' + error.message);
+                showErrorModal('Upload failed: ' + error.message);
             }
+        }
+
+        function showSuccessModal(message) {
+            document.getElementById('uploadSuccessMessage').innerHTML = message;
+            const modal = new bootstrap.Modal(document.getElementById('uploadSuccessModal'));
+            modal.show();
+        }
+
+        function showErrorModal(message) {
+            document.getElementById('uploadErrorMessage').innerHTML = `<p class="text-danger">${message}</p>`;
+            const modal = new bootstrap.Modal(document.getElementById('uploadErrorModal'));
+            modal.show();
         }
 
         async function updateStats() {
