@@ -6,30 +6,52 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Create async engine
-engine = create_async_engine(
-    settings.database_url,
-    echo=settings.debug,
-    pool_pre_ping=True,
-    future=True
-)
-
-# Create session factory
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autoflush=False,
-    autocommit=False
-)
-
 # Base class for models
 Base = declarative_base()
+
+# Lazy initialization - will be created on first access
+_engine = None
+_async_session_local = None
+
+
+def get_engine():
+    """Get or create the async engine (lazy initialization)"""
+    global _engine
+    if _engine is None:
+        logger.info(f"Creating async engine with URL: {settings.database_url}")
+        _engine = create_async_engine(
+            settings.database_url,
+            echo=settings.debug,
+            pool_pre_ping=True,
+            future=True,
+            connect_args={"check_same_thread": False}  # For SQLite
+        )
+    return _engine
+
+
+def get_async_session():
+    """Get or create the session factory (lazy initialization)"""
+    global _async_session_local
+    if _async_session_local is None:
+        _async_session_local = async_sessionmaker(
+            get_engine(),
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autoflush=False,
+            autocommit=False
+        )
+    return _async_session_local
+
+
+# Create module-level references (these trigger lazy init when accessed)
+engine = get_engine()
+AsyncSessionLocal = get_async_session()
 
 
 async def get_db():
     """Dependency for getting database session"""
-    async with AsyncSessionLocal() as session:
+    session_maker = get_async_session()
+    async with session_maker() as session:
         try:
             yield session
         finally:
@@ -38,12 +60,14 @@ async def get_db():
 
 async def init_db():
     """Initialize database tables"""
-    async with engine.begin() as conn:
+    eng = get_engine()
+    async with eng.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables created successfully")
 
 
 async def close_db():
     """Close database connections"""
-    await engine.dispose()
+    eng = get_engine()
+    await eng.dispose()
     logger.info("Database connections closed")
