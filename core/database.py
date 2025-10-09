@@ -9,6 +9,24 @@ logger = logging.getLogger(__name__)
 # Base class for models
 Base = declarative_base()
 
+# Import all models to ensure they're registered with Base.metadata
+# This must happen after Base is defined but before init_db is called
+def _import_models():
+    """Import all models to register them with SQLAlchemy metadata"""
+    try:
+        # Import all model modules
+        from models import database  # Main models
+        from models.db import (  # Resume upload models
+            Resume, Candidate, Education, WorkExperience,
+            Skill, Certification, DuplicateCheck
+        )
+        logger.info("All models imported successfully")
+    except ImportError as e:
+        logger.warning(f"Some models could not be imported: {e}")
+
+# Import models on module load
+_import_models()
+
 # Lazy initialization - will be created on first access
 _engine = None
 _async_session_local = None
