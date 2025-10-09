@@ -4,6 +4,7 @@ Endpoints for scanning resumes without saving to database
 """
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
+from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 import logging
 import hashlib
@@ -11,11 +12,13 @@ import uuid
 import os
 import aiofiles
 
+from core.database import get_db
 from services.document_processor import DocumentProcessor
 from services.resume_analyzer import ResumeAuthenticityAnalyzer
 from services.jd_matcher import JDMatcher
 from services.vetting_session import VettingSession
 from services.google_search_verifier import GoogleSearchVerifier
+from services.resume_data_extractor import ResumeDataExtractor
 from core.config import settings
 
 router = APIRouter()
@@ -40,6 +43,7 @@ resume_analyzer = ResumeAuthenticityAnalyzer(
 )
 jd_matcher = JDMatcher()
 vetting_session = VettingSession()
+resume_data_extractor = ResumeDataExtractor()
 
 @router.post("/scan")
 async def scan_resume(
@@ -78,17 +82,29 @@ async def scan_resume(
         # Extract text from resume
         extracted_text = document_processor.extract_text(temp_file_path)
         
-        # Get structure info (basic for now)
-        structure_info = {
-            'font_analysis': {},
-            'layout_analysis': {},
-            'page_count': 1
-        }
+        # Analyze document structure (CRITICAL: same as upload page)
+        structure_info = document_processor.analyze_document_structure(temp_file_path)
         
-        # Analyze authenticity
+        # Extract candidate information for Google verification (CRITICAL: same as upload page)
+        candidate_name = None
+        candidate_email = None
+        candidate_phone = None
+        try:
+            extracted_data = resume_data_extractor.extract_all(extracted_text)
+            if extracted_data:
+                candidate_name = extracted_data.get('name')
+                candidate_email = extracted_data.get('email')
+                candidate_phone = extracted_data.get('phone')
+        except Exception as e:
+            logger.warning(f"Failed to extract candidate data: {str(e)}")
+        
+        # Analyze authenticity (SAME as upload page with all parameters)
         authenticity_result = resume_analyzer.analyze_authenticity(
             text_content=extracted_text,
-            structure_info=structure_info
+            structure_info=structure_info,
+            candidate_name=candidate_name,
+            candidate_email=candidate_email,
+            candidate_phone=candidate_phone
         )
         
         # JD matching if job description provided
@@ -303,4 +319,106 @@ def clear_session(session_id: str):
         raise
     except Exception as e:
         logger.error(f"Error clearing session: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/session/{session_id}/upload-approved")
+async def upload_approved_to_database(session_id: str, db: Session = Depends(get_db)):
+    """
+    Upload approved resumes from vetting session to the database
+    
+    Args:
+        session_id: Vetting session ID
+        db: Database session
+    
+    Returns:
+        Summary of uploaded resumes
+    """
+    from tasks.resume_tasks import process_resume
+    from models.db import Resume
+    import shutil
+    
+    try:
+        # Get approved resumes from session
+        approved_resumes = vetting_session.get_approved_resumes(session_id)
+        
+        if not approved_resumes:
+            raise HTTPException(status_code=404, detail="No approved resumes found in session")
+        
+        uploaded = []
+        failed = []
+        
+        for resume_data in approved_resumes:
+            try:
+                file_hash = resume_data['file_hash']
+                file_name = resume_data['file_name']
+                
+                # Check if already in database
+                existing = db.query(Resume).filter(Resume.file_hash == file_hash).first()
+                if existing:
+                    failed.append({
+                        "file_name": file_name,
+                        "reason": "Already in database",
+                        "status": "duplicate"
+                    })
+                    continue
+                
+                # Copy file from temp to permanent storage
+                temp_file_path = os.path.join("temp/vetting_files", f"{file_hash}_{file_name}")
+                
+                if not os.path.exists(temp_file_path):
+                    failed.append({
+                        "file_name": file_name,
+                        "reason": "Temp file not found",
+                        "status": "error"
+                    })
+                    continue
+                
+                permanent_file_path = os.path.join(settings.upload_dir, f"{uuid.uuid4()}_{file_name}")
+                shutil.copy2(temp_file_path, permanent_file_path)
+                
+                # Create resume record
+                resume = Resume(
+                    file_name=file_name,
+                    file_path=permanent_file_path,
+                    file_hash=file_hash,
+                    upload_status="pending"
+                )
+                db.add(resume)
+                db.commit()
+                db.refresh(resume)
+                
+                # Trigger background processing
+                process_resume.delay(resume.id)
+                
+                uploaded.append({
+                    "file_name": file_name,
+                    "resume_id": resume.id,
+                    "status": "processing"
+                })
+                
+                logger.info(f"Uploaded approved resume: {file_name} (ID: {resume.id})")
+                
+            except Exception as e:
+                logger.error(f"Error uploading {resume_data.get('file_name')}: {str(e)}")
+                failed.append({
+                    "file_name": resume_data.get('file_name'),
+                    "reason": str(e),
+                    "status": "error"
+                })
+                db.rollback()
+        
+        return {
+            "session_id": session_id,
+            "total_approved": len(approved_resumes),
+            "uploaded": len(uploaded),
+            "failed": len(failed),
+            "uploaded_resumes": uploaded,
+            "failed_resumes": failed
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading approved resumes: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

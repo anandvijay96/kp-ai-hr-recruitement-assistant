@@ -376,9 +376,296 @@
             `;
         }
         
-        function toggleFullDiagnostics(hash) {
-            const elem = document.getElementById(`full-diagnostics-${hash}`);
-            if (elem) elem.classList.toggle('hidden');
+        function generateFullDiagnosticsHTML(diagnostics, matchingScore = null) {
+            let html = '<h6 class="mb-3">📋 Detailed Analysis Report</h6>';
+            
+            // JD Matching Diagnostics (if available)
+            if (matchingScore) {
+                const getScoreColor = (score) => score >= 80 ? 'success' : score >= 60 ? 'warning' : 'danger';
+                html += `
+                    <div class="mb-4">
+                        <h6 class="text-primary">🎯 Job Description Matching Analysis</h6>
+                        <div class="alert alert-${getScoreColor(matchingScore.overall_match)}">
+                            <h6 class="alert-heading">Overall Match: ${Math.round(matchingScore.overall_match || 0)}%</h6>
+                            <hr>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <p class="mb-2"><strong>Skills Match:</strong></p>
+                                    <div class="progress" style="height: 25px;">
+                                        <div class="progress-bar bg-${getScoreColor(matchingScore.skills_match || 0)}" 
+                                             style="width: ${matchingScore.skills_match || 0}%">
+                                            ${Math.round(matchingScore.skills_match || 0)}%
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <p class="mb-2"><strong>Experience Match:</strong></p>
+                                    <div class="progress" style="height: 25px;">
+                                        <div class="progress-bar bg-${getScoreColor(matchingScore.experience_match || 0)}" 
+                                             style="width: ${matchingScore.experience_match || 0}%">
+                                            ${Math.round(matchingScore.experience_match || 0)}%
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <p class="mb-2"><strong>Education Match:</strong></p>
+                                    <div class="progress" style="height: 25px;">
+                                        <div class="progress-bar bg-${getScoreColor(matchingScore.education_match || 0)}" 
+                                             style="width: ${matchingScore.education_match || 0}%">
+                                            ${Math.round(matchingScore.education_match || 0)}%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            ${matchingScore.matched_skills && matchingScore.matched_skills.length > 0 ? `
+                                <div class="mb-3">
+                                    <p class="mb-2"><strong>✓ Matched Skills (${matchingScore.matched_skills.length}):</strong></p>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        ${matchingScore.matched_skills.map(skill => `<span class="badge bg-success">${skill}</span>`).join('')}
+                                    </div>
+                                </div>
+                            ` : '<p class="mb-2 text-muted">No skills matched from the job description.</p>'}
+                            
+                            ${matchingScore.missing_skills && matchingScore.missing_skills.length > 0 ? `
+                                <div class="mb-3">
+                                    <p class="mb-2"><strong>✗ Missing Skills (${matchingScore.missing_skills.length}):</strong></p>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        ${matchingScore.missing_skills.map(skill => `<span class="badge bg-danger">${skill}</span>`).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${matchingScore.details && matchingScore.details.length > 0 ? `
+                                <div class="mt-3">
+                                    <p class="mb-2"><strong>📝 Detailed Feedback:</strong></p>
+                                    <ul class="mb-0">
+                                        ${matchingScore.details.map(detail => `<li>${detail}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="mt-3 p-2 bg-light rounded">
+                                <small class="text-muted">
+                                    <strong>💡 Matching Algorithm:</strong> This score is calculated based on weighted factors: 
+                                    Skills (50%), Experience (30%), and Education (20%). The algorithm uses keyword matching 
+                                    and considers both required and bonus qualifications.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Check if diagnostics exists
+            if (!diagnostics || Object.keys(diagnostics).length === 0) {
+                if (!matchingScore) {
+                    html += `
+                        <div class="alert alert-warning">
+                            <p class="mb-0">⚠️ Detailed diagnostics are not available for this resume.</p>
+                            <small>This may occur with older analysis results or if the document format is not fully supported.</small>
+                        </div>
+                    `;
+                }
+                return html;
+            }
+            
+            html += '<h6 class="text-primary mb-3">🔍 Authenticity Analysis Details</h6>';
+            
+            // LinkedIn Diagnostics - Full version with search links
+            if (diagnostics.linkedin) {
+                html += `<div class="mb-4"><h6 class="text-primary">🔗 Professional Profile Analysis</h6>`;
+                
+                if (diagnostics.linkedin.profile) {
+                    const profile = diagnostics.linkedin.profile;
+                    const resumeStatus = profile.cross_verified ? 'success' : 'warning';
+                    html += `
+                        <div class="alert alert-${resumeStatus} mb-3">
+                            <div class="d-flex align-items-start">
+                                <span style="font-size: 1.5rem; margin-right: 12px;">📄</span>
+                                <div style="flex: 1;">
+                                    <p class="mb-2"><strong>Found in Resume</strong></p>
+                                    <p class="mb-1">
+                                        <strong>LinkedIn URL:</strong> 
+                                        <a href="${profile.url}" target="_blank" class="text-decoration-none">${profile.url} ↗</a>
+                                    </p>
+                                    <p class="mb-0"><strong>Username:</strong> <code>${profile.username}</code></p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else if (diagnostics.linkedin.verification_details) {
+                    html += `
+                        <div class="alert alert-warning mb-3">
+                            <div class="d-flex align-items-start">
+                                <span style="font-size: 1.5rem; margin-right: 12px;">📄</span>
+                                <div style="flex: 1;">
+                                    <p class="mb-2"><strong>Not Found in Resume</strong></p>
+                                    <p class="mb-0"><small>No LinkedIn URL detected in the resume. However, we found a profile through online search (see below).</small></p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Online Verification with Search Engine Links
+                if (diagnostics.linkedin.verification_details) {
+                    const details = diagnostics.linkedin.verification_details;
+                    html += `
+                        <div class="alert alert-info mb-3" style="border-left: 4px solid #0077b5;">
+                            <div class="d-flex align-items-start">
+                                <span style="font-size: 1.5rem; margin-right: 12px;">🔍</span>
+                                <div style="flex: 1;">
+                                    <p class="mb-2"><strong>Online Verification Results</strong></p>
+                                    <div class="mb-2">
+                                        <span class="badge bg-success me-2">✓ Verified</span>
+                                        <span class="badge bg-info">via ${details.search_engine}</span>
+                                    </div>
+                                    
+                                    ${details.search_url ? `
+                                        <p class="mb-2">
+                                            <strong>Verification Source:</strong><br>
+                                            <a href="${details.search_url}" target="_blank" class="btn btn-sm btn-outline-primary mt-1">
+                                                🔍 View ${details.search_engine} Search: "${details.search_query}"
+                                            </a>
+                                        </p>
+                                    ` : ''}
+                                    
+                                    ${details.matched_profiles && details.matched_profiles.length > 0 ? `
+                                        <div class="mt-2">
+                                            <strong>Matched LinkedIn Profile(s):</strong>
+                                            <ul class="list-unstyled mt-1 mb-0">
+                                                ${details.matched_profiles.slice(0, 3).map(profile => {
+                                                    // Ensure profile has https:// prefix
+                                    let profileUrl = profile;
+                                    if (!profileUrl.startsWith('http://') && !profileUrl.startsWith('https://')) {
+                                        profileUrl = 'https://' + profileUrl;
+                                    }
+                                                    return `
+                                                    <li class="mb-1">
+                                                        <a href="${profileUrl}" target="_blank" class="text-decoration-none">
+                                                            💼 ${profile}
+                                                        </a>
+                                                    </li>
+                                                `}).join('')}
+                                            </ul>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    <div class="mt-2 p-2 bg-light rounded">
+                                        <small class="text-muted">
+                                            <strong>💡 Why this matters:</strong> HR can click the verification link to confirm this is the correct person and not someone with a similar name.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else if (diagnostics.linkedin.profile && diagnostics.linkedin.profile.cross_verified === false) {
+                    html += `
+                        <div class="alert alert-warning mb-3">
+                            <div class="d-flex align-items-start">
+                                <span style="font-size: 1.5rem; margin-right: 12px;">⚠️</span>
+                                <div style="flex: 1;">
+                                    <p class="mb-1"><strong>Could Not Verify Online</strong></p>
+                                    <small>The LinkedIn profile from the resume could not be found through online search. This may indicate a deleted profile or privacy settings.</small>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                if (diagnostics.linkedin.alternatives && diagnostics.linkedin.alternatives.length > 0) {
+                    html += `
+                        <div class="alert alert-secondary mb-3">
+                            <p class="mb-2"><strong>Alternative Profiles Found:</strong></p>
+                            <ul class="mb-0">
+                                ${diagnostics.linkedin.alternatives.map(alt => `
+                                    <li>
+                                        <strong>${alt.platform}:</strong> 
+                                        <a href="${alt.url}" target="_blank" class="text-decoration-none">${alt.url} ↗</a>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+                html += `</div>`;
+            }
+            
+            // Capitalization Diagnostics
+            if (diagnostics.capitalization) {
+                html += `
+                    <div class="mb-4">
+                        <h6 class="text-primary">✍️ Capitalization Analysis</h6>
+                        <p><strong>Issues Found:</strong> ${diagnostics.capitalization.issues_found}</p>
+                        ${diagnostics.capitalization.details.map(issue => `
+                            <div class="alert alert-${issue.severity === 'high' ? 'danger' : issue.severity === 'medium' ? 'warning' : 'info'} mb-2">
+                                <h6 class="alert-heading">${issue.type}</h6>
+                                ${issue.message ? `<p class="mb-0">${issue.message}</p>` : ''}
+                                ${issue.count ? `<p class="mb-1"><strong>Count:</strong> ${issue.count} occurrences</p>` : ''}
+                                ${issue.examples ? `
+                                    <p class="mb-1"><strong>Examples:</strong></p>
+                                    ${Array.isArray(issue.examples) ? `
+                                        <ul class="mb-1">
+                                            ${issue.examples.map(ex => `<li><code>${typeof ex === 'object' ? JSON.stringify(ex) : ex}</code></li>`).join('')}
+                                        </ul>
+                                    ` : `<code>${JSON.stringify(issue.examples)}</code>`}
+                                ` : ''}
+                                ${issue.fix ? `<p class="mb-0"><strong>💡 Fix:</strong> ${issue.fix}</p>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            
+            // Font Diagnostics
+            if (diagnostics.fonts) {
+                html += `
+                    <div class="mb-4">
+                        <h6 class="text-primary">🔤 Font Usage Analysis</h6>
+                        <div class="alert alert-info">
+                            <p class="mb-2"><strong>${diagnostics.fonts.recommendation}</strong></p>
+                            <p class="mb-1"><strong>Total Unique Fonts:</strong> ${diagnostics.fonts.total_unique_fonts}</p>
+                            ${diagnostics.fonts.fonts_breakdown && Object.keys(diagnostics.fonts.fonts_breakdown).length > 0 ? `
+                                <p class="mb-1"><strong>Font Breakdown:</strong></p>
+                                <ul class="mb-0">
+                                    ${Object.entries(diagnostics.fonts.fonts_breakdown).map(([font, count]) => `
+                                        <li><strong>${font}:</strong> ${count} ${typeof count === 'number' ? 'times' : ''}</li>
+                                    `).join('')}
+                                </ul>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Grammar Diagnostics
+            if (diagnostics.grammar) {
+                html += `
+                    <div class="mb-4">
+                        <h6 class="text-primary">📝 Grammar & Content Analysis</h6>
+                        <p><strong>Issues Found:</strong> ${diagnostics.grammar.issues_found}</p>
+                        ${diagnostics.grammar.details.map(issue => `
+                            <div class="alert alert-${issue.severity === 'high' ? 'danger' : issue.severity === 'medium' ? 'warning' : 'info'} mb-2">
+                                <h6 class="alert-heading">${issue.type}</h6>
+                                ${issue.message ? `<p class="mb-0">${issue.message}</p>` : ''}
+                                ${issue.count ? `<p class="mb-1"><strong>Count:</strong> ${issue.count} occurrences</p>` : ''}
+                                ${issue.examples ? `
+                                    <p class="mb-1"><strong>Examples:</strong></p>
+                                    <ul class="mb-1">
+                                        ${issue.examples.map(ex => `<li><code>${ex}</code></li>`).join('')}
+                                    </ul>
+                                ` : ''}
+                                ${issue.fix ? `<p class="mb-0"><strong>💡 Fix:</strong> ${issue.fix}</p>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            
+            return html;
         }
 
         function toggleDetails(hash) {
@@ -421,12 +708,37 @@
 
         async function uploadApproved() {
             if (!confirm('Upload all approved resumes to database?')) return;
-            const response = await fetch(`/api/v1/vetting/session/${sessionId}/approved`);
-            const data = await response.json();
-            if (data.total_approved === 0) { alert('No approved resumes to upload'); return; }
-            sessionStorage.setItem('approved_resumes', JSON.stringify(data.approved_resumes));
-            sessionStorage.setItem('vetting_session_id', sessionId);
-            window.location.href = '/upload?source=vetting';
+            
+            try {
+                const response = await fetch(`/api/v1/vetting/session/${sessionId}/upload-approved`, {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Upload failed: ${error.detail || 'Unknown error'}`);
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.uploaded === 0) {
+                    alert('No resumes were uploaded. ' + (data.failed.length > 0 ? `${data.failed.length} failed.` : ''));
+                    return;
+                }
+                
+                alert(`Successfully uploaded ${data.uploaded} resume(s) to database!\n\nThey are now being processed in the background.\n\nFailed: ${data.failed.length}`);
+                
+                // Redirect to candidates page to see the results
+                if (confirm('Go to Candidates page to view uploaded resumes?')) {
+                    window.location.href = '/candidates';
+                } else {
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('Upload failed: ' + error.message);
+            }
         }
 
         async function updateStats() {
