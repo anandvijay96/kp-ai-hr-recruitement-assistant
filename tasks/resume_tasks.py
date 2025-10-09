@@ -55,22 +55,30 @@ def process_resume(self, resume_id: int):
         
         logger.info(f"Processing resume {resume_id}: {resume.file_name}")
         
-        # Step 1: Extract text
-        self.update_state(state='PROCESSING', meta={'status': 'Extracting text from document'})
-        doc_processor = DocumentProcessor()
-        text = doc_processor.extract_text(resume.file_path)
-        resume.raw_text = text
-        db.commit()
+        # Step 1: Extract text (or use existing if already extracted)
+        if resume.raw_text and len(resume.raw_text.strip()) >= 50:
+            text = resume.raw_text
+            logger.info(f"Using pre-extracted text ({len(text)} chars)")
+        else:
+            self.update_state(state='PROCESSING', meta={'status': 'Extracting text from document'})
+            doc_processor = DocumentProcessor()
+            text = doc_processor.extract_text(resume.file_path)
+            resume.raw_text = text
+            db.commit()
+            
+            if not text or len(text.strip()) < 50:
+                raise ValueError("Could not extract meaningful text from document")
         
-        if not text or len(text.strip()) < 50:
-            raise ValueError("Could not extract meaningful text from document")
-        
-        # Step 2: Extract structured data (Enhanced)
-        self.update_state(state='PROCESSING', meta={'status': 'Extracting structured data'})
-        data_extractor = EnhancedResumeExtractor()
-        extracted_data = data_extractor.extract_all(text)
-        resume.extracted_data = extracted_data
-        db.commit()
+        # Step 2: Extract structured data (or use existing if already extracted)
+        if resume.extracted_data and isinstance(resume.extracted_data, dict) and resume.extracted_data.get('email'):
+            extracted_data = resume.extracted_data
+            logger.info(f"Using pre-extracted data: email={extracted_data.get('email')}, name={extracted_data.get('name')}")
+        else:
+            self.update_state(state='PROCESSING', meta={'status': 'Extracting structured data'})
+            data_extractor = EnhancedResumeExtractor()
+            extracted_data = data_extractor.extract_all(text)
+            resume.extracted_data = extracted_data
+            db.commit()
         
         logger.info(f"Extracted data: email={extracted_data.get('email')}, "
                    f"name={extracted_data.get('name')}, "

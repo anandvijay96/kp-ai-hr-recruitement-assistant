@@ -103,9 +103,66 @@ class CandidateService:
             db.rollback()
             raise
     
-    def get_candidate_by_id(self, candidate_id: int, db: Session) -> Optional[Candidate]:
-        """Get candidate by ID"""
-        return db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    def get_candidate_by_id(self, candidate_id: int, db: Session) -> Optional[Dict[str, Any]]:
+        """
+        Get candidate by ID with all related data
+        
+        Returns:
+            Dict with candidate data including skills, education, work_experience, resumes
+        """
+        from sqlalchemy.orm import joinedload
+        
+        candidate = db.query(Candidate).options(
+            joinedload(Candidate.skills),
+            joinedload(Candidate.education),
+            joinedload(Candidate.work_experience),
+            joinedload(Candidate.resumes)
+        ).filter(Candidate.id == candidate_id).first()
+        
+        if not candidate:
+            return None
+        
+        # Convert to dict with all relationships
+        return {
+            "id": candidate.id,
+            "full_name": candidate.full_name,
+            "email": candidate.email,
+            "phone_number": candidate.phone_number,
+            "linkedin_url": candidate.linkedin_url,
+            "github_url": candidate.github_url,
+            "portfolio_url": candidate.portfolio_url,
+            "location": candidate.location,
+            "professional_summary": candidate.professional_summary,
+            "created_at": candidate.created_at.isoformat() if candidate.created_at else None,
+            "updated_at": candidate.updated_at.isoformat() if candidate.updated_at else None,
+            "skills": [{"id": s.id, "name": s.name, "category": s.category} for s in candidate.skills],
+            "education": [{
+                "id": e.id,
+                "degree": e.degree,
+                "field_of_study": e.field_of_study,
+                "institution": e.institution,
+                "grade": e.grade,
+                "start_date": e.start_date.isoformat() if e.start_date else None,
+                "end_date": e.end_date.isoformat() if e.end_date else None
+            } for e in candidate.education],
+            "work_experience": [{
+                "id": w.id,
+                "job_title": w.job_title,
+                "company": w.company,
+                "location": w.location,
+                "start_date": w.start_date.isoformat() if w.start_date else None,
+                "end_date": w.end_date.isoformat() if w.end_date else None,
+                "is_current": w.is_current,
+                "description": w.description
+            } for w in candidate.work_experience],
+            "resumes": [{
+                "id": r.id,
+                "file_name": r.file_name,
+                "uploaded_at": r.uploaded_at.isoformat() if r.uploaded_at else None,
+                "authenticity_score": r.authenticity_score,
+                "upload_status": r.upload_status
+            } for r in candidate.resumes]
+        }
     
     def get_candidate_by_email(self, email: str, db: Session) -> Optional[Candidate]:
         """Get candidate by email"""
