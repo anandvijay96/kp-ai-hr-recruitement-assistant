@@ -450,7 +450,7 @@
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script>
         // Get candidate ID from template (passed from backend)
-        const candidateId = {{ candidate_id }};
+        const candidateId = "{{ candidate_id }}";
         
         // Initialize on page load
         $(document).ready(function() {
@@ -593,9 +593,9 @@
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div>
                                 <div class="fw-bold">${resume.file_name}</div>
-                                <small class="text-muted">Uploaded: ${formatDateTime(resume.uploaded_at)}</small>
+                                <small class="text-muted">Uploaded: ${formatDateTime(resume.upload_date)}</small>
                             </div>
-                            <span class="status-badge status-${resume.upload_status.toLowerCase()}">${resume.upload_status}</span>
+                            <span class="status-badge status-${resume.status.toLowerCase()}">${resume.status}</span>
                         </div>
                         <div class="d-flex gap-2">
                             <button class="btn btn-sm btn-outline-primary" onclick="viewResume(${resume.id})">
@@ -615,9 +615,9 @@
             // Assessment Scores - Use latest resume's scores
             if (candidate.resumes && candidate.resumes.length > 0) {
                 const latestResume = candidate.resumes.reduce((latest, resume) => {
-                    return new Date(resume.uploaded_at) > new Date(latest.uploaded_at) ? resume : latest;
+                    return new Date(resume.upload_date) > new Date(latest.upload_date) ? resume : latest;
                 });
-                updateScoreDisplay('authenticityScore', latestResume.authenticity_score);
+                updateScoreDisplay('authenticityScore', latestResume.authenticity_score || 0);
                 updateScoreDisplay('matchScore', 0); // JD match not stored in candidate
             } else {
                 updateScoreDisplay('authenticityScore', null);

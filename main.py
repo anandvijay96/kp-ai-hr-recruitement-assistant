@@ -160,11 +160,14 @@ def search_page(request: Request):
     return templates.TemplateResponse("candidate_search.html", {"request": request})
 
 @app.get("/candidates/{candidate_id}")
-def candidate_detail_page(candidate_id: int, request: Request):
-    """Candidate detail page."""
+@require_auth
+async def candidate_detail_page(candidate_id: str, request: Request):
+    """Candidate detail page - requires authentication"""
+    user = await get_current_user(request)
     return templates.TemplateResponse("candidate_detail.html", {
         "request": request,
-        "candidate_id": candidate_id
+        "candidate_id": candidate_id,
+        "user": user
     })
 
 @app.get("/resumes/{resume_id}/preview")

@@ -70,13 +70,80 @@ def get_all_candidates(skip: int = 0, limit: int = 100, db: Session = Depends(ge
     return {"candidates": candidates, "total": len(candidates)}
 
 @router.get("/{candidate_id}")
-def get_candidate(candidate_id: int, db: Session = Depends(get_db)):
+async def get_candidate(candidate_id: str, db: Session = Depends(get_db)):
     """Get candidate by ID with all related data."""
-    candidate = candidate_service.get_candidate_by_id(candidate_id, db)
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from models.database import Candidate
+    
+    # Query candidate with all relationships
+    stmt = select(Candidate).options(
+        selectinload(Candidate.resumes),
+        selectinload(Candidate.skills),
+        selectinload(Candidate.education),
+        selectinload(Candidate.work_experience),
+        selectinload(Candidate.certifications)
+    ).filter(Candidate.id == candidate_id)
+    
+    result = await db.execute(stmt)
+    candidate = result.scalar_one_or_none()
+    
     if not candidate:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Candidate not found")
-    return candidate
+    
+    # Format response
+    return {
+        "id": candidate.id,
+        "uuid": candidate.uuid,
+        "full_name": candidate.full_name,
+        "email": candidate.email,
+        "phone": candidate.phone,
+        "linkedin_url": candidate.linkedin_url,
+        "location": candidate.location,
+        "source": candidate.source,
+        "status": candidate.status,
+        "created_at": candidate.created_at.isoformat() if candidate.created_at else None,
+        "updated_at": candidate.updated_at.isoformat() if candidate.updated_at else None,
+        "resumes": [{
+            "id": r.id,
+            "file_name": r.file_name,
+            "file_path": r.file_path,
+            "file_size": r.file_size,
+            "file_type": r.file_type,
+            "status": r.status,
+            "upload_date": r.upload_date.isoformat() if r.upload_date else None
+        } for r in candidate.resumes] if candidate.resumes else [],
+        "skills": [{
+            "name": cs.skill.name if cs.skill else None,
+            "proficiency": cs.proficiency
+        } for cs in candidate.skills if cs.skill] if candidate.skills else [],
+        "education": [{
+            "degree": e.degree,
+            "field": e.field,
+            "institution": e.institution,
+            "location": e.location,
+            "start_date": e.start_date,
+            "end_date": e.end_date,
+            "gpa": e.gpa
+        } for e in candidate.education] if candidate.education else [],
+        "work_experience": [{
+            "company": w.company,
+            "title": w.title,
+            "location": w.location,
+            "start_date": w.start_date,
+            "end_date": w.end_date,
+            "is_current": w.is_current,
+            "duration_months": w.duration_months,
+            "description": w.description
+        } for w in candidate.work_experience] if candidate.work_experience else [],
+        "certifications": [{
+            "name": c.name,
+            "issuer": c.issuer,
+            "issue_date": c.issue_date,
+            "expiry_date": c.expiry_date,
+            "credential_id": c.credential_id
+        } for c in candidate.certifications] if candidate.certifications else []
+    }
 
 @router.post("/check-duplicate")
 def check_duplicate_candidate(
