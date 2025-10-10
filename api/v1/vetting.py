@@ -394,7 +394,12 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 candidate_phone = extracted_data.get('phone')
                 
                 # Validate candidate data before creating
-                invalid_names = ['PROFESSIONAL SUMMARY:', 'Profile', 'Unknown Candidate', '', 'null', 'None']
+                invalid_names = [
+                    'PROFESSIONAL SUMMARY:', 'Profile', 'Unknown Candidate', 
+                    'Key Responsibilities', 'CERTIFICATION', 'CONTACT', 'SKILLS', 
+                    'EDUCATION', 'EXPERIENCE', 'SUMMARY', 'OBJECTIVE',
+                    '', 'null', 'None'
+                ]
                 if not candidate_name or candidate_name.strip() in invalid_names:
                     logger.warning(f"Skipping resume with invalid name: {candidate_name}")
                     failed.append({
