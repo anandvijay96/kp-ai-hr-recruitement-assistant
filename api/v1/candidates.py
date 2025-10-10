@@ -74,12 +74,12 @@ async def get_candidate(candidate_id: str, db: Session = Depends(get_db)):
     """Get candidate by ID with all related data."""
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
-    from models.database import Candidate
+    from models.database import Candidate, CandidateSkill
     
-    # Query candidate with all relationships
+    # Query candidate with all relationships (eager load CandidateSkill.skill)
     stmt = select(Candidate).options(
         selectinload(Candidate.resumes),
-        selectinload(Candidate.skills),
+        selectinload(Candidate.skills).selectinload(CandidateSkill.skill),
         selectinload(Candidate.education),
         selectinload(Candidate.work_experience),
         selectinload(Candidate.certifications)
