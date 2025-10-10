@@ -306,6 +306,10 @@ class CandidateSkill(Base):
     proficiency = Column(String(50))  # beginner, intermediate, expert
     confidence_score = Column(String(10))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    candidate = relationship("Candidate", back_populates="skills")
+    skill = relationship("Skill")
 
 
 class Certification(Base):

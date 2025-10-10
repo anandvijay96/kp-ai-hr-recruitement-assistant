@@ -279,20 +279,20 @@ class FilterService:
             if candidate.education:
                 education_level = candidate.education[0].degree
             
-            # Get skills list
-            skills_list = [skill.name for skill in candidate.skills]
+            # Get skills list (candidate.skills are CandidateSkill objects)
+            skills_list = [cs.skill.name for cs in candidate.skills if cs.skill] if candidate.skills else []
             
             # Get latest resume status
             status = "New"
             if candidate.resumes:
                 latest_resume = sorted(candidate.resumes, key=lambda r: r.upload_date, reverse=True)[0]
-                status = latest_resume.upload_status
+                status = latest_resume.status
             
             results.append({
                 "id": candidate.id,
                 "name": candidate.full_name,
                 "email": candidate.email,
-                "phone": candidate.phone_number,
+                "phone": candidate.phone,
                 "linkedin": candidate.linkedin_url,
                 "skills": skills_list,
                 "experience_years": round(total_experience, 1),
