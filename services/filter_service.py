@@ -264,6 +264,12 @@ class FilterService:
         """
         results = []
         for candidate in candidates:
+            # Skip invalid candidates (bad parsing results)
+            if not candidate.full_name or candidate.full_name.strip() in ['', 'Unknown Candidate', 'PROFESSIONAL SUMMARY:', 'Profile']:
+                continue
+            if not candidate.email or '@' not in candidate.email:
+                continue
+                
             # Calculate experience years
             total_experience = 0
             for exp in candidate.work_experience:

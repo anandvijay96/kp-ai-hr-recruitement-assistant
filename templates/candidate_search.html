@@ -633,7 +633,7 @@
             }
             
             const html = candidates.map(candidate => `
-                <div class="candidate-card" onclick="viewCandidate(${candidate.id})">
+                <div class="candidate-card" onclick="viewCandidate('${candidate.id}')">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <div class="candidate-name">${candidate.name}</div>
                         <span class="status-badge status-${candidate.status.toLowerCase()}">${candidate.status}</span>
