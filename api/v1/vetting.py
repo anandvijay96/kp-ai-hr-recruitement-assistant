@@ -393,6 +393,26 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 candidate_email = extracted_data.get('email')
                 candidate_phone = extracted_data.get('phone')
                 
+                # Validate candidate data before creating
+                invalid_names = ['PROFESSIONAL SUMMARY:', 'Profile', 'Unknown Candidate', '', 'null', 'None']
+                if not candidate_name or candidate_name.strip() in invalid_names:
+                    logger.warning(f"Skipping resume with invalid name: {candidate_name}")
+                    failed.append({
+                        "file_name": resume_data.get('file_name'),
+                        "reason": "Invalid or missing candidate name in resume",
+                        "status": "error"
+                    })
+                    continue
+                    
+                if not candidate_email or '@' not in candidate_email:
+                    logger.warning(f"Skipping resume without valid email: {candidate_email}")
+                    failed.append({
+                        "file_name": resume_data.get('file_name'),
+                        "reason": "Invalid or missing email address in resume",
+                        "status": "error"
+                    })
+                    continue
+                
                 # Check if candidate already exists by email
                 candidate = None
                 if candidate_email:
