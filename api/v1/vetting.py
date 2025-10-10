@@ -338,7 +338,7 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
         Summary of uploaded resumes
     """
     from tasks.resume_tasks import process_resume
-    from models.db import Resume
+    from models.database import Resume, Candidate
     import shutil
     
     try:
@@ -388,6 +388,34 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 extracted_text = scan_result.get('extracted_text', '')
                 extracted_data = scan_result.get('extracted_data', {})
                 
+                # Extract candidate information from parsed data
+                candidate_name = extracted_data.get('name', 'Unknown Candidate')
+                candidate_email = extracted_data.get('email')
+                candidate_phone = extracted_data.get('phone')
+                
+                # Check if candidate already exists by email
+                candidate = None
+                if candidate_email:
+                    from sqlalchemy import select
+                    stmt = select(Candidate).filter(Candidate.email == candidate_email)
+                    result = await db.execute(stmt)
+                    candidate = result.scalar_one_or_none()
+                
+                # Create new candidate if doesn't exist
+                if not candidate:
+                    candidate = Candidate(
+                        full_name=candidate_name,
+                        email=candidate_email,
+                        phone=candidate_phone,
+                        source="vetting",
+                        status="new",
+                        created_by="system"
+                    )
+                    db.add(candidate)
+                    await db.commit()
+                    await db.refresh(candidate)
+                    logger.info(f"Created new candidate: {candidate_name} (ID: {candidate.id})")
+                
                 # Create resume record with extracted data
                 # Get file info
                 file_size = os.path.getsize(permanent_file_path)
@@ -405,7 +433,11 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     processing_status="pending",
                     extracted_text=extracted_text,
                     parsed_data=extracted_data,
-                    uploaded_by="system"  # For MVP, use system user
+                    uploaded_by="system",  # For MVP, use system user
+                    candidate_id=candidate.id,  # Link to candidate
+                    candidate_name=candidate_name,
+                    candidate_email=candidate_email,
+                    candidate_phone=candidate_phone
                 )
                 db.add(resume)
                 await db.commit()
