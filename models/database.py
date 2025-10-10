@@ -141,6 +141,10 @@ class Resume(Base):
     extracted_text = Column(Text)
     parsed_data = Column(JSON)  # Use JSON for SQLite, JSONB for PostgreSQL
     
+    # Assessment Scores
+    authenticity_score = Column(Integer)  # 0-100
+    jd_match_score = Column(Integer)  # 0-100
+    
     # Upload Metadata
     uploaded_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
     upload_date = Column(DateTime(timezone=True), server_default=func.now(), index=True)
