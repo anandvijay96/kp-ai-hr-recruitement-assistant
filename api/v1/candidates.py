@@ -111,7 +111,9 @@ async def get_candidate(candidate_id: str, db: Session = Depends(get_db)):
             "file_size": r.file_size,
             "file_type": r.file_type,
             "status": r.status,
-            "upload_date": r.upload_date.isoformat() if r.upload_date else None
+            "upload_date": r.upload_date.isoformat() if r.upload_date else None,
+            "authenticity_score": r.authenticity_score,
+            "jd_match_score": r.jd_match_score
         } for r in candidate.resumes] if candidate.resumes else [],
         "skills": [{
             "name": cs.skill.name if cs.skill else None,
