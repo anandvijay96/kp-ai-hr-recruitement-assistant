@@ -427,6 +427,8 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                         full_name=candidate_name,
                         email=candidate_email,
                         phone=candidate_phone,
+                        linkedin_url=extracted_data.get('linkedin_url'),
+                        location=extracted_data.get('location'),
                         source="vetting",
                         status="new",
                         created_by="system"
@@ -435,11 +437,100 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     await db.commit()
                     await db.refresh(candidate)
                     logger.info(f"Created new candidate: {candidate_name} (ID: {candidate.id})")
+                    
+                    # Store skills
+                    skills_data = extracted_data.get('skills', [])
+                    if skills_data:
+                        from models.database import Skill, CandidateSkill
+                        for skill_name in skills_data:
+                            if not skill_name:
+                                continue
+                            # Get or create skill
+                            stmt = select(Skill).filter(Skill.name == skill_name)
+                            result = await db.execute(stmt)
+                            skill = result.scalar_one_or_none()
+                            
+                            if not skill:
+                                skill = Skill(name=skill_name, category="technical")
+                                db.add(skill)
+                                await db.commit()
+                                await db.refresh(skill)
+                            
+                            # Create candidate-skill relationship
+                            candidate_skill = CandidateSkill(
+                                candidate_id=candidate.id,
+                                skill_id=skill.id,
+                                proficiency="intermediate"  # Default, can be enhanced later
+                            )
+                            db.add(candidate_skill)
+                        
+                        await db.commit()
+                    
+                    # Store education
+                    education_data = extracted_data.get('education', [])
+                    if education_data:
+                        from models.database import Education
+                        for edu in education_data:
+                            if not edu.get('degree'):
+                                continue
+                            education = Education(
+                                candidate_id=candidate.id,
+                                degree=edu.get('degree'),
+                                field=edu.get('field'),
+                                institution=edu.get('institution'),
+                                start_date=edu.get('start_year'),
+                                end_date=edu.get('end_year'),
+                                gpa=edu.get('gpa')
+                            )
+                            db.add(education)
+                        await db.commit()
+                    
+                    # Store work experience
+                    experience_data = extracted_data.get('work_experience', [])
+                    if experience_data:
+                        from models.database import WorkExperience
+                        for exp in experience_data:
+                            if not exp.get('company'):
+                                continue
+                            work_exp = WorkExperience(
+                                candidate_id=candidate.id,
+                                company=exp.get('company'),
+                                title=exp.get('title'),
+                                location=exp.get('location'),
+                                start_date=exp.get('start_date'),
+                                end_date=exp.get('end_date'),
+                                is_current=exp.get('is_current', False),
+                                description=exp.get('description')
+                            )
+                            db.add(work_exp)
+                        await db.commit()
+                    
+                    # Store certifications
+                    certifications_data = extracted_data.get('certifications', [])
+                    if certifications_data:
+                        from models.database import Certification
+                        for cert in certifications_data:
+                            if not cert.get('name'):
+                                continue
+                            certification = Certification(
+                                candidate_id=candidate.id,
+                                name=cert.get('name'),
+                                issuer=cert.get('issuer'),
+                                issue_date=cert.get('issue_date'),
+                                expiry_date=cert.get('expiry_date'),
+                                credential_id=cert.get('credential_id')
+                            )
+                            db.add(certification)
+                        await db.commit()
                 
                 # Create resume record with extracted data
                 # Get file info
                 file_size = os.path.getsize(permanent_file_path)
                 file_ext = os.path.splitext(file_name)[1].lower().replace('.', '')
+                
+                # Get assessment scores from scan result
+                authenticity_score = scan_result.get('authenticity_score')
+                matching_score = scan_result.get('matching_score')
                 
                 resume = Resume(
                     file_name=file_name,
@@ -450,9 +541,11 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     file_hash=file_hash,
                     mime_type=f"application/{file_ext}",
                     status="uploaded",
-                    processing_status="pending",
+                    processing_status="completed",  # Mark as completed since we have all data
                     extracted_text=extracted_text,
                     parsed_data=extracted_data,
+                    authenticity_score=authenticity_score,
+                    jd_match_score=matching_score,
                     uploaded_by="system",  # For MVP, use system user
                     candidate_id=candidate.id,  # Link to candidate
                     candidate_name=candidate_name,
