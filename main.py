@@ -161,7 +161,7 @@ def search_page(request: Request):
 
 @app.get("/candidates/{candidate_id}")
 @require_auth
-async def candidate_detail_page(candidate_id: str, request: Request):
+async def candidate_detail_page(request: Request, candidate_id: str):
     """Candidate detail page - requires authentication"""
     user = await get_current_user(request)
     return templates.TemplateResponse("candidate_detail.html", {
