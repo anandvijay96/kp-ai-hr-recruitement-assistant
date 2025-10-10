@@ -285,7 +285,7 @@ class FilterService:
             # Get latest resume status
             status = "New"
             if candidate.resumes:
-                latest_resume = sorted(candidate.resumes, key=lambda r: r.uploaded_at, reverse=True)[0]
+                latest_resume = sorted(candidate.resumes, key=lambda r: r.upload_date, reverse=True)[0]
                 status = latest_resume.upload_status
             
             results.append({
