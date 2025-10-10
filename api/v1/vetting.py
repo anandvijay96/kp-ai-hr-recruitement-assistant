@@ -532,6 +532,25 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 authenticity_score = scan_result.get('authenticity_score')
                 matching_score = scan_result.get('matching_score')
                 
+                # Convert scores dict to integer if it's a dict with 'overall_score'
+                if isinstance(authenticity_score, dict):
+                    authenticity_score = int(authenticity_score.get('overall_score', 0))
+                elif authenticity_score:
+                    authenticity_score = int(authenticity_score)
+                else:
+                    authenticity_score = None
+                
+                if isinstance(matching_score, dict):
+                    matching_score = int(matching_score.get('overall_score', 0))
+                elif matching_score:
+                    matching_score = int(matching_score)
+                else:
+                    matching_score = None
+                
+                # Convert parsed_data to JSON string for SQLite
+                import json
+                parsed_data_json = json.dumps(extracted_data) if extracted_data else None
+                
                 resume = Resume(
                     file_name=file_name,
                     original_file_name=file_name,
@@ -543,7 +562,7 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     status="uploaded",
                     processing_status="completed",  # Mark as completed since we have all data
                     extracted_text=extracted_text,
-                    parsed_data=extracted_data,
+                    parsed_data=parsed_data_json,  # Store as JSON string
                     authenticity_score=authenticity_score,
                     jd_match_score=matching_score,
                     uploaded_by="system",  # For MVP, use system user
