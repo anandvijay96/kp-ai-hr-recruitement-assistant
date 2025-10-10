@@ -96,10 +96,13 @@ class FilterService:
             Dict with results and pagination info
         """
         try:
-            # Base query with eager loading using async select()
+            # Import CandidateSkill for eager loading
+            from models.database import CandidateSkill
+            
+            # Build query with eager loading
             stmt = select(Candidate).options(
                 selectinload(Candidate.resumes),
-                selectinload(Candidate.skills),
+                selectinload(Candidate.skills).selectinload(CandidateSkill.skill),
                 selectinload(Candidate.education),
                 selectinload(Candidate.work_experience)
             )
