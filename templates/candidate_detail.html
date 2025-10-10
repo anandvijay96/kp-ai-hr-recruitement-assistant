@@ -445,6 +445,134 @@
         </div>
     </div>
 
+    <!-- Edit Modal -->
+    <div class="modal fade" id="editCandidateModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editModalLabel">
+                        <i class="bi bi-pencil-square me-2"></i>Edit Candidate Profile
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs mb-3" id="editTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#personal" type="button" role="tab">
+                                <i class="bi bi-person me-1"></i>Personal Info
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="skills-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#skills" type="button" role="tab">
+                                <i class="bi bi-code-square me-1"></i>Skills
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="experience-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#experience" type="button" role="tab">
+                                <i class="bi bi-briefcase me-1"></i>Experience
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="education-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#education" type="button" role="tab">
+                                <i class="bi bi-mortarboard me-1"></i>Education
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="certifications-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#certifications" type="button" role="tab">
+                                <i class="bi bi-award me-1"></i>Certifications
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="editTabContent">
+                        <!-- Personal Info Tab -->
+                        <div class="tab-pane fade show active" id="personal" role="tabpanel">
+                            <form id="personalInfoForm">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="editFullName" class="form-label">Full Name *</label>
+                                        <input type="text" class="form-control" id="editFullName" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="editEmail" class="form-label">Email *</label>
+                                        <input type="email" class="form-control" id="editEmail" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="editPhone" class="form-label">Phone</label>
+                                        <input type="tel" class="form-control" id="editPhone">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="editLinkedIn" class="form-label">LinkedIn URL</label>
+                                        <input type="url" class="form-control" id="editLinkedIn" placeholder="https://linkedin.com/in/username">
+                                    </div>
+                                    <div class="col-md-12 mb-3">
+                                        <label for="editLocation" class="form-label">Location</label>
+                                        <input type="text" class="form-control" id="editLocation" placeholder="City, Country">
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Skills Tab -->
+                        <div class="tab-pane fade" id="skills" role="tabpanel">
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-primary btn-sm" id="addSkillBtn">
+                                    <i class="bi bi-plus-circle me-1"></i>Add Skill
+                                </button>
+                            </div>
+                            <div id="skillsEditList"></div>
+                        </div>
+
+                        <!-- Experience Tab -->
+                        <div class="tab-pane fade" id="experience" role="tabpanel">
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-primary btn-sm" id="addExperienceBtn">
+                                    <i class="bi bi-plus-circle me-1"></i>Add Experience
+                                </button>
+                            </div>
+                            <div id="experienceEditList"></div>
+                        </div>
+
+                        <!-- Education Tab -->
+                        <div class="tab-pane fade" id="education" role="tabpanel">
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-primary btn-sm" id="addEducationBtn">
+                                    <i class="bi bi-plus-circle me-1"></i>Add Education
+                                </button>
+                            </div>
+                            <div id="educationEditList"></div>
+                        </div>
+
+                        <!-- Certifications Tab -->
+                        <div class="tab-pane fade" id="certifications" role="tabpanel">
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-primary btn-sm" id="addCertificationBtn">
+                                    <i class="bi bi-plus-circle me-1"></i>Add Certification
+                                </button>
+                            </div>
+                            <div id="certificationsEditList"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-1"></i>Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary" id="saveChangesBtn">
+                        <i class="bi bi-save me-1"></i>Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
@@ -718,6 +846,446 @@
                 alert('Reject candidate feature coming soon!');
             }
         });
+        
+        // Edit button handler
+        $('#editBtn').click(() => {
+            openEditModal();
+        });
+        
+        // Open edit modal
+        function openEditModal() {
+            // Fetch current candidate data
+            fetch(`/api/v1/candidates/${candidateId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Populate personal info
+                    $('#editFullName').val(data.full_name || '');
+                    $('#editEmail').val(data.email || '');
+                    $('#editPhone').val(data.phone || '');
+                    $('#editLinkedIn').val(data.linkedin_url || '');
+                    $('#editLocation').val(data.location || '');
+                    
+                    // Store current data for editing
+                    window.currentCandidateData = data;
+                    
+                    // Populate skills
+                    renderSkillsEdit(data.skills || []);
+                    
+                    // Populate experience
+                    renderExperienceEdit(data.work_experience || []);
+                    
+                    // Populate education
+                    renderEducationEdit(data.education || []);
+                    
+                    // Populate certifications
+                    renderCertificationsEdit(data.certifications || []);
+                    
+                    // Show modal
+                    new bootstrap.Modal(document.getElementById('editCandidateModal')).show();
+                })
+                .catch(error => {
+                    console.error('Error loading candidate data:', error);
+                    alert('Failed to load candidate data');
+                });
+        }
+        
+        // Render skills for editing
+        function renderSkillsEdit(skills) {
+            const container = $('#skillsEditList');
+            container.empty();
+            
+            skills.forEach((skill, index) => {
+                container.append(`
+                    <div class="skill-edit-item mb-2" data-index="${index}">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" value="${skill.name}" 
+                                       placeholder="Skill name" data-field="name">
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select" data-field="proficiency">
+                                    <option value="beginner" ${skill.proficiency === 'beginner' ? 'selected' : ''}>Beginner</option>
+                                    <option value="intermediate" ${skill.proficiency === 'intermediate' ? 'selected' : ''}>Intermediate</option>
+                                    <option value="expert" ${skill.proficiency === 'expert' ? 'selected' : ''}>Expert</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-danger btn-sm w-100" onclick="removeSkill(${index})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `);
+            });
+        }
+        
+        // Add new skill
+        function addNewSkill() {
+            const container = $('#skillsEditList');
+            const index = container.children().length;
+            container.append(`
+                <div class="skill-edit-item mb-2" data-index="${index}">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" placeholder="Skill name" data-field="name">
+                        </div>
+                        <div class="col-md-4">
+                            <select class="form-select" data-field="proficiency">
+                                <option value="beginner">Beginner</option>
+                                <option value="intermediate" selected>Intermediate</option>
+                                <option value="expert">Expert</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-danger btn-sm w-100" onclick="removeSkill(${index})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `);
+        }
+        
+        // Remove skill
+        function removeSkill(index) {
+            $(`.skill-edit-item[data-index="${index}"]`).remove();
+        }
+        
+        // Render experience for editing
+        function renderExperienceEdit(experiences) {
+            const container = $('#experienceEditList');
+            container.empty();
+            
+            experiences.forEach((exp, index) => {
+                container.append(createExperienceEditItem(exp, index));
+            });
+        }
+        
+        // Create experience edit item
+        function createExperienceEditItem(exp, index) {
+            return `
+                <div class="experience-edit-item card mb-3" data-index="${index}">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label">Company</label>
+                                <input type="text" class="form-control" value="${exp.company || ''}" 
+                                       placeholder="Company name" data-field="company">
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label">Title</label>
+                                <input type="text" class="form-control" value="${exp.title || ''}" 
+                                       placeholder="Job title" data-field="title">
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label">Start Date</label>
+                                <input type="month" class="form-control" value="${exp.start_date || ''}" 
+                                       data-field="start_date">
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label">End Date</label>
+                                <input type="month" class="form-control" value="${exp.end_date || ''}" 
+                                       data-field="end_date" ${exp.is_current ? 'disabled' : ''}>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" 
+                                           ${exp.is_current ? 'checked' : ''} 
+                                           data-field="is_current" 
+                                           onchange="toggleEndDate(${index})">
+                                    <label class="form-check-label">Current</label>
+                                </div>
+                            </div>
+                            <div class="col-md-12 mb-2">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-control" rows="2" data-field="description">${exp.description || ''}</textarea>
+                            </div>
+                            <div class="col-md-12">
+                                <button class="btn btn-danger btn-sm" onclick="removeExperience(${index})">
+                                    <i class="bi bi-trash me-1"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Add new experience
+        function addNewExperience() {
+            const container = $('#experienceEditList');
+            const index = container.children().length;
+            container.append(createExperienceEditItem({}, index));
+        }
+        
+        // Remove experience
+        function removeExperience(index) {
+            $(`.experience-edit-item[data-index="${index}"]`).remove();
+        }
+        
+        // Toggle end date based on current checkbox
+        function toggleEndDate(index) {
+            const item = $(`.experience-edit-item[data-index="${index}"]`);
+            const isChecked = item.find('[data-field="is_current"]').is(':checked');
+            item.find('[data-field="end_date"]').prop('disabled', isChecked);
+            if (isChecked) {
+                item.find('[data-field="end_date"]').val('');
+            }
+        }
+        
+        // Render education for editing
+        function renderEducationEdit(education) {
+            const container = $('#educationEditList');
+            container.empty();
+            
+            education.forEach((edu, index) => {
+                container.append(createEducationEditItem(edu, index));
+            });
+        }
+        
+        // Create education edit item
+        function createEducationEditItem(edu, index) {
+            return `
+                <div class="education-edit-item card mb-3" data-index="${index}">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label">Degree</label>
+                                <input type="text" class="form-control" value="${edu.degree || ''}" 
+                                       placeholder="e.g., Bachelor's, Master's" data-field="degree">
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label">Field of Study</label>
+                                <input type="text" class="form-control" value="${edu.field || ''}" 
+                                       placeholder="e.g., Computer Science" data-field="field">
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label">Institution</label>
+                                <input type="text" class="form-control" value="${edu.institution || ''}" 
+                                       placeholder="University/College name" data-field="institution">
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label">GPA</label>
+                                <input type="text" class="form-control" value="${edu.gpa || ''}" 
+                                       placeholder="e.g., 3.8/4.0" data-field="gpa">
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label">Start Date</label>
+                                <input type="month" class="form-control" value="${edu.start_date || ''}" 
+                                       data-field="start_date">
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label">End Date</label>
+                                <input type="month" class="form-control" value="${edu.end_date || ''}" 
+                                       data-field="end_date">
+                            </div>
+                            <div class="col-md-12">
+                                <button class="btn btn-danger btn-sm" onclick="removeEducation(${index})">
+                                    <i class="bi bi-trash me-1"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Add new education
+        function addNewEducation() {
+            const container = $('#educationEditList');
+            const index = container.children().length;
+            container.append(createEducationEditItem({}, index));
+        }
+        
+        // Remove education
+        function removeEducation(index) {
+            $(`.education-edit-item[data-index="${index}"]`).remove();
+        }
+        
+        // Render certifications for editing
+        function renderCertificationsEdit(certifications) {
+            const container = $('#certificationsEditList');
+            container.empty();
+            
+            certifications.forEach((cert, index) => {
+                container.append(createCertificationEditItem(cert, index));
+            });
+        }
+        
+        // Create certification edit item
+        function createCertificationEditItem(cert, index) {
+            return `
+                <div class="certification-edit-item card mb-3" data-index="${index}">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label">Certification Name</label>
+                                <input type="text" class="form-control" value="${cert.name || ''}" 
+                                       placeholder="Certification name" data-field="name">
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label">Issuing Organization</label>
+                                <input type="text" class="form-control" value="${cert.issuer || ''}" 
+                                       placeholder="e.g., AWS, Microsoft" data-field="issuer">
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label">Issue Date</label>
+                                <input type="month" class="form-control" value="${cert.issue_date || ''}" 
+                                       data-field="issue_date">
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label">Expiry Date</label>
+                                <input type="month" class="form-control" value="${cert.expiry_date || ''}" 
+                                       data-field="expiry_date">
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label">Credential ID</label>
+                                <input type="text" class="form-control" value="${cert.credential_id || ''}" 
+                                       placeholder="Credential ID" data-field="credential_id">
+                            </div>
+                            <div class="col-md-12">
+                                <button class="btn btn-danger btn-sm" onclick="removeCertification(${index})">
+                                    <i class="bi bi-trash me-1"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Add new certification
+        function addNewCertification() {
+            const container = $('#certificationsEditList');
+            const index = container.children().length;
+            container.append(createCertificationEditItem({}, index));
+        }
+        
+        // Remove certification
+        function removeCertification(index) {
+            $(`.certification-edit-item[data-index="${index}"]`).remove();
+        }
+        
+        // Save all changes
+        function saveAllChanges() {
+            // Collect personal info
+            const personalInfo = {
+                full_name: $('#editFullName').val(),
+                email: $('#editEmail').val(),
+                phone: $('#editPhone').val(),
+                linkedin_url: $('#editLinkedIn').val(),
+                location: $('#editLocation').val()
+            };
+            
+            // Collect skills
+            const skills = [];
+            $('.skill-edit-item').each(function() {
+                const name = $(this).find('[data-field="name"]').val();
+                const proficiency = $(this).find('[data-field="proficiency"]').val();
+                if (name) {
+                    skills.push({ name, proficiency });
+                }
+            });
+            
+            // Collect experience
+            const experience = [];
+            $('.experience-edit-item').each(function() {
+                const company = $(this).find('[data-field="company"]').val();
+                const title = $(this).find('[data-field="title"]').val();
+                const start_date = $(this).find('[data-field="start_date"]').val();
+                const end_date = $(this).find('[data-field="end_date"]').val();
+                const is_current = $(this).find('[data-field="is_current"]').is(':checked');
+                const description = $(this).find('[data-field="description"]').val();
+                
+                if (company || title) {
+                    experience.push({ company, title, start_date, end_date, is_current, description });
+                }
+            });
+            
+            // Collect education
+            const education = [];
+            $('.education-edit-item').each(function() {
+                const degree = $(this).find('[data-field="degree"]').val();
+                const field = $(this).find('[data-field="field"]').val();
+                const institution = $(this).find('[data-field="institution"]').val();
+                const gpa = $(this).find('[data-field="gpa"]').val();
+                const start_date = $(this).find('[data-field="start_date"]').val();
+                const end_date = $(this).find('[data-field="end_date"]').val();
+                
+                if (degree || institution) {
+                    education.push({ degree, field, institution, gpa, start_date, end_date });
+                }
+            });
+            
+            // Collect certifications
+            const certifications = [];
+            $('.certification-edit-item').each(function() {
+                const name = $(this).find('[data-field="name"]').val();
+                const issuer = $(this).find('[data-field="issuer"]').val();
+                const issue_date = $(this).find('[data-field="issue_date"]').val();
+                const expiry_date = $(this).find('[data-field="expiry_date"]').val();
+                const credential_id = $(this).find('[data-field="credential_id"]').val();
+                
+                if (name) {
+                    certifications.push({ name, issuer, issue_date, expiry_date, credential_id });
+                }
+            });
+            
+            // Prepare update payload
+            const updates = {
+                personal_info: personalInfo,
+                skills: skills,
+                work_experience: experience,
+                education: education,
+                certifications: certifications
+            };
+            
+            // Show loading
+            $('#saveChangesBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Saving...');
+            
+            // Send to API
+            fetch(`/api/v1/candidates/${candidateId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updates)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to update candidate');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Success
+                bootstrap.Modal.getInstance(document.getElementById('editCandidateModal')).hide();
+                
+                // Show success message
+                alert('Profile updated successfully!');
+                
+                // Reload candidate data
+                loadCandidateDetails();
+            })
+            .catch(error => {
+                console.error('Error saving changes:', error);
+                alert('Failed to save changes. Please try again.');
+            })
+            .finally(() => {
+                $('#saveChangesBtn').prop('disabled', false).html('<i class="bi bi-save me-1"></i> Save Changes');
+            });
+        }
+        
+        // Bind save button
+        $('#saveChangesBtn').click(saveAllChanges);
+        
+        // Bind add buttons
+        $('#addSkillBtn').click(addNewSkill);
+        $('#addExperienceBtn').click(addNewExperience);
+        $('#addEducationBtn').click(addNewEducation);
+        $('#addCertificationBtn').click(addNewCertification);
     </script>
 </body>
 </html>

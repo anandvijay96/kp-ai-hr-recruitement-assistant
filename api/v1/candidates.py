@@ -69,6 +69,135 @@ def get_all_candidates(skip: int = 0, limit: int = 100, db: Session = Depends(ge
     candidates = candidate_service.get_all_candidates(db, skip, limit)
     return {"candidates": candidates, "total": len(candidates)}
 
+@router.put("/{candidate_id}")
+async def update_candidate(candidate_id: str, updates: dict, db: Session = Depends(get_db)):
+    """Update candidate profile with all related data."""
+    from sqlalchemy import select, delete
+    from sqlalchemy.orm import selectinload
+    from models.database import Candidate, CandidateSkill, Skill, Education, WorkExperience, Certification
+    
+    try:
+        # Get candidate
+        stmt = select(Candidate).filter(Candidate.id == candidate_id)
+        result = await db.execute(stmt)
+        candidate = result.scalar_one_or_none()
+        
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        
+        # Update personal info
+        personal_info = updates.get('personal_info', {})
+        if personal_info:
+            candidate.full_name = personal_info.get('full_name', candidate.full_name)
+            candidate.email = personal_info.get('email', candidate.email)
+            candidate.phone = personal_info.get('phone', candidate.phone)
+            candidate.linkedin_url = personal_info.get('linkedin_url', candidate.linkedin_url)
+            candidate.location = personal_info.get('location', candidate.location)
+        
+        # Update skills - delete all and recreate
+        if 'skills' in updates:
+            # Delete existing skills
+            await db.execute(delete(CandidateSkill).where(CandidateSkill.candidate_id == candidate_id))
+            
+            # Add new skills
+            for skill_data in updates['skills']:
+                skill_name = skill_data.get('name')
+                if not skill_name:
+                    continue
+                
+                # Get or create skill
+                stmt = select(Skill).filter(Skill.name == skill_name)
+                result = await db.execute(stmt)
+                skill = result.scalar_one_or_none()
+                
+                if not skill:
+                    skill = Skill(name=skill_name, category="technical")
+                    db.add(skill)
+                    await db.flush()
+                
+                # Create candidate-skill relationship
+                candidate_skill = CandidateSkill(
+                    candidate_id=candidate_id,
+                    skill_id=skill.id,
+                    proficiency=skill_data.get('proficiency', 'intermediate')
+                )
+                db.add(candidate_skill)
+        
+        # Update work experience - delete all and recreate
+        if 'work_experience' in updates:
+            await db.execute(delete(WorkExperience).where(WorkExperience.candidate_id == candidate_id))
+            
+            for exp_data in updates['work_experience']:
+                if not exp_data.get('company') and not exp_data.get('title'):
+                    continue
+                
+                work_exp = WorkExperience(
+                    candidate_id=candidate_id,
+                    company=exp_data.get('company'),
+                    title=exp_data.get('title'),
+                    location=exp_data.get('location'),
+                    start_date=exp_data.get('start_date'),
+                    end_date=exp_data.get('end_date') if not exp_data.get('is_current') else None,
+                    is_current=exp_data.get('is_current', False),
+                    description=exp_data.get('description')
+                )
+                db.add(work_exp)
+        
+        # Update education - delete all and recreate
+        if 'education' in updates:
+            await db.execute(delete(Education).where(Education.candidate_id == candidate_id))
+            
+            for edu_data in updates['education']:
+                if not edu_data.get('degree') and not edu_data.get('institution'):
+                    continue
+                
+                education = Education(
+                    candidate_id=candidate_id,
+                    degree=edu_data.get('degree'),
+                    field=edu_data.get('field'),
+                    institution=edu_data.get('institution'),
+                    location=edu_data.get('location'),
+                    start_date=edu_data.get('start_date'),
+                    end_date=edu_data.get('end_date'),
+                    gpa=edu_data.get('gpa')
+                )
+                db.add(education)
+        
+        # Update certifications - delete all and recreate
+        if 'certifications' in updates:
+            await db.execute(delete(Certification).where(Certification.candidate_id == candidate_id))
+            
+            for cert_data in updates['certifications']:
+                if not cert_data.get('name'):
+                    continue
+                
+                certification = Certification(
+                    candidate_id=candidate_id,
+                    name=cert_data.get('name'),
+                    issuer=cert_data.get('issuer'),
+                    issue_date=cert_data.get('issue_date'),
+                    expiry_date=cert_data.get('expiry_date'),
+                    credential_id=cert_data.get('credential_id')
+                )
+                db.add(certification)
+        
+        # Commit all changes
+        await db.commit()
+        await db.refresh(candidate)
+        
+        return {
+            "success": True,
+            "message": "Candidate updated successfully",
+            "candidate_id": candidate_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error updating candidate: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update candidate: {str(e)}")
+
 @router.get("/{candidate_id}")
 async def get_candidate(candidate_id: str, db: Session = Depends(get_db)):
     """Get candidate by ID with all related data."""
