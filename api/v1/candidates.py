@@ -131,13 +131,30 @@ async def update_candidate(candidate_id: str, updates: dict, db: Session = Depen
                 if not exp_data.get('company') and not exp_data.get('title'):
                     continue
                 
+                # Convert date strings to date objects
+                start_date = exp_data.get('start_date')
+                if start_date and isinstance(start_date, str):
+                    try:
+                        from dateutil import parser
+                        start_date = parser.parse(start_date).date()
+                    except:
+                        start_date = None
+                
+                end_date = exp_data.get('end_date')
+                if end_date and isinstance(end_date, str):
+                    try:
+                        from dateutil import parser
+                        end_date = parser.parse(end_date).date()
+                    except:
+                        end_date = None
+                
                 work_exp = WorkExperience(
                     candidate_id=candidate_id,
                     company=exp_data.get('company'),
                     title=exp_data.get('title'),
                     location=exp_data.get('location'),
-                    start_date=exp_data.get('start_date'),
-                    end_date=exp_data.get('end_date') if not exp_data.get('is_current') else None,
+                    start_date=start_date,
+                    end_date=end_date if not exp_data.get('is_current') else None,
                     is_current=exp_data.get('is_current', False),
                     description=exp_data.get('description')
                 )
@@ -151,14 +168,31 @@ async def update_candidate(candidate_id: str, updates: dict, db: Session = Depen
                 if not edu_data.get('degree') and not edu_data.get('institution'):
                     continue
                 
+                # Convert date strings to date objects
+                start_date = edu_data.get('start_date')
+                if start_date and isinstance(start_date, str):
+                    try:
+                        from dateutil import parser
+                        start_date = parser.parse(start_date).date()
+                    except:
+                        start_date = None
+                
+                end_date = edu_data.get('end_date')
+                if end_date and isinstance(end_date, str):
+                    try:
+                        from dateutil import parser
+                        end_date = parser.parse(end_date).date()
+                    except:
+                        end_date = None
+                
                 education = Education(
                     candidate_id=candidate_id,
                     degree=edu_data.get('degree'),
                     field=edu_data.get('field'),
                     institution=edu_data.get('institution'),
                     location=edu_data.get('location'),
-                    start_date=edu_data.get('start_date'),
-                    end_date=edu_data.get('end_date'),
+                    start_date=start_date,
+                    end_date=end_date,
                     gpa=edu_data.get('gpa')
                 )
                 db.add(education)
@@ -171,12 +205,29 @@ async def update_candidate(candidate_id: str, updates: dict, db: Session = Depen
                 if not cert_data.get('name'):
                     continue
                 
+                # Convert date strings to date objects
+                issue_date = cert_data.get('issue_date')
+                if issue_date and isinstance(issue_date, str):
+                    try:
+                        from dateutil import parser
+                        issue_date = parser.parse(issue_date).date()
+                    except:
+                        issue_date = None
+                
+                expiry_date = cert_data.get('expiry_date')
+                if expiry_date and isinstance(expiry_date, str):
+                    try:
+                        from dateutil import parser
+                        expiry_date = parser.parse(expiry_date).date()
+                    except:
+                        expiry_date = None
+                
                 certification = Certification(
                     candidate_id=candidate_id,
                     name=cert_data.get('name'),
                     issuer=cert_data.get('issuer'),
-                    issue_date=cert_data.get('issue_date'),
-                    expiry_date=cert_data.get('expiry_date'),
+                    issue_date=issue_date,
+                    expiry_date=expiry_date,
                     credential_id=cert_data.get('credential_id')
                 )
                 db.add(certification)

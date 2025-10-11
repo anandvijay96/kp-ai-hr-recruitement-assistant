@@ -277,10 +277,26 @@ class FilterService:
             total_experience = 0
             for exp in candidate.work_experience:
                 if exp.start_date:
-                    if exp.end_date:
-                        years = (exp.end_date - exp.start_date).days / 365.25
+                    # Convert string dates to date objects if needed
+                    start_date = exp.start_date
+                    if isinstance(start_date, str):
+                        try:
+                            from dateutil import parser
+                            start_date = parser.parse(start_date).date()
+                        except:
+                            continue
+                    
+                    end_date = exp.end_date
+                    if end_date:
+                        if isinstance(end_date, str):
+                            try:
+                                from dateutil import parser
+                                end_date = parser.parse(end_date).date()
+                            except:
+                                end_date = datetime.now().date()
+                        years = (end_date - start_date).days / 365.25
                     else:
-                        years = (datetime.now().date() - exp.start_date).days / 365.25
+                        years = (datetime.now().date() - start_date).days / 365.25
                     total_experience += max(0, years)
             
             # Get education level
