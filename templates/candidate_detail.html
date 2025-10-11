@@ -516,6 +516,11 @@
                                         <label for="editLocation" class="form-label">Location</label>
                                         <input type="text" class="form-control" id="editLocation" placeholder="City, Country">
                                     </div>
+                                    <div class="col-md-12 mb-3">
+                                        <label for="editProfessionalSummary" class="form-label">Professional Summary</label>
+                                        <textarea class="form-control" id="editProfessionalSummary" rows="4" 
+                                                  placeholder="Brief professional summary or objective..."></textarea>
+                                    </div>
                                 </div>
                             </form>
                         </div>
@@ -864,6 +869,7 @@
                     $('#editPhone').val(data.phone || '');
                     $('#editLinkedIn').val(data.linkedin_url || '');
                     $('#editLocation').val(data.location || '');
+                    $('#editProfessionalSummary').val(data.professional_summary || '');
                     
                     // Store current data for editing
                     window.currentCandidateData = data;
@@ -1176,7 +1182,8 @@
                 email: $('#editEmail').val(),
                 phone: $('#editPhone').val(),
                 linkedin_url: $('#editLinkedIn').val(),
-                location: $('#editLocation').val()
+                location: $('#editLocation').val(),
+                professional_summary: $('#editProfessionalSummary').val()
             };
             
             // Collect skills

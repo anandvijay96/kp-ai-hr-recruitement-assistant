@@ -93,6 +93,7 @@ async def update_candidate(candidate_id: str, updates: dict, db: Session = Depen
             candidate.phone = personal_info.get('phone', candidate.phone)
             candidate.linkedin_url = personal_info.get('linkedin_url', candidate.linkedin_url)
             candidate.location = personal_info.get('location', candidate.location)
+            candidate.professional_summary = personal_info.get('professional_summary', candidate.professional_summary)
         
         # Update skills - delete all and recreate
         if 'skills' in updates:
