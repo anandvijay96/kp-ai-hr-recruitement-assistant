@@ -408,13 +408,13 @@
                                     <span>-</span>
                                 </div>
                                 <div class="mt-2">
-                                    <small class="text-muted">Match Score</small>
+                                    <small class="text-muted">JD Match</small>
                                 </div>
                             </div>
                         </div>
                         <div class="text-center">
-                            <button class="btn btn-outline-primary btn-sm" id="viewDetailsBtn">
-                                <i class="bi bi-eye me-1"></i> View Detailed Analysis
+                            <button class="btn btn-primary btn-sm" id="viewDetailedAnalysisBtn" style="display: none;">
+                                <i class="bi bi-graph-up me-1"></i>View Detailed Analysis
                             </button>
                         </div>
                     </div>
@@ -440,6 +440,189 @@
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Analysis Modal -->
+    <div class="modal fade" id="detailedAnalysisModal" tabindex="-1" aria-labelledby="analysisModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="analysisModalLabel">
+                        <i class="bi bi-graph-up me-2"></i>Detailed Resume Analysis
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs mb-3" id="analysisTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="authenticity-analysis-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#authenticityAnalysis" type="button" role="tab">
+                                <i class="bi bi-shield-check me-1"></i>Authenticity Analysis
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="jd-match-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#jdMatchAnalysis" type="button" role="tab">
+                                <i class="bi bi-bullseye me-1"></i>JD Match Analysis
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="analysisTabContent">
+                        <!-- Authenticity Analysis Tab -->
+                        <div class="tab-pane fade show active" id="authenticityAnalysis" role="tabpanel">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="mb-3"><i class="bi bi-bar-chart me-2"></i>Score Breakdown</h6>
+                                    
+                                    <!-- Font Consistency -->
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small>Font Consistency</small>
+                                            <small><strong id="fontScoreValue">-</strong></small>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar" id="fontScoreBar" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Grammar Quality -->
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small>Grammar Quality</small>
+                                            <small><strong id="grammarScoreValue">-</strong></small>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar" id="grammarScoreBar" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Formatting Consistency -->
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small>Formatting Consistency</small>
+                                            <small><strong id="formattingScoreValue">-</strong></small>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar" id="formattingScoreBar" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Visual Consistency -->
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small>Visual Consistency</small>
+                                            <small><strong id="visualScoreValue">-</strong></small>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar" id="visualScoreBar" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- LinkedIn Profile -->
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small>LinkedIn Profile</small>
+                                            <small><strong id="linkedinScoreValue">-</strong></small>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar" id="linkedinScoreBar" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Capitalization -->
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small>Capitalization Consistency</small>
+                                            <small><strong id="capitalizationScoreValue">-</strong></small>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar" id="capitalizationScoreBar" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <h6 class="mb-3"><i class="bi bi-flag me-2"></i>Flags & Warnings</h6>
+                                    <div id="authenticityFlags" class="list-group">
+                                        <div class="text-muted">Loading...</div>
+                                    </div>
+                                    
+                                    <h6 class="mt-4 mb-3"><i class="bi bi-info-circle me-2"></i>Details</h6>
+                                    <div id="authenticityDetails" class="list-group">
+                                        <div class="text-muted">Loading...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- JD Match Analysis Tab -->
+                        <div class="tab-pane fade" id="jdMatchAnalysis" role="tabpanel">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="mb-3"><i class="bi bi-bar-chart me-2"></i>Match Breakdown</h6>
+                                    
+                                    <!-- Skills Match -->
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small>Skills Match</small>
+                                            <small><strong id="skillsMatchValue">-</strong></small>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-success" id="skillsMatchBar" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Experience Match -->
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small>Experience Match</small>
+                                            <small><strong id="experienceMatchValue">-</strong></small>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-info" id="experienceMatchBar" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Education Match -->
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small>Education Match</small>
+                                            <small><strong id="educationMatchValue">-</strong></small>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-warning" id="educationMatchBar" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <h6 class="mb-3"><i class="bi bi-check-circle me-2"></i>Matched Skills</h6>
+                                    <div id="matchedSkillsList" class="mb-3">
+                                        <div class="text-muted">Loading...</div>
+                                    </div>
+                                    
+                                    <h6 class="mb-3"><i class="bi bi-x-circle me-2"></i>Missing Skills</h6>
+                                    <div id="missingSkillsList" class="mb-3">
+                                        <div class="text-muted">Loading...</div>
+                                    </div>
+                                    
+                                    <h6 class="mb-3"><i class="bi bi-info-circle me-2"></i>Match Details</h6>
+                                    <div id="matchDetails" class="list-group">
+                                        <div class="text-muted">Loading...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -751,11 +934,33 @@
                     return new Date(resume.upload_date) > new Date(latest.upload_date) ? resume : latest;
                 });
                 updateScoreDisplay('authenticityScore', latestResume.authenticity_score || 0);
-                updateScoreDisplay('matchScore', 0); // JD match not stored in candidate
+                
+                // Get JD match score from parsed data if available
+                let jdMatchScore = 0;
+                try {
+                    if (latestResume.parsed_data) {
+                        const parsedData = typeof latestResume.parsed_data === 'string' 
+                            ? JSON.parse(latestResume.parsed_data) 
+                            : latestResume.parsed_data;
+                        jdMatchScore = parsedData.matching_score?.overall_match || latestResume.jd_match_score || 0;
+                    }
+                } catch (e) {
+                    console.error('Error parsing JD match score:', e);
+                }
+                updateScoreDisplay('matchScore', jdMatchScore);
+                
+                // Show "View Detailed Analysis" button if analysis data exists
+                if (latestResume.parsed_data) {
+                    $('#viewDetailedAnalysisBtn').show();
+                }
             } else {
                 updateScoreDisplay('authenticityScore', null);
                 updateScoreDisplay('matchScore', null);
+                $('#viewDetailedAnalysisBtn').hide();
             }
+            
+            // Store candidate data globally for analysis modal
+            window.currentCandidateData = candidate;
         }
         
         // View resume
@@ -856,6 +1061,125 @@
         $('#editBtn').click(() => {
             openEditModal();
         });
+        
+        // View Detailed Analysis button handler
+        $('#viewDetailedAnalysisBtn').click(() => {
+            openDetailedAnalysisModal();
+        });
+        
+        // Open detailed analysis modal
+        function openDetailedAnalysisModal() {
+            // Get the latest resume for this candidate
+            if (!window.currentCandidateData || !window.currentCandidateData.resumes || window.currentCandidateData.resumes.length === 0) {
+                alert('No resume analysis available for this candidate');
+                return;
+            }
+            
+            // Get latest resume
+            const latestResume = window.currentCandidateData.resumes.reduce((latest, resume) => {
+                return new Date(resume.upload_date) > new Date(latest.upload_date) ? resume : latest;
+            });
+            
+            // Parse the analysis data
+            let parsedData = {};
+            try {
+                if (latestResume.parsed_data) {
+                    parsedData = typeof latestResume.parsed_data === 'string' 
+                        ? JSON.parse(latestResume.parsed_data) 
+                        : latestResume.parsed_data;
+                }
+            } catch (e) {
+                console.error('Error parsing analysis data:', e);
+            }
+            
+            // Populate Authenticity Analysis
+            const authScore = parsedData.authenticity_score || {};
+            populateScoreBar('fontScore', authScore.font_consistency || 0);
+            populateScoreBar('grammarScore', authScore.grammar_score || 0);
+            populateScoreBar('formattingScore', authScore.formatting_score || 0);
+            populateScoreBar('visualScore', authScore.visual_consistency || 0);
+            populateScoreBar('linkedinScore', authScore.linkedin_profile_score || 0);
+            populateScoreBar('capitalizationScore', authScore.capitalization_score || 0);
+            
+            // Populate flags
+            const flags = authScore.flags || [];
+            if (flags.length > 0) {
+                $('#authenticityFlags').html(flags.map(flag => 
+                    `<div class="list-group-item">${flag}</div>`
+                ).join(''));
+            } else {
+                $('#authenticityFlags').html('<div class="text-muted">No flags</div>');
+            }
+            
+            // Populate details
+            const details = authScore.details || [];
+            if (details.length > 0) {
+                $('#authenticityDetails').html(details.map(detail => 
+                    `<div class="list-group-item">${detail}</div>`
+                ).join(''));
+            } else {
+                $('#authenticityDetails').html('<div class="text-muted">No additional details</div>');
+            }
+            
+            // Populate JD Match Analysis
+            const matchScore = parsedData.matching_score || {};
+            populateScoreBar('skillsMatch', matchScore.skills_match || 0, 'bg-success');
+            populateScoreBar('experienceMatch', matchScore.experience_match || 0, 'bg-info');
+            populateScoreBar('educationMatch', matchScore.education_match || 0, 'bg-warning');
+            
+            // Populate matched skills
+            const matchedSkills = matchScore.matched_skills || [];
+            if (matchedSkills.length > 0) {
+                $('#matchedSkillsList').html(matchedSkills.map(skill => 
+                    `<span class="badge bg-success me-1 mb-1">${skill}</span>`
+                ).join(''));
+            } else {
+                $('#matchedSkillsList').html('<div class="text-muted">No matched skills data</div>');
+            }
+            
+            // Populate missing skills
+            const missingSkills = matchScore.missing_skills || [];
+            if (missingSkills.length > 0) {
+                $('#missingSkillsList').html(missingSkills.map(skill => 
+                    `<span class="badge bg-warning text-dark me-1 mb-1">${skill}</span>`
+                ).join(''));
+            } else {
+                $('#missingSkillsList').html('<div class="text-muted">No missing skills</div>');
+            }
+            
+            // Populate match details
+            const matchDetails = matchScore.details || [];
+            if (matchDetails.length > 0) {
+                $('#matchDetails').html(matchDetails.map(detail => 
+                    `<div class="list-group-item">${detail}</div>`
+                ).join(''));
+            } else {
+                $('#matchDetails').html('<div class="text-muted">No match details available</div>');
+            }
+            
+            // Show modal
+            new bootstrap.Modal(document.getElementById('detailedAnalysisModal')).show();
+        }
+        
+        // Helper function to populate score bars
+        function populateScoreBar(prefix, score, colorClass = '') {
+            const value = Math.round(score);
+            $(`#${prefix}Value`).text(value);
+            $(`#${prefix}Bar`).css('width', value + '%');
+            
+            // Set color based on score if no color class provided
+            if (!colorClass) {
+                if (value >= 80) {
+                    $(`#${prefix}Bar`).removeClass('bg-warning bg-danger').addClass('bg-success');
+                } else if (value >= 60) {
+                    $(`#${prefix}Bar`).removeClass('bg-success bg-danger').addClass('bg-warning');
+                } else {
+                    $(`#${prefix}Bar`).removeClass('bg-success bg-warning').addClass('bg-danger');
+                }
+            } else {
+                $(`#${prefix}Bar`).addClass(colorClass);
+            }
+        }
         
         // Open edit modal
         function openEditModal() {
