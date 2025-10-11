@@ -18,7 +18,7 @@ from services.resume_analyzer import ResumeAuthenticityAnalyzer
 from services.jd_matcher import JDMatcher
 from services.vetting_session import VettingSession
 from services.google_search_verifier import GoogleSearchVerifier
-from services.resume_data_extractor import ResumeDataExtractor
+from services.enhanced_resume_extractor import EnhancedResumeExtractor
 from core.config import settings
 
 router = APIRouter()
@@ -43,7 +43,7 @@ resume_analyzer = ResumeAuthenticityAnalyzer(
 )
 jd_matcher = JDMatcher()
 vetting_session = VettingSession()
-resume_data_extractor = ResumeDataExtractor()
+resume_data_extractor = EnhancedResumeExtractor()
 
 @router.post("/scan")
 async def scan_resume(
@@ -429,11 +429,13 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 # Create new candidate if doesn't exist
                 if not candidate:
                     candidate = Candidate(
+                        id=str(uuid.uuid4()),
                         full_name=candidate_name,
                         email=candidate_email,
                         phone=candidate_phone,
                         linkedin_url=extracted_data.get('linkedin_url'),
                         location=extracted_data.get('location'),
+                        professional_summary=extracted_data.get('summary'),  
                         source="vetting",
                         status="new",
                         created_by="system"

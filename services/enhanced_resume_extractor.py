@@ -312,21 +312,53 @@ class EnhancedResumeExtractor:
     def extract_name(self, lines: List[str]) -> Optional[str]:
         """Enhanced name extraction using multiple heuristics"""
         try:
-            for line in lines[:10]:  # Check first 10 lines
+            # Common section headers to skip
+            skip_patterns = [
+                r'^(PROFESSIONAL SUMMARY|PROFILE|OBJECTIVE|KEY RESPONSIBILITIES)',
+                r'^(CERTIFICATION|CERTIFICATIONS|CONTACT|CONTACT INFORMATION)',
+                r'^(SKILLS|TECHNICAL SKILLS|CORE COMPETENCIES)',
+                r'^(EDUCATION|ACADEMIC BACKGROUND|QUALIFICATIONS)',
+                r'^(EXPERIENCE|WORK EXPERIENCE|EMPLOYMENT HISTORY|PROFESSIONAL EXPERIENCE)',
+                r'^(SUMMARY|CAREER SUMMARY|EXECUTIVE SUMMARY)',
+                r'^(PROJECTS|KEY PROJECTS|ACHIEVEMENTS|ACCOMPLISHMENTS)',
+                r'^(REFERENCES|LANGUAGES|INTERESTS|HOBBIES)',
+                r'^(RESUME|CURRICULUM VITAE|CV)',
+            ]
+            
+            for line in lines[:15]:  # Check first 15 lines
                 line = line.strip()
                 
-                # Skip lines with emails, phones, or URLs
-                if any(char in line for char in ['@', 'http', 'www']):
+                # Skip empty lines
+                if not line:
                     continue
+                
+                # Skip section headers
+                if any(re.match(pattern, line.upper()) for pattern in skip_patterns):
+                    continue
+                
+                # Skip lines with emails, phones, or URLs
+                if any(char in line for char in ['@', 'http', 'www', '.com', '.net', '.org']):
+                    continue
+                
+                # Skip lines with phone numbers (3+ consecutive digits)
                 if re.search(r'\d{3,}', line):
+                    continue
+                
+                # Skip lines with special characters commonly in headers
+                if any(char in line for char in [':', '|', '/', '\\', '•', '●', '○']):
                     continue
                 
                 # Name is usually 2-4 capitalized words
                 words = line.split()
-                capitalized = [w for w in words if w and w[0].isupper() and w.isalpha()]
                 
+                # Filter to only capitalized words
+                capitalized = [w for w in words if w and len(w) > 1 and w[0].isupper() and w.isalpha()]
+                
+                # Check if it looks like a name
                 if 2 <= len(capitalized) <= 4 and len(line) < 50:
-                    return ' '.join(capitalized)
+                    # Additional validation: not all uppercase (likely a header)
+                    if not line.isupper():
+                        return ' '.join(capitalized)
             
             return None
         except Exception as e:
@@ -580,22 +612,48 @@ class EnhancedResumeExtractor:
     def extract_summary(self, lines: List[str]) -> Optional[str]:
         """Extract professional summary or objective"""
         try:
-            summary_keywords = ['summary', 'objective', 'profile', 'about']
+            summary_keywords = [
+                'professional summary', 'summary', 'profile', 'objective',
+                'career objective', 'about me', 'introduction', 'overview',
+                'career summary', 'executive summary', 'professional profile'
+            ]
+            
+            # Section headers that indicate end of summary
+            end_sections = [
+                'experience', 'work experience', 'employment', 'professional experience',
+                'education', 'academic', 'skills', 'technical skills', 'core competencies',
+                'projects', 'certifications', 'achievements'
+            ]
             
             for i, line in enumerate(lines):
-                line_lower = line.lower()
+                line_lower = line.lower().strip()
+                
+                # Check if this line is a summary header
                 if any(keyword in line_lower for keyword in summary_keywords):
                     # Collect next few lines until blank line or next section
                     summary_lines = []
-                    for j in range(i + 1, min(i + 10, len(lines))):
-                        if not lines[j].strip():
+                    for j in range(i + 1, min(i + 15, len(lines))):
+                        next_line = lines[j].strip()
+                        
+                        # Stop at blank line
+                        if not next_line:
                             break
-                        if any(section in lines[j].lower() for section in ['experience', 'education', 'skills']):
+                        
+                        # Stop at next section header
+                        if any(section in next_line.lower() for section in end_sections):
                             break
-                        summary_lines.append(lines[j].strip())
+                        
+                        # Skip lines that look like headers (all caps, short)
+                        if next_line.isupper() and len(next_line) < 30:
+                            break
+                        
+                        summary_lines.append(next_line)
                     
                     if summary_lines:
-                        return ' '.join(summary_lines)
+                        summary_text = ' '.join(summary_lines)
+                        # Validate length (reasonable summary is 50-500 chars)
+                        if 50 <= len(summary_text) <= 500:
+                            return summary_text
             
             return None
         except Exception as e:
