@@ -10,6 +10,7 @@ import logging
 import hashlib
 import uuid
 import os
+import re
 import aiofiles
 
 from core.database import get_db
@@ -96,8 +97,38 @@ async def scan_resume(
                 candidate_name = extracted_data.get('name')
                 candidate_email = extracted_data.get('email')
                 candidate_phone = extracted_data.get('phone')
+                logger.info(f"📝 Extracted candidate data: Name={candidate_name}, Email={candidate_email}, Phone={candidate_phone}")
+            else:
+                logger.warning(f"⚠️ No candidate data extracted from resume")
         except Exception as e:
             logger.warning(f"Failed to extract candidate data: {str(e)}")
+        
+        # Fallback: Extract name from filename if extraction failed
+        if not candidate_name and file.filename:
+            logger.info(f"🔄 Attempting to extract name from filename: {file.filename}")
+            # Remove extension and common prefixes
+            name_from_file = os.path.splitext(file.filename)[0]
+            logger.info(f"   After removing extension: {name_from_file}")
+            # Remove common prefixes like "Naukri_", "Resume_", etc.
+            name_from_file = re.sub(r'^(Naukri|Resume|CV)_?', '', name_from_file, flags=re.IGNORECASE)
+            logger.info(f"   After removing prefix: {name_from_file}")
+            # Remove brackets and their contents (like [7y_4m])
+            name_from_file = re.sub(r'\[.*?\]', '', name_from_file)
+            logger.info(f"   After removing brackets: {name_from_file}")
+            # Replace underscores and hyphens with spaces
+            name_from_file = name_from_file.replace('_', ' ').replace('-', ' ').strip()
+            # Split CamelCase names (e.g., "JohnDoe" -> "John Doe")
+            name_from_file = re.sub(r'([a-z])([A-Z])', r'\1 \2', name_from_file)
+            logger.info(f"   After cleanup: {name_from_file}")
+            # Only use if it looks like a name (1-5 words, reasonable length)
+            words = name_from_file.split()
+            logger.info(f"   Words: {words}, Count: {len(words)}, Length: {len(name_from_file)}")
+            # Accept if it has at least 1 word and reasonable length
+            if 1 <= len(words) <= 5 and 3 <= len(name_from_file) < 50:
+                candidate_name = name_from_file
+                logger.info(f"✅ Using name from filename: {candidate_name}")
+            else:
+                logger.warning(f"⚠️ Filename-based name rejected: {len(words)} words (need 1-5), {len(name_from_file)} chars (need 3-50)")
         
         # Analyze authenticity (SAME as upload page with all parameters)
         authenticity_result = resume_analyzer.analyze_authenticity(
@@ -111,7 +142,7 @@ async def scan_resume(
         # JD matching if job description provided
         matching_result = None
         if job_description:
-            matching_result = jd_matcher.match(extracted_text, job_description)
+            matching_result = jd_matcher.match_resume_with_jd(extracted_text, job_description)
         
         # Build scan result (INCLUDE extracted_data for later use)
         scan_result = {
