@@ -485,6 +485,7 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                         phone=candidate_phone,
                         linkedin_url=extracted_data.get('linkedin_url'),
                         location=extracted_data.get('location'),
+                        professional_summary=extracted_data.get('summary'),
                         source="vetting",
                         status="new",
                         created_by="system"
@@ -536,10 +537,10 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                             education = Education(
                                 candidate_id=candidate.id,
                                 degree=edu.get('degree'),
-                                field=edu.get('field'),
+                                field=edu.get('field_of_study') or edu.get('field'),
                                 institution=edu.get('institution'),
                                 start_date=edu.get('start_year') or edu.get('start_date'),
-                                end_date=edu.get('end_year') or edu.get('end_date'),
+                                end_date=edu.get('graduation_year') or edu.get('end_year') or edu.get('end_date'),
                                 gpa=edu.get('gpa')
                             )
                             db.add(education)
@@ -604,11 +605,52 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                                 candidate_id=candidate.id,
                                 name=cert.get('name'),
                                 issuer=cert.get('issuer'),
-                                issue_date=cert.get('issue_date'),
+                                issue_date=cert.get('issue_date') or cert.get('year'),
                                 expiry_date=cert.get('expiry_date'),
                                 credential_id=cert.get('credential_id')
                             )
                             db.add(certification)
+                        await db.commit()
+                    
+                    # Store projects
+                    projects_data = extracted_data.get('projects', [])
+                    if projects_data:
+                        from models.database import Project
+                        import json
+                        logger.info(f"Storing {len(projects_data)} projects for {candidate_name}")
+                        for proj in projects_data:
+                            if not proj.get('name'):
+                                continue
+                            # Convert technologies list to JSON string
+                            technologies = proj.get('technologies', [])
+                            if isinstance(technologies, list):
+                                technologies_json = json.dumps(technologies)
+                            else:
+                                technologies_json = None
+                            
+                            project = Project(
+                                candidate_id=candidate.id,
+                                name=proj.get('name'),
+                                description=proj.get('description'),
+                                technologies=technologies_json
+                            )
+                            db.add(project)
+                        await db.commit()
+                    
+                    # Store languages
+                    languages_data = extracted_data.get('languages', [])
+                    if languages_data:
+                        from models.database import Language
+                        logger.info(f"Storing {len(languages_data)} languages for {candidate_name}")
+                        for lang in languages_data:
+                            if not lang.get('language'):
+                                continue
+                            language = Language(
+                                candidate_id=candidate.id,
+                                language=lang.get('language'),
+                                proficiency=lang.get('proficiency')
+                            )
+                            db.add(language)
                         await db.commit()
                 
                 # Create resume record with extracted data

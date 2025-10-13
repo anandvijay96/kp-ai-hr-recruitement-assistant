@@ -295,3 +295,69 @@ async def get_job_status(job_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Error getting job status: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{resume_id}/view")
+async def view_resume(resume_id: str, db: Session = Depends(get_db)):
+    """View/preview a resume file"""
+    from models.database import Resume
+    from sqlalchemy import select
+    
+    try:
+        # Get resume from database
+        stmt = select(Resume).filter(Resume.id == resume_id)
+        result = await db.execute(stmt)
+        resume = result.scalar_one_or_none()
+        
+        if not resume:
+            raise HTTPException(status_code=404, detail="Resume not found")
+        
+        # Check if file exists
+        if not os.path.exists(resume.file_path):
+            raise HTTPException(status_code=404, detail="Resume file not found on disk")
+        
+        # Return file for viewing
+        return FileResponse(
+            path=resume.file_path,
+            media_type="application/pdf" if resume.file_type == "pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            filename=resume.file_name,
+            headers={"Content-Disposition": f"inline; filename={resume.file_name}"}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error viewing resume: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{resume_id}/download")
+async def download_resume(resume_id: str, db: Session = Depends(get_db)):
+    """Download a resume file"""
+    from models.database import Resume
+    from sqlalchemy import select
+    
+    try:
+        # Get resume from database
+        stmt = select(Resume).filter(Resume.id == resume_id)
+        result = await db.execute(stmt)
+        resume = result.scalar_one_or_none()
+        
+        if not resume:
+            raise HTTPException(status_code=404, detail="Resume not found")
+        
+        # Check if file exists
+        if not os.path.exists(resume.file_path):
+            raise HTTPException(status_code=404, detail="Resume file not found on disk")
+        
+        # Return file for download
+        return FileResponse(
+            path=resume.file_path,
+            media_type="application/pdf" if resume.file_type == "pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            filename=resume.file_name,
+            headers={"Content-Disposition": f"attachment; filename={resume.file_name}"}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error downloading resume: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

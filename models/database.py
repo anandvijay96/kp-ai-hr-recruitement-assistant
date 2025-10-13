@@ -226,6 +226,7 @@ class Candidate(Base):
     phone = Column(String(50), index=True)
     linkedin_url = Column(String(500))
     location = Column(String(255))
+    professional_summary = Column(Text)  # Professional summary/objective
     
     # Metadata
     source = Column(String(50), default="upload")
@@ -241,6 +242,9 @@ class Candidate(Base):
     work_experience = relationship("WorkExperience", back_populates="candidate", cascade="all, delete-orphan")  # Add alias
     experience = relationship("WorkExperience", back_populates="candidate", cascade="all, delete-orphan", overlaps="work_experience")
     certifications = relationship("Certification", back_populates="candidate", cascade="all, delete-orphan")
+    projects = relationship("Project", back_populates="candidate", cascade="all, delete-orphan")
+    languages = relationship("Language", back_populates="candidate", cascade="all, delete-orphan")
+    ratings = relationship("CandidateRating", back_populates="candidate", cascade="all, delete-orphan")
     
     __table_args__ = (
         CheckConstraint("status IN ('new', 'screened', 'interviewed', 'offered', 'hired', 'rejected', 'archived')", name="chk_candidate_status"),
@@ -335,6 +339,44 @@ class Certification(Base):
     
     # Relationship
     candidate = relationship("Candidate", back_populates="certifications")
+
+
+class Project(Base):
+    """Projects for candidates"""
+    __tablename__ = "projects"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    candidate_id = Column(String(36), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    name = Column(String(255), nullable=False)
+    description = Column(Text)
+    technologies = Column(Text)  # JSON array stored as TEXT
+    start_date = Column(String(20))
+    end_date = Column(String(20))
+    url = Column(String(500))
+    
+    confidence_score = Column(String(10))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationship
+    candidate = relationship("Candidate", back_populates="projects")
+
+
+class Language(Base):
+    """Languages for candidates"""
+    __tablename__ = "languages"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    candidate_id = Column(String(36), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    language = Column(String(100), nullable=False)
+    proficiency = Column(String(50))  # native, fluent, professional, intermediate, basic
+    
+    confidence_score = Column(String(10))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationship
+    candidate = relationship("Candidate", back_populates="languages")
 
 
 class DuplicateCheck(Base):
@@ -706,4 +748,45 @@ class ResumeJobMatch(Base):
         CheckConstraint("skill_score >= 0 AND skill_score <= 100", name="check_skill_score_range"),
         CheckConstraint("experience_score >= 0 AND experience_score <= 100", name="check_experience_score_range"),
         CheckConstraint("education_score >= 0 AND education_score <= 100", name="check_education_score_range"),
+    )
+
+
+class CandidateRating(Base):
+    """Manual ratings for candidates by recruiters"""
+    __tablename__ = "candidate_ratings"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    candidate_id = Column(String(36), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    
+    # Rating categories (1-5 stars each)
+    technical_skills = Column(Integer)  # 1-5
+    communication = Column(Integer)  # 1-5
+    culture_fit = Column(Integer)  # 1-5
+    experience_level = Column(Integer)  # 1-5
+    overall_rating = Column(Integer)  # 1-5 (can be calculated average or manual)
+    
+    # Additional feedback
+    comments = Column(Text)
+    strengths = Column(Text)  # What recruiter liked
+    concerns = Column(Text)  # What recruiter is concerned about
+    
+    # Recommendation
+    recommendation = Column(String(20))  # 'highly_recommended', 'recommended', 'maybe', 'not_recommended'
+    
+    # Metadata
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    candidate = relationship("Candidate", back_populates="ratings")
+    user = relationship("User")
+    
+    __table_args__ = (
+        CheckConstraint("technical_skills >= 1 AND technical_skills <= 5", name="check_technical_skills_range"),
+        CheckConstraint("communication >= 1 AND communication <= 5", name="check_communication_range"),
+        CheckConstraint("culture_fit >= 1 AND culture_fit <= 5", name="check_culture_fit_range"),
+        CheckConstraint("experience_level >= 1 AND experience_level <= 5", name="check_experience_level_range"),
+        CheckConstraint("overall_rating >= 1 AND overall_rating <= 5", name="check_overall_rating_range"),
+        CheckConstraint("recommendation IN ('highly_recommended', 'recommended', 'maybe', 'not_recommended')", name="check_recommendation_values"),
     )

@@ -263,7 +263,9 @@ async def get_candidate(candidate_id: str, db: Session = Depends(get_db)):
         selectinload(Candidate.skills).selectinload(CandidateSkill.skill),
         selectinload(Candidate.education),
         selectinload(Candidate.work_experience),
-        selectinload(Candidate.certifications)
+        selectinload(Candidate.certifications),
+        selectinload(Candidate.projects),
+        selectinload(Candidate.languages)
     ).filter(Candidate.id == candidate_id)
     
     result = await db.execute(stmt)
@@ -281,6 +283,7 @@ async def get_candidate(candidate_id: str, db: Session = Depends(get_db)):
         "phone": candidate.phone,
         "linkedin_url": candidate.linkedin_url,
         "location": candidate.location,
+        "professional_summary": candidate.professional_summary,
         "source": candidate.source,
         "status": candidate.status,
         "created_at": candidate.created_at.isoformat() if candidate.created_at else None,
@@ -325,7 +328,16 @@ async def get_candidate(candidate_id: str, db: Session = Depends(get_db)):
             "issue_date": c.issue_date,
             "expiry_date": c.expiry_date,
             "credential_id": c.credential_id
-        } for c in candidate.certifications] if candidate.certifications else []
+        } for c in candidate.certifications] if candidate.certifications else [],
+        "projects": [{
+            "name": p.name,
+            "description": p.description,
+            "technologies": p.technologies
+        } for p in candidate.projects] if candidate.projects else [],
+        "languages": [{
+            "language": l.language,
+            "proficiency": l.proficiency
+        } for l in candidate.languages] if candidate.languages else []
     }
 
 @router.post("/check-duplicate")

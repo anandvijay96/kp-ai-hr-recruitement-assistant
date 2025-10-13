@@ -206,6 +206,131 @@
             padding: 60px;
             color: #dc3545;
         }
+        
+        /* Star Rating Styles */
+        .rating-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        
+        .rating-summary {
+            text-align: center;
+            padding: 20px 0;
+        }
+        
+        .rating-score {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .rating-stars-large {
+            font-size: 24px;
+            color: #ffd700;
+            margin-bottom: 8px;
+        }
+        
+        .rating-count {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .star-rating {
+            display: inline-flex;
+            gap: 4px;
+            cursor: pointer;
+        }
+        
+        .star-rating.readonly {
+            cursor: default;
+        }
+        
+        .star-rating i {
+            font-size: 20px;
+            color: #ddd;
+            transition: color 0.2s;
+        }
+        
+        .star-rating i.filled {
+            color: #ffd700;
+        }
+        
+        .star-rating:not(.readonly) i:hover {
+            color: #ffed4e;
+        }
+        
+        .rating-category {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .rating-category:last-child {
+            border-bottom: none;
+        }
+        
+        .rating-category-label {
+            font-weight: 500;
+            color: #495057;
+        }
+        
+        .rating-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .rating-badge.highly_recommended {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .rating-badge.recommended {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .rating-badge.maybe {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .rating-badge.not_recommended {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .rating-history-item {
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .rating-history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .rating-history-user {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .rating-history-date {
+            font-size: 12px;
+            color: #6c757d;
+        }
     </style>
 </head>
 <body>
@@ -325,6 +450,7 @@
                         <h5 class="section-title">
                             <i class="bi bi-briefcase me-2"></i>
                             Work Experience
+                            <span class="badge bg-warning text-dark ms-2" style="font-size: 0.65rem; vertical-align: middle;" title="Auto-extraction in development">BETA</span>
                         </h5>
                         <div id="candidateExperience">
                             <!-- Populated dynamically -->
@@ -336,6 +462,7 @@
                         <h5 class="section-title">
                             <i class="bi bi-mortarboard me-2"></i>
                             Education
+                            <span class="badge bg-warning text-dark ms-2" style="font-size: 0.65rem; vertical-align: middle;" title="Auto-extraction in development">BETA</span>
                         </h5>
                         <div id="candidateEducation">
                             <!-- Populated dynamically -->
@@ -349,6 +476,28 @@
                             Certifications
                         </h5>
                         <div id="candidateCertifications">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Projects -->
+                    <div class="detail-card">
+                        <h5 class="section-title">
+                            <i class="bi bi-code-square me-2"></i>
+                            Projects
+                        </h5>
+                        <div id="candidateProjects">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Languages -->
+                    <div class="detail-card">
+                        <h5 class="section-title">
+                            <i class="bi bi-translate me-2"></i>
+                            Languages
+                        </h5>
+                        <div id="candidateLanguages">
                             <!-- Populated dynamically -->
                         </div>
                     </div>
@@ -395,6 +544,62 @@
                             <button class="btn btn-primary btn-sm" id="viewDetailedAnalysisBtn" style="display: none;">
                                 <i class="bi bi-graph-up me-1"></i>View Detailed Analysis
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Candidate Rating -->
+                    <div class="detail-card">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="section-title mb-0">
+                                <i class="bi bi-star me-2"></i>
+                                Recruiter Rating
+                            </h5>
+                            <button class="btn btn-primary btn-sm" id="addRatingBtn">
+                                <i class="bi bi-plus-circle me-1"></i>Add Rating
+                            </button>
+                        </div>
+                        
+                        <!-- Rating Summary -->
+                        <div id="ratingSummary" style="display: none;">
+                            <div class="rating-section">
+                                <div class="rating-summary">
+                                    <div class="rating-score" id="avgOverallRating">-</div>
+                                    <div class="rating-stars-large" id="avgOverallStars"></div>
+                                    <div class="rating-count" id="ratingCount">No ratings yet</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Category Breakdown -->
+                            <div id="categoryBreakdown">
+                                <div class="rating-category">
+                                    <span class="rating-category-label">Technical Skills</span>
+                                    <div class="star-rating readonly" id="avgTechnicalStars"></div>
+                                </div>
+                                <div class="rating-category">
+                                    <span class="rating-category-label">Communication</span>
+                                    <div class="star-rating readonly" id="avgCommunicationStars"></div>
+                                </div>
+                                <div class="rating-category">
+                                    <span class="rating-category-label">Culture Fit</span>
+                                    <div class="star-rating readonly" id="avgCultureFitStars"></div>
+                                </div>
+                                <div class="rating-category">
+                                    <span class="rating-category-label">Experience Level</span>
+                                    <div class="star-rating readonly" id="avgExperienceStars"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- No Ratings Message -->
+                        <div id="noRatingsMessage" class="text-center text-muted py-4">
+                            <i class="bi bi-star" style="font-size: 48px; opacity: 0.3;"></i>
+                            <p class="mt-2">No ratings yet. Be the first to rate this candidate!</p>
+                        </div>
+                        
+                        <!-- Rating History -->
+                        <div id="ratingHistory" style="display: none; margin-top: 20px;">
+                            <h6 class="mb-3">Rating History</h6>
+                            <div id="ratingHistoryList"></div>
                         </div>
                     </div>
 
@@ -786,6 +991,9 @@
                 
                 const data = await response.json();
                 
+                // Store candidate ID globally for rating system
+                window.currentCandidateId = data.id;
+                
                 // Hide loading, show content
                 $('#loadingSpinner').hide();
                 $('#candidateContent').show();
@@ -795,6 +1003,9 @@
                 
                 // Load job matches
                 loadJobMatches(data.resumes);
+                
+                // Load rating summary
+                await loadRatingSummary(data.id);
                 
             } catch (error) {
                 console.error('Error loading candidate:', error);
@@ -909,7 +1120,22 @@
             $('#candidateName').text(candidate.full_name || '-');
             $('#candidateEmail').text(candidate.email || '-');
             $('#candidatePhone').text(candidate.phone_number || '-');
-            $('#candidateLocation').text(candidate.location || '-');
+            
+            // TEMP FIX: Hide location if it looks wrong (single word, job-related terms)
+            const location = candidate.location || '';
+            const suspiciousWords = ['data', 'implementation', 'enterprise', 'manager', 'engineer', 'oval', 'senior', 'lead'];
+            const isSuspicious = location && (
+                location.split(',').length < 2 || // Not in "City, State" format
+                suspiciousWords.some(word => location.toLowerCase().includes(word)) ||
+                location.length < 3 // Too short
+            );
+            if (isSuspicious || !location) {
+                $('#candidateLocation').text('-').css('opacity', '0.5');
+                // TODO: Fix extraction - currently hiding wrong data
+            } else {
+                $('#candidateLocation').text(location);
+            }
+            
             $('#candidateSummary').text(candidate.professional_summary || 'No professional summary available.');
             
             // LinkedIn
@@ -937,49 +1163,85 @@
             }
             
             // Work Experience
+            // TEMP FIX: Filter out invalid/empty work experience entries
             if (candidate.work_experience && candidate.work_experience.length > 0) {
-                const expHtml = candidate.work_experience.map(exp => `
-                    <div class="timeline-item">
-                        <div class="timeline-dot">
-                            <i class="bi bi-briefcase"></i>
-                        </div>
-                        <div class="timeline-content">
-                            <div class="timeline-title">${exp.job_title || '-'}</div>
-                            <div class="timeline-subtitle">${exp.company || '-'}</div>
-                            <div class="text-muted small">
-                                ${formatDate(exp.start_date)} - ${exp.is_current ? 'Present' : formatDate(exp.end_date)}
-                                ${exp.location ? ` • ${exp.location}` : ''}
+                const validExperience = candidate.work_experience.filter(exp => {
+                    // Must have either title or company
+                    const hasTitle = exp.title && exp.title !== '-' && exp.title.trim().length > 0;
+                    const hasCompany = exp.company && exp.company !== '-' && exp.company.trim().length > 0;
+                    return hasTitle || hasCompany;
+                });
+                
+                if (validExperience.length > 0) {
+                    const expHtml = validExperience.map(exp => `
+                        <div class="timeline-item">
+                            <div class="timeline-dot">
+                                <i class="bi bi-briefcase"></i>
                             </div>
-                            ${exp.description ? `<div class="mt-2">${exp.description}</div>` : ''}
+                            <div class="timeline-content">
+                                <div class="timeline-title">${exp.title || exp.job_title || (exp.company ? '' : '-')}</div>
+                                <div class="timeline-subtitle">${exp.company || '-'}</div>
+                                <div class="text-muted small">
+                                    ${formatDate(exp.start_date)} - ${exp.is_current ? 'Present' : formatDate(exp.end_date)}
+                                    ${exp.location ? ` • ${exp.location}` : ''}
+                                    ${exp.duration_months ? ` • ${exp.duration_months} months` : ''}
+                                </div>
+                                ${exp.description ? `<div class="mt-2 small">${exp.description}</div>` : ''}
+                            </div>
                         </div>
-                    </div>
-                `).join('');
-                $('#candidateExperience').html(expHtml);
+                    `).join('');
+                    $('#candidateExperience').html(expHtml);
+                } else {
+                    // TODO: Fix extraction - currently no valid work experience found
+                    $('#candidateExperience').html('<p class="text-muted" style="opacity: 0.5;">Work experience data being processed...</p>');
+                }
             } else {
-                $('#candidateExperience').html('<p class="text-muted">No work experience listed</p>');
+                $('#candidateExperience').html('<p class="text-muted" style="opacity: 0.5;">Work experience data being processed...</p>');
             }
             
             // Education
+            // TEMP FIX: Filter out invalid/incomplete education entries
             if (candidate.education && candidate.education.length > 0) {
-                const eduHtml = candidate.education.map(edu => `
-                    <div class="timeline-item">
-                        <div class="timeline-dot">
-                            <i class="bi bi-mortarboard"></i>
-                        </div>
-                        <div class="timeline-content">
-                            <div class="timeline-title">${edu.degree || '-'}</div>
-                            <div class="timeline-subtitle">${edu.institution || '-'}</div>
-                            <div class="text-muted small">
-                                ${edu.field_of_study ? `${edu.field_of_study} • ` : ''}
-                                ${formatDate(edu.start_date)} - ${formatDate(edu.end_date)}
-                                ${edu.grade ? ` • GPA: ${edu.grade}` : ''}
+                const validEducation = candidate.education.filter(edu => {
+                    // Filter out garbage entries (single letters, "study", etc.)
+                    const degree = (edu.degree || '').toLowerCase();
+                    const field = (edu.field || edu.field_of_study || '').toLowerCase();
+                    const institution = (edu.institution || '').toLowerCase();
+                    
+                    // Must have a real degree (not just "b.e." or "study")
+                    const hasValidDegree = degree && degree.length > 3 && 
+                        !['study', 'be', 'ba', 'bs', 'ma', 'ms'].includes(degree.trim());
+                    
+                    // Or at least have institution
+                    const hasInstitution = institution && institution.length > 5;
+                    
+                    return hasValidDegree || hasInstitution;
+                });
+                
+                if (validEducation.length > 0) {
+                    const eduHtml = validEducation.map(edu => `
+                        <div class="timeline-item">
+                            <div class="timeline-dot">
+                                <i class="bi bi-mortarboard"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <div class="timeline-title">${edu.degree || '-'}</div>
+                                <div class="timeline-subtitle">${edu.institution || '-'}</div>
+                                <div class="text-muted small">
+                                    ${edu.field_of_study || edu.field ? `${edu.field_of_study || edu.field} • ` : ''}
+                                    ${formatDate(edu.start_date)} - ${formatDate(edu.end_date)}
+                                    ${edu.grade || edu.gpa ? ` • GPA: ${edu.grade || edu.gpa}` : ''}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `).join('');
-                $('#candidateEducation').html(eduHtml);
+                    `).join('');
+                    $('#candidateEducation').html(eduHtml);
+                } else {
+                    // TODO: Fix extraction - currently no valid education found
+                    $('#candidateEducation').html('<p class="text-muted" style="opacity: 0.5;">Education data being processed...</p>');
+                }
             } else {
-                $('#candidateEducation').html('<p class="text-muted">No education information listed</p>');
+                $('#candidateEducation').html('<p class="text-muted" style="opacity: 0.5;">Education data being processed...</p>');
             }
             
             // Certifications
@@ -991,10 +1253,11 @@
                         </div>
                         <div class="timeline-content">
                             <div class="timeline-title">${cert.name || '-'}</div>
-                            <div class="timeline-subtitle">${cert.issuing_organization || '-'}</div>
+                            <div class="timeline-subtitle">${cert.issuer || cert.issuing_organization || '-'}</div>
                             <div class="text-muted small">
-                                ${cert.issue_year || '-'}
-                                ${cert.expiry_year ? ` • Expires: ${cert.expiry_year}` : ''}
+                                ${cert.issue_date || cert.issue_year || '-'}
+                                ${cert.expiry_date || cert.expiry_year ? ` • Expires: ${cert.expiry_date || cert.expiry_year}` : ''}
+                                ${cert.credential_id ? ` • ID: ${cert.credential_id}` : ''}
                             </div>
                         </div>
                     </div>
@@ -1002,6 +1265,55 @@
                 $('#candidateCertifications').html(certHtml);
             } else {
                 $('#candidateCertifications').html('<p class="text-muted">No certifications listed</p>');
+            }
+            
+            // Projects
+            if (candidate.projects && candidate.projects.length > 0) {
+                const projHtml = candidate.projects.map(proj => {
+                    let technologies = [];
+                    if (proj.technologies) {
+                        try {
+                            technologies = typeof proj.technologies === 'string' ? JSON.parse(proj.technologies) : proj.technologies;
+                        } catch (e) {
+                            technologies = [];
+                        }
+                    }
+                    return `
+                        <div class="timeline-item">
+                            <div class="timeline-dot">
+                                <i class="bi bi-code-square"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <div class="timeline-title">${proj.name || '-'}</div>
+                                ${proj.description ? `<div class="text-muted small mb-2">${proj.description}</div>` : ''}
+                                ${technologies.length > 0 ? `
+                                    <div class="mt-2">
+                                        ${technologies.map(tech => `<span class="skill-badge">${tech}</span>`).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                $('#candidateProjects').html(projHtml);
+            } else {
+                $('#candidateProjects').html('<p class="text-muted">No projects listed</p>');
+            }
+            
+            // Languages
+            if (candidate.languages && candidate.languages.length > 0) {
+                const langHtml = candidate.languages.map(lang => `
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-3" style="background: #f8f9fa; border-radius: 8px;">
+                        <div>
+                            <i class="bi bi-translate me-2" style="color: var(--primary-color);"></i>
+                            <strong>${lang.language || '-'}</strong>
+                        </div>
+                        ${lang.proficiency ? `<span class="badge bg-primary">${lang.proficiency}</span>` : ''}
+                    </div>
+                `).join('');
+                $('#candidateLanguages').html(langHtml);
+            } else {
+                $('#candidateLanguages').html('<p class="text-muted">No languages listed</p>');
             }
             
             // Resumes
@@ -1032,9 +1344,13 @@
             
             // Assessment Scores - Use latest resume's scores
             if (candidate.resumes && candidate.resumes.length > 0) {
-                const latestResume = candidate.resumes.reduce((latest, resume) => {
-                    return new Date(resume.upload_date) > new Date(latest.upload_date) ? resume : latest;
+                // FIX: Sort by upload_date DESC and take first (most recent)
+                const sortedResumes = [...candidate.resumes].sort((a, b) => {
+                    return new Date(b.upload_date) - new Date(a.upload_date);
                 });
+                const latestResume = sortedResumes[0];
+                
+                console.log('Latest Resume:', latestResume.file_name, 'Score:', latestResume.authenticity_score);
                 updateScoreDisplay('authenticityScore', latestResume.authenticity_score || 0);
                 
                 // Get JD match score from parsed data if available
@@ -1754,6 +2070,334 @@
                     alert('Failed to load candidate data for editing.');
                 });
         });
+
+        // ========================================
+        // RATING SYSTEM
+        // ========================================
+        
+        let ratingData = {
+            technical_skills: 0,
+            communication: 0,
+            culture_fit: 0,
+            experience_level: 0
+        };
+
+        // Initialize star ratings
+        function initStarRatings() {
+            $('.star-rating:not(.readonly)').each(function() {
+                const $rating = $(this);
+                const category = $rating.data('category');
+                
+                $rating.find('i').on('click', function() {
+                    const value = parseInt($(this).data('value'));
+                    ratingData[category] = value;
+                    updateStars($rating, value);
+                });
+                
+                $rating.find('i').on('mouseenter', function() {
+                    const value = parseInt($(this).data('value'));
+                    highlightStars($rating, value);
+                });
+                
+                $rating.on('mouseleave', function() {
+                    updateStars($rating, ratingData[category]);
+                });
+            });
+        }
+
+        function highlightStars($rating, value) {
+            $rating.find('i').each(function(index) {
+                if (index < value) {
+                    $(this).removeClass('bi-star').addClass('bi-star-fill filled');
+                } else {
+                    $(this).removeClass('bi-star-fill filled').addClass('bi-star');
+                }
+            });
+        }
+
+        function updateStars($rating, value) {
+            highlightStars($rating, value);
+        }
+
+        function renderStars(rating, readonly = true) {
+            let html = `<div class="star-rating ${readonly ? 'readonly' : ''}">`;
+            for (let i = 1; i <= 5; i++) {
+                if (i <= rating) {
+                    html += `<i class="bi bi-star-fill filled"></i>`;
+                } else {
+                    html += `<i class="bi bi-star"></i>`;
+                }
+            }
+            html += '</div>';
+            return html;
+        }
+
+        // Load rating summary
+        async function loadRatingSummary(candidateId) {
+            try {
+                const response = await fetch(`/api/v1/candidates/${candidateId}/rating-summary`);
+                const summary = await response.json();
+                
+                if (summary.total_ratings > 0) {
+                    $('#ratingSummary').show();
+                    $('#noRatingsMessage').hide();
+                    
+                    // Overall rating
+                    $('#avgOverallRating').text(summary.average_overall.toFixed(1));
+                    $('#avgOverallStars').html(renderStars(Math.round(summary.average_overall)));
+                    $('#ratingCount').text(`Based on ${summary.total_ratings} rating${summary.total_ratings > 1 ? 's' : ''}`);
+                    
+                    // Category breakdown
+                    if (summary.average_technical) {
+                        const stars = renderStars(Math.round(summary.average_technical)).replace('<div class="star-rating readonly">', '').replace('</div>', '');
+                        $('#avgTechnicalStars').html(stars);
+                    }
+                    if (summary.average_communication) {
+                        const stars = renderStars(Math.round(summary.average_communication)).replace('<div class="star-rating readonly">', '').replace('</div>', '');
+                        $('#avgCommunicationStars').html(stars);
+                    }
+                    if (summary.average_culture_fit) {
+                        const stars = renderStars(Math.round(summary.average_culture_fit)).replace('<div class="star-rating readonly">', '').replace('</div>', '');
+                        $('#avgCultureFitStars').html(stars);
+                    }
+                    if (summary.average_experience) {
+                        const stars = renderStars(Math.round(summary.average_experience)).replace('<div class="star-rating readonly">', '').replace('</div>', '');
+                        $('#avgExperienceStars').html(stars);
+                    }
+                } else {
+                    $('#ratingSummary').hide();
+                    $('#noRatingsMessage').show();
+                }
+                
+                // Load rating history
+                await loadRatingHistory(candidateId);
+                
+            } catch (error) {
+                console.error('Error loading rating summary:', error);
+            }
+        }
+
+        // Load rating history
+        async function loadRatingHistory(candidateId) {
+            try {
+                const response = await fetch(`/api/v1/candidates/${candidateId}/ratings`);
+                const ratings = await response.json();
+                
+                if (ratings.length > 0) {
+                    $('#ratingHistory').show();
+                    const historyHtml = ratings.map(rating => `
+                        <div class="rating-history-item">
+                            <div class="rating-history-header">
+                                <div>
+                                    <span class="rating-history-user">${rating.user_name}</span>
+                                    ${rating.recommendation ? `<span class="rating-badge ${rating.recommendation}">${rating.recommendation.replace(/_/g, ' ')}</span>` : ''}
+                                </div>
+                                <span class="rating-history-date">${new Date(rating.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <div class="mb-2">
+                                ${renderStars(rating.overall_rating || 0)}
+                            </div>
+                            ${rating.comments ? `<p class="mb-0 small">${rating.comments}</p>` : ''}
+                        </div>
+                    `).join('');
+                    $('#ratingHistoryList').html(historyHtml);
+                } else {
+                    $('#ratingHistory').hide();
+                }
+            } catch (error) {
+                console.error('Error loading rating history:', error);
+            }
+        }
+
+        // Show rating modal
+        $('#addRatingBtn').on('click', function() {
+            // Reset form
+            ratingData = {
+                technical_skills: 0,
+                communication: 0,
+                culture_fit: 0,
+                experience_level: 0
+            };
+            $('.star-rating:not(.readonly) i').removeClass('bi-star-fill filled').addClass('bi-star');
+            $('#ratingForm')[0].reset();
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('ratingModal'));
+            modal.show();
+            
+            // Initialize star ratings
+            initStarRatings();
+        });
+
+        // Save rating
+        $('#saveRatingBtn').on('click', async function() {
+            console.log('Save Rating button clicked!');
+            
+            const candidateId = window.currentCandidateId;
+            console.log('Candidate ID:', candidateId);
+            
+            if (!candidateId) {
+                alert('Error: Candidate ID not found. Please refresh the page.');
+                return;
+            }
+            
+            const ratingPayload = {
+                candidate_id: candidateId,
+                technical_skills: ratingData.technical_skills || null,
+                communication: ratingData.communication || null,
+                culture_fit: ratingData.culture_fit || null,
+                experience_level: ratingData.experience_level || null,
+                recommendation: $('#recommendation').val() || null,
+                comments: $('#ratingComments').val() || null,
+                strengths: $('#strengths').val() || null,
+                concerns: $('#concerns').val() || null
+            };
+            
+            console.log('Rating payload:', ratingPayload);
+            
+            // Disable button to prevent double-click
+            $(this).prop('disabled', true).html('<i class="bi bi-hourglass me-1"></i>Saving...');
+            
+            try {
+                console.log('Sending request to:', `/api/v1/candidates/${candidateId}/rate`);
+                
+                const response = await fetch(`/api/v1/candidates/${candidateId}/rate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(ratingPayload)
+                });
+                
+                console.log('Response status:', response.status);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('Success:', result);
+                    
+                    // Close modal
+                    bootstrap.Modal.getInstance(document.getElementById('ratingModal')).hide();
+                    
+                    // Reload ratings
+                    await loadRatingSummary(candidateId);
+                    
+                    // Show success message
+                    alert('Rating saved successfully!');
+                } else {
+                    const error = await response.json();
+                    console.error('Error response:', error);
+                    alert('Error saving rating: ' + (error.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error saving rating:', error);
+                alert('Error saving rating: ' + error.message);
+            } finally {
+                // Re-enable button
+                $(this).prop('disabled', false).html('<i class="bi bi-check-circle me-1"></i>Save Rating');
+            }
+        });
     </script>
+
+    <!-- Rating Modal -->
+    <div class="modal fade" id="ratingModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-star me-2"></i>
+                        Rate Candidate
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="ratingForm">
+                        <!-- Technical Skills -->
+                        <div class="mb-4">
+                            <label class="form-label">Technical Skills</label>
+                            <div class="star-rating" id="technicalSkillsRating" data-category="technical_skills">
+                                <i class="bi bi-star" data-value="1"></i>
+                                <i class="bi bi-star" data-value="2"></i>
+                                <i class="bi bi-star" data-value="3"></i>
+                                <i class="bi bi-star" data-value="4"></i>
+                                <i class="bi bi-star" data-value="5"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Communication -->
+                        <div class="mb-4">
+                            <label class="form-label">Communication</label>
+                            <div class="star-rating" id="communicationRating" data-category="communication">
+                                <i class="bi bi-star" data-value="1"></i>
+                                <i class="bi bi-star" data-value="2"></i>
+                                <i class="bi bi-star" data-value="3"></i>
+                                <i class="bi bi-star" data-value="4"></i>
+                                <i class="bi bi-star" data-value="5"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Culture Fit -->
+                        <div class="mb-4">
+                            <label class="form-label">Culture Fit</label>
+                            <div class="star-rating" id="cultureFitRating" data-category="culture_fit">
+                                <i class="bi bi-star" data-value="1"></i>
+                                <i class="bi bi-star" data-value="2"></i>
+                                <i class="bi bi-star" data-value="3"></i>
+                                <i class="bi bi-star" data-value="4"></i>
+                                <i class="bi bi-star" data-value="5"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Experience Level -->
+                        <div class="mb-4">
+                            <label class="form-label">Experience Level</label>
+                            <div class="star-rating" id="experienceLevelRating" data-category="experience_level">
+                                <i class="bi bi-star" data-value="1"></i>
+                                <i class="bi bi-star" data-value="2"></i>
+                                <i class="bi bi-star" data-value="3"></i>
+                                <i class="bi bi-star" data-value="4"></i>
+                                <i class="bi bi-star" data-value="5"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Recommendation -->
+                        <div class="mb-4">
+                            <label class="form-label">Recommendation</label>
+                            <select class="form-select" id="recommendation">
+                                <option value="">Select recommendation</option>
+                                <option value="highly_recommended">Highly Recommended</option>
+                                <option value="recommended">Recommended</option>
+                                <option value="maybe">Maybe</option>
+                                <option value="not_recommended">Not Recommended</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Comments -->
+                        <div class="mb-4">
+                            <label class="form-label">Comments</label>
+                            <textarea class="form-control" id="ratingComments" rows="3" placeholder="General feedback..."></textarea>
+                        </div>
+                        
+                        <!-- Strengths -->
+                        <div class="mb-4">
+                            <label class="form-label">Strengths</label>
+                            <textarea class="form-control" id="strengths" rows="2" placeholder="What did you like?"></textarea>
+                        </div>
+                        
+                        <!-- Concerns -->
+                        <div class="mb-4">
+                            <label class="form-label">Concerns</label>
+                            <textarea class="form-control" id="concerns" rows="2" placeholder="Any concerns?"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveRatingBtn">
+                        <i class="bi bi-check-circle me-1"></i>Save Rating
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

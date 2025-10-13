@@ -27,36 +27,37 @@ class EnhancedResumeExtractor:
             r'\d{10}',
         ]
         self.linkedin_patterns = [
-            r'(?:https?://)?(?:www\.)?linkedin\.com/in/[\w-]+/?',
-            r'(?:https?://)?(?:in\.)?linkedin\.com/in/[\w-]+/?',
+            r'(?:https?://)?(?:www\.|in\.)?linkedin\.com/in/[\w-]+/?',
+            r'linkedin\.com/in/[\w-]+',
         ]
         
-        # Degree patterns (comprehensive)
+        # Degree patterns (comprehensive) - Order matters! Check PhD before Master's
         self.degree_patterns = {
-            'bachelor': [
-                r"B\.?S\.?(?:\s+in\s+)?([\w\s]+)?",
-                r"B\.?A\.?(?:\s+in\s+)?([\w\s]+)?",
-                r"B\.?Tech\.?(?:\s+in\s+)?([\w\s]+)?",
-                r"B\.?E\.?(?:\s+in\s+)?([\w\s]+)?",
-                r"Bachelor['']?s?\s+(?:of\s+)?(?:Science|Arts|Engineering|Technology|Computer Science)(?:\s+in\s+)?([\w\s]+)?",
+            'doctorate': [
+                r"\bPh\.?D\.?\b(?:\s+in\s+[\w\s]+)?",
+                r"\bPhD\b(?:\s+in\s+[\w\s]+)?",
+                r"\bDoctorate\b(?:\s+in\s+[\w\s]+)?",
+                r"\bDoctor\s+of\s+Philosophy\b(?:\s+in\s+[\w\s]+)?",
             ],
             'master': [
-                r"M\.?S\.?(?:\s+in\s+)?([\w\s]+)?",
-                r"M\.?A\.?(?:\s+in\s+)?([\w\s]+)?",
-                r"M\.?Tech\.?(?:\s+in\s+)?([\w\s]+)?",
-                r"M\.?E\.?(?:\s+in\s+)?([\w\s]+)?",
-                r"Master['']?s?\s+(?:of\s+)?(?:Science|Arts|Engineering|Technology|Computer Science)(?:\s+in\s+)?([\w\s]+)?",
-                r"MBA",
-                r"M\.B\.A\.?",
+                r"\bMaster['']?s?\s+(?:of\s+)?(?:Science|Arts|Engineering|Technology|Computer Science|Business Administration)\b",
+                r"\bM\.S\.(?:\s+in)?(?:\s+[\w\s]+)?",
+                r"\bM\.A\.(?:\s+in)?(?:\s+[\w\s]+)?",
+                r"\bM\.Tech\.?(?:\s+in)?(?:\s+[\w\s]+)?",
+                r"\bM\.E\.(?:\s+in)?(?:\s+[\w\s]+)?",
+                r"\bMBA\b",
             ],
-            'doctorate': [
-                r"Ph\.?D\.?(?:\s+in\s+)?([\w\s]+)?",
-                r"Doctorate(?:\s+in\s+)?([\w\s]+)?",
+            'bachelor': [
+                r"\bBachelor['']?s?\s+(?:of\s+)?(?:Science|Arts|Engineering|Technology|Computer Science)\b",
+                r"\bB\.S\.(?:\s+in)?(?:\s+[\w\s]+)?",
+                r"\bB\.A\.(?:\s+in)?(?:\s+[\w\s]+)?",
+                r"\bB\.Tech\.?(?:\s+in)?(?:\s+[\w\s]+)?",
+                r"\bB\.E\.(?:\s+in)?(?:\s+[\w\s]+)?",
             ],
             'associate': [
-                r"A\.?A\.?(?:\s+in\s+)?([\w\s]+)?",
-                r"A\.?S\.?(?:\s+in\s+)?([\w\s]+)?",
-                r"Associate['']?s?\s+(?:of\s+)?(?:Science|Arts)(?:\s+in\s+)?([\w\s]+)?",
+                r"\bAssociate['']?s?\s+(?:of\s+)?(?:Science|Arts)\b",
+                r"\bA\.S\.(?:\s+in)?(?:\s+[\w\s]+)?",
+                r"\bA\.A\.(?:\s+in)?(?:\s+[\w\s]+)?",
             ]
         }
         
@@ -186,9 +187,11 @@ class EnhancedResumeExtractor:
                 'skills': self.extract_skills(text),
                 'education': self.extract_education_enhanced(lines, text),
                 'work_experience': self.extract_work_experience_enhanced(lines, text),
-                'certifications': self.extract_certifications(text),
+                'certifications': self.extract_certifications_enhanced(lines, text),
                 'achievements': self.extract_achievements(lines),
                 'summary': self.extract_summary(lines),
+                'projects': self.extract_projects(lines, text),
+                'languages': self.extract_languages(lines, text),
             }
         except Exception as e:
             logger.error(f"Error in extract_all: {str(e)}", exc_info=True)
@@ -196,11 +199,12 @@ class EnhancedResumeExtractor:
     
     def _normalize_text(self, text: str) -> str:
         """Normalize text for better parsing"""
-        # Replace multiple spaces with single space
-        text = re.sub(r'\s+', ' ', text)
         # Fix common OCR errors
         text = text.replace('Ø', '0')
-        return text
+        # Replace multiple spaces on same line with single space, but preserve newlines
+        lines = text.split('\n')
+        normalized_lines = [re.sub(r'[ \t]+', ' ', line) for line in lines]
+        return '\n'.join(normalized_lines)
     
     def _empty_extraction(self) -> Dict[str, Any]:
         """Return empty extraction structure"""
@@ -218,6 +222,8 @@ class EnhancedResumeExtractor:
             'certifications': [],
             'achievements': [],
             'summary': None,
+            'projects': [],
+            'languages': [],
         }
     
     def extract_email(self, text: str) -> Optional[str]:
@@ -325,7 +331,7 @@ class EnhancedResumeExtractor:
                 r'^(RESUME|CURRICULUM VITAE|CV)',
             ]
             
-            for line in lines[:15]:  # Check first 15 lines
+            for line in lines[:20]:  # Check first 20 lines
                 line = line.strip()
                 
                 # Skip empty lines
@@ -337,25 +343,25 @@ class EnhancedResumeExtractor:
                     continue
                 
                 # Skip lines with emails, phones, or URLs
-                if any(char in line for char in ['@', 'http', 'www', '.com', '.net', '.org']):
+                if any(char in line for char in ['@', 'http', 'www']):
                     continue
                 
                 # Skip lines with phone numbers (3+ consecutive digits)
                 if re.search(r'\d{3,}', line):
                     continue
                 
-                # Skip lines with special characters commonly in headers
-                if any(char in line for char in [':', '|', '/', '\\', '•', '●', '○']):
+                # Skip lines with special characters commonly in headers (but allow hyphens in names)
+                if any(char in line for char in [':', '|', '/', '\\', '•', '●', '○', '.com', '.net']):
                     continue
                 
                 # Name is usually 2-4 capitalized words
                 words = line.split()
                 
-                # Filter to only capitalized words
-                capitalized = [w for w in words if w and len(w) > 1 and w[0].isupper() and w.isalpha()]
+                # Filter to only capitalized words (allow hyphens)
+                capitalized = [w for w in words if w and len(w) > 1 and w[0].isupper() and (w.replace('-', '').isalpha())]
                 
                 # Check if it looks like a name
-                if 2 <= len(capitalized) <= 4 and len(line) < 50:
+                if 2 <= len(capitalized) <= 4 and len(line) < 60:
                     # Additional validation: not all uppercase (likely a header)
                     if not line.isupper():
                         return ' '.join(capitalized)
@@ -368,13 +374,39 @@ class EnhancedResumeExtractor:
     def extract_location(self, text: str) -> Optional[str]:
         """Extract location/address"""
         try:
-            # Look for city, state patterns
-            pattern = r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?),?\s*([A-Z]{2}|\w+)'
-            matches = re.findall(pattern, text)
+            # Look for "Location:" label first - be more specific
+            location_match = re.search(r'(?:Location|Address|City|Based in):?\s*([A-Z][a-z]+(?:[\s,]+[A-Z][a-z]+)*)(?:\n|,|\||$)', text, re.IGNORECASE)
+            if location_match:
+                loc = location_match.group(1).strip()
+                # Filter out non-location words
+                if len(loc) < 50 and not any(word in loc.lower() for word in ['data', 'implementation', 'manager', 'engineer', 'developer', 'testing', 'product']):
+                    return loc
+            
+            # Look for city, state patterns (City, State format)
+            # Common location indicators (near contact info, before professional summary)
+            lines = text.split('\n')[:15]  # Check first 15 lines only
+            text_top = '\n'.join(lines)
+            
+            pattern = r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?),\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b'
+            matches = re.findall(pattern, text_top)
             
             if matches:
-                # Return first match that looks like a city, state
-                return f"{matches[0][0]}, {matches[0][1]}"
+                # Filter out common false positives
+                forbidden_words = ['data', 'implementation', 'enterprise', 'manager', 'engineer', 'developer', 
+                                   'senior', 'junior', 'lead', 'testing', 'product', 'quality', 'assurance',
+                                   'email', 'phone', 'linkedin', 'github', 'project', 'program']
+                for city, state in matches:
+                    # Skip if it looks like a name, email, or job title
+                    if '@' in city or '@' in state:
+                        continue
+                    if any(word in city.lower() for word in forbidden_words):
+                        continue
+                    if any(word in state.lower() for word in forbidden_words):
+                        continue
+                    # Skip if state part looks like it's part of a title (e.g., "Implementation")
+                    if len(state) > 15:  # States/countries are usually shorter
+                        continue
+                    return f"{city}, {state}"
             
             return None
         except Exception as e:
@@ -454,20 +486,41 @@ class EnhancedResumeExtractor:
                                 'gpa': None,
                             }
                             
-                            # Extract field of study from match group
+                            # Extract field of study from match group or next line
                             if match.groups() and match.group(1):
                                 degree_info['field_of_study'] = match.group(1).strip()
                             
-                            # Look for institution in next 3 lines
-                            for j in range(i, min(i + 4, len(lines))):
-                                check_line = lines[j].lower()
-                                if any(keyword in check_line for keyword in self.institution_keywords):
-                                    degree_info['institution'] = lines[j].strip()
-                                    break
+                            # If no field found, check next line (common format: degree on one line, field on next)
+                            if not degree_info['field_of_study'] and i + 1 < len(lines):
+                                next_line = lines[i + 1].strip()
+                                next_line_lower = next_line.lower()
+                                # Check if next line looks like a field of study (not institution, not date)
+                                if next_line and not any(keyword in next_line_lower for keyword in self.institution_keywords):
+                                    if not re.search(r'\d{4}', next_line):  # Not a year
+                                        if len(next_line) < 50:  # Reasonable length for field
+                                            degree_info['field_of_study'] = next_line
                             
-                            # Look for years in current and next 2 lines
-                            context = ' '.join(lines[i:min(i + 3, len(lines))])
-                            years = re.findall(r'\b(19|20)\d{2}\b', context)
+                            # Look for institution in next 3 lines (skip field of study line if used)
+                            start_j = i + 2 if degree_info['field_of_study'] and degree_info['field_of_study'] == lines[i + 1].strip() else i + 1
+                            for j in range(start_j, min(i + 5, len(lines))):
+                                if j >= len(lines):
+                                    break
+                                check_line = lines[j].strip()
+                                check_line_lower = check_line.lower()
+                                if any(keyword in check_line_lower for keyword in self.institution_keywords):
+                                    degree_info['institution'] = check_line
+                                    break
+                                # Also check if line looks like an institution (capitalized, reasonable length)
+                                elif check_line and len(check_line) < 100 and check_line[0].isupper():
+                                    # Not a section header, not the field we already captured
+                                    if not any(h in check_line_lower for h in ['education', 'experience', 'skills', 'certification']):
+                                        if check_line != degree_info.get('field_of_study'):
+                                            degree_info['institution'] = check_line
+                                            break
+                            
+                            # Look for years in current and next 4 lines
+                            context = ' '.join(lines[i:min(i + 5, len(lines))])
+                            years = re.findall(r'\b((?:19|20)\d{2})\b', context)
                             if years:
                                 if len(years) >= 2:
                                     degree_info['start_year'] = years[0]
@@ -475,10 +528,17 @@ class EnhancedResumeExtractor:
                                 else:
                                     degree_info['graduation_year'] = years[0]
                             
-                            # Look for GPA
-                            gpa_match = re.search(r'GPA:?\s*([\d.]+)(?:/[\d.]+)?', context, re.IGNORECASE)
-                            if gpa_match:
-                                degree_info['gpa'] = gpa_match.group(1)
+                            # Look for GPA in multiple formats
+                            gpa_patterns = [
+                                r'GPA:?\s*([\d.]+)(?:/[\d.]+)?',
+                                r'Grade:?\s*([\d.]+)(?:/[\d.]+)?',
+                                r'CGPA:?\s*([\d.]+)(?:/[\d.]+)?',
+                            ]
+                            for gpa_pattern in gpa_patterns:
+                                gpa_match = re.search(gpa_pattern, context, re.IGNORECASE)
+                                if gpa_match:
+                                    degree_info['gpa'] = gpa_match.group(1)
+                                    break
                             
                             education_list.append(degree_info)
                             break
@@ -496,48 +556,132 @@ class EnhancedResumeExtractor:
         
         try:
             date_patterns = [
-                r'(\w+\s+\d{4})\s*[-–to]+\s*(\w+\s+\d{4}|Present)',
-                r'(\d{1,2}/\d{4})\s*[-–to]+\s*(\d{1,2}/\d{4}|Present)',
-                r'(\d{4})\s*[-–to]+\s*(\d{4}|Present)',
+                r'(\w+\s+\d{4})\s*[-–to]+\s*(\w+\s+\d{4}|Present|Current)',
+                r'(\d{1,2}/\d{4})\s*[-–to]+\s*(\d{1,2}/\d{4}|Present|Current)',
+                r'(\d{4})\s*[-–to]+\s*(\d{4}|Present|Current)',
             ]
             
+            # Skip section headers
+            skip_headers = ['experience', 'work experience', 'professional experience', 'employment history']
+            
+            # Education section indicators - don't extract work experience from education section
+            education_indicators = ['education', 'academic', 'qualifications', 'degree', 'university', 'college', 'school']
+            
             i = 0
+            in_education_section = False
+            
             while i < len(lines):
                 line = lines[i]
+                line_lower = line.lower().strip()
+                
+                # Check if we're in education section
+                if any(edu_keyword in line_lower for edu_keyword in education_indicators):
+                    if len(line_lower) < 50:  # Likely a section header
+                        in_education_section = True
+                        i += 1
+                        continue
+                
+                # Skip if in education section
+                if in_education_section:
+                    # Check if we've left education section (new section header)
+                    if any(header in line_lower for header in skip_headers):
+                        in_education_section = False
+                    else:
+                        i += 1
+                        continue
+                
+                # Skip section headers
+                if any(header == line_lower for header in skip_headers):
+                    i += 1
+                    continue
                 
                 # Look for date ranges
                 for pattern in date_patterns:
                     match = re.search(pattern, line, re.IGNORECASE)
                     if match:
+                        end_date_str = match.group(2)
+                        is_current = 'present' in end_date_str.lower() or 'current' in end_date_str.lower()
+                        
                         exp_info = {
                             'company': None,
                             'title': None,
                             'location': None,
                             'start_date': match.group(1),
-                            'end_date': match.group(2),
-                            'duration_months': self._calculate_duration(match.group(1), match.group(2)),
+                            'end_date': end_date_str,
+                            'is_current': is_current,
+                            'duration_months': self._calculate_duration(match.group(1), end_date_str),
                             'responsibilities': [],
+                            'description': None,
                         }
                         
-                        # Job title is usually 1-2 lines before date
-                        if i > 0:
-                            exp_info['title'] = lines[i - 1].strip()
+                        # Extract title and company from surrounding lines
+                        # Typical structure:
+                        # Line i-2: Job Title
+                        # Line i-1: Company Name, Location
+                        # Line i: Date Range
                         
-                        # Company is usually on date line or next line
-                        # Look for company indicators
-                        for j in range(max(0, i - 1), min(i + 3, len(lines))):
-                            check_line = lines[j]
-                            if any(keyword in check_line.lower() for keyword in ['inc', 'ltd', 'llc', 'corp', 'company', 'technologies']):
-                                exp_info['company'] = check_line.strip()
-                                break
+                        # First, find company (has keywords, location, or is line before title)
+                        for j in range(max(0, i - 2), min(i + 1, len(lines))):
+                            check_line = lines[j].strip()
+                            if check_line and j != i:  # Don't check the date line itself
+                                # Check for company keywords or location patterns
+                                has_company_keyword = any(keyword in check_line.lower() for keyword in ['inc', 'ltd', 'llc', 'corp', 'company', 'technologies', 'corporation', 'services', 'systems', 'solutions', 'group', 'consulting'])
+                                has_location = re.search(r',\s*[A-Z]{2}(?:\s|$)', check_line) or re.search(r',\s*[A-Z][a-z]+', check_line)
+                                
+                                if has_company_keyword or has_location:
+                                    exp_info['company'] = check_line
+                                    break
+                        
+                        # If still no company, use line before title (i-2) or after title (i-1)
+                        if not exp_info['company']:
+                            if i > 1:
+                                potential_company = lines[i - 1].strip()
+                                # Make sure it's not the title and not a section header
+                                if potential_company and potential_company != exp_info.get('title'):
+                                    if not any(h in potential_company.lower() for h in skip_headers):
+                                        # Check it's not too long (likely not a company name)
+                                        if len(potential_company) < 100 and not potential_company.startswith(('•', '-', '*')):
+                                            exp_info['company'] = potential_company
+                        
+                        # Then extract title (line before company or 2 lines before date)
+                        if i >= 2:
+                            potential_title = lines[i - 2].strip()
+                            # Validate it's not a section header
+                            if potential_title and not any(h in potential_title.lower() for h in skip_headers):
+                                # Check if it's not the company line
+                                if potential_title != exp_info.get('company'):
+                                    exp_info['title'] = potential_title
+                        
+                        # If no title found, try line before date
+                        if not exp_info['title'] and i > 0:
+                            potential_title = lines[i - 1].strip()
+                            if potential_title and potential_title != exp_info.get('company'):
+                                if not any(h in potential_title.lower() for h in skip_headers):
+                                    exp_info['title'] = potential_title
                         
                         # Extract responsibilities (bullet points after dates)
-                        for j in range(i + 1, min(i + 10, len(lines))):
+                        responsibilities = []
+                        for j in range(i + 1, min(i + 15, len(lines))):
                             resp_line = lines[j].strip()
-                            if resp_line.startswith(('•', '-', '*', '○')):
-                                exp_info['responsibilities'].append(resp_line.lstrip('•-*○ '))
-                            elif not resp_line or any(keyword in resp_line.lower() for keyword in ['education', 'skills', 'certification']):
+                            if resp_line.startswith(('•', '-', '*', '○', '●')):
+                                clean_resp = resp_line.lstrip('•-*○● ').strip()
+                                if clean_resp:
+                                    responsibilities.append(clean_resp)
+                            elif not resp_line:
+                                # Empty line might indicate end of section
+                                if responsibilities:
+                                    break
+                            elif any(keyword in resp_line.lower() for keyword in ['education', 'skills', 'certification', 'project']):
                                 break
+                            elif re.search(r'\d{4}\s*[-–]\s*\d{4}', resp_line):
+                                # Another date range found, stop
+                                break
+                        
+                        exp_info['responsibilities'] = responsibilities
+                        
+                        # Create description from responsibilities
+                        if responsibilities:
+                            exp_info['description'] = ' '.join(responsibilities[:3])  # First 3 responsibilities
                         
                         experiences.append(exp_info)
                         break
@@ -563,26 +707,92 @@ class EnhancedResumeExtractor:
         except:
             return None
     
-    def extract_certifications(self, text: str) -> List[Dict[str, Any]]:
-        """Extract professional certifications"""
+    def extract_certifications_enhanced(self, lines: List[str], text: str) -> List[Dict[str, Any]]:
+        """Extract professional certifications with enhanced details"""
         certifications = []
+        seen_certs = set()
         
         try:
+            # First, try pattern-based extraction
             for pattern in self.certification_patterns:
                 matches = re.findall(pattern, text, re.IGNORECASE)
                 for match in matches:
-                    # Look for year near certification
-                    context_start = max(0, text.find(match) - 50)
-                    context_end = min(len(text), text.find(match) + len(match) + 50)
+                    if match.lower() in seen_certs:
+                        continue
+                    seen_certs.add(match.lower())
+                    
+                    # Look for year and issuer near certification
+                    context_start = max(0, text.find(match) - 100)
+                    context_end = min(len(text), text.find(match) + len(match) + 100)
                     context = text[context_start:context_end]
                     
+                    # Extract year
                     year_match = re.search(r'\b(19|20)\d{2}\b', context)
-                    year = year_match.group(0) if year_match else None
+                    issue_date = year_match.group(0) if year_match else None
+                    
+                    # Extract issuer
+                    issuer = None
+                    if 'aws' in match.lower():
+                        issuer = 'Amazon Web Services'
+                    elif 'azure' in match.lower() or 'microsoft' in match.lower():
+                        issuer = 'Microsoft'
+                    elif 'google' in match.lower():
+                        issuer = 'Google Cloud'
+                    elif 'cisco' in match.lower():
+                        issuer = 'Cisco'
+                    elif 'pmp' in match.lower():
+                        issuer = 'Project Management Institute'
+                    
+                    # Extract credential ID
+                    credential_match = re.search(r'(?:credential|certificate)\s*(?:id|#)?:?\s*([A-Z0-9-]+)', context, re.IGNORECASE)
+                    credential_id = credential_match.group(1) if credential_match else None
+                    
+                    # Extract expiry date
+                    expiry_match = re.search(r'expir(?:es|y|ed)?:?\s*(\w+\s+\d{4}|\d{4})', context, re.IGNORECASE)
+                    expiry_date = expiry_match.group(1) if expiry_match else None
                     
                     certifications.append({
                         'name': match.strip(),
-                        'year': year,
+                        'issuer': issuer,
+                        'issue_date': issue_date,
+                        'expiry_date': expiry_date,
+                        'credential_id': credential_id,
                     })
+            
+            # Also look for certification section
+            cert_section_keywords = ['certification', 'certifications', 'professional certifications', 'licenses']
+            in_cert_section = False
+            
+            for i, line in enumerate(lines):
+                line_lower = line.lower().strip()
+                
+                # Check if entering certification section
+                if any(keyword == line_lower for keyword in cert_section_keywords):
+                    in_cert_section = True
+                    continue
+                
+                # Check if leaving certification section
+                if in_cert_section and line_lower in ['education', 'experience', 'skills', 'projects']:
+                    in_cert_section = False
+                
+                # Extract certifications from section
+                if in_cert_section and line.strip():
+                    # Look for bullet points or numbered items
+                    cert_match = re.match(r'^[•\-*●○]?\s*(.+?)(?:\s*\((\d{4})\))?$', line.strip())
+                    if cert_match:
+                        cert_name = cert_match.group(1).strip()
+                        year = cert_match.group(2) if cert_match.group(2) else None
+                        
+                        # Avoid duplicates
+                        if cert_name.lower() not in seen_certs and len(cert_name) > 5:
+                            seen_certs.add(cert_name.lower())
+                            certifications.append({
+                                'name': cert_name,
+                                'issuer': None,
+                                'issue_date': year,
+                                'expiry_date': None,
+                                'credential_id': None,
+                            })
             
             return certifications
         except Exception as e:
@@ -594,17 +804,47 @@ class EnhancedResumeExtractor:
         achievements = []
         
         try:
-            achievement_keywords = ['award', 'honor', 'achievement', 'recognition', 'published', 'winner']
+            achievement_keywords = ['award', 'honor', 'achievement', 'recognition', 'published', 'winner', 'recipient']
+            section_keywords = ['awards', 'achievements', 'honors', 'accomplishments', 'publications']
+            
+            in_achievement_section = False
             
             for i, line in enumerate(lines):
-                line_lower = line.lower()
-                if any(keyword in line_lower for keyword in achievement_keywords):
-                    # Add this line and potential next line
-                    achievements.append(line.strip())
-                    if i + 1 < len(lines) and lines[i + 1].strip():
-                        achievements.append(lines[i + 1].strip())
+                line_lower = line.lower().strip()
+                
+                # Check if entering achievement section
+                if any(keyword == line_lower for keyword in section_keywords):
+                    in_achievement_section = True
+                    continue
+                
+                # Check if leaving achievement section
+                if in_achievement_section and line_lower in ['education', 'experience', 'skills', 'certifications']:
+                    in_achievement_section = False
+                
+                # Extract from section
+                if in_achievement_section and line.strip():
+                    # Extract bullet points
+                    if line.strip().startswith(('•', '-', '*', '○', '●')):
+                        clean_line = line.strip().lstrip('•-*○● ').strip()
+                        if clean_line:
+                            achievements.append(clean_line)
+                    elif line.strip() and not line.strip().isupper():
+                        achievements.append(line.strip())
+                
+                # Also check for achievement keywords anywhere
+                elif any(keyword in line_lower for keyword in achievement_keywords):
+                    if line.strip() and not line.strip().isupper():
+                        achievements.append(line.strip())
             
-            return achievements[:10]  # Limit to 10 achievements
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_achievements = []
+            for ach in achievements:
+                if ach.lower() not in seen:
+                    seen.add(ach.lower())
+                    unique_achievements.append(ach)
+            
+            return unique_achievements[:10]  # Limit to 10 achievements
         except Exception as e:
             logger.error(f"Achievements extraction error: {e}")
             return []
@@ -632,7 +872,7 @@ class EnhancedResumeExtractor:
                 if any(keyword in line_lower for keyword in summary_keywords):
                     # Collect next few lines until blank line or next section
                     summary_lines = []
-                    for j in range(i + 1, min(i + 15, len(lines))):
+                    for j in range(i + 1, min(i + 20, len(lines))):
                         next_line = lines[j].strip()
                         
                         # Stop at blank line
@@ -651,11 +891,171 @@ class EnhancedResumeExtractor:
                     
                     if summary_lines:
                         summary_text = ' '.join(summary_lines)
-                        # Validate length (reasonable summary is 50-500 chars)
-                        if 50 <= len(summary_text) <= 500:
+                        # Validate length (reasonable summary is 30-1000 chars)
+                        if 30 <= len(summary_text) <= 1000:
                             return summary_text
             
             return None
         except Exception as e:
             logger.error(f"Summary extraction error: {e}")
             return None
+    
+    def extract_projects(self, lines: List[str], text: str) -> List[Dict[str, Any]]:
+        """Extract projects with name, description, and technologies"""
+        projects = []
+        
+        try:
+            project_keywords = ['projects', 'key projects', 'major projects', 'project experience']
+            in_project_section = False
+            current_project = None
+            
+            for i, line in enumerate(lines):
+                line_lower = line.lower().strip()
+                
+                # Check if entering project section
+                if any(keyword == line_lower for keyword in project_keywords):
+                    in_project_section = True
+                    continue
+                
+                # Check if leaving project section
+                if in_project_section and line_lower in ['education', 'experience', 'skills', 'certifications']:
+                    if current_project:
+                        projects.append(current_project)
+                    in_project_section = False
+                    break
+                
+                if in_project_section and line.strip():
+                    # Check if line starts with bullet - it's a description
+                    if line.strip().startswith(('•', '-', '*', '○', '●')):
+                        if current_project:
+                            desc_line = line.strip().lstrip('•-*○● ').strip()
+                            if desc_line:
+                                current_project['description'].append(desc_line)
+                                
+                                # Extract technologies from description
+                                tech_match = re.search(r'technolog(?:ies|y):?\s*(.+)', desc_line, re.IGNORECASE)
+                                if tech_match:
+                                    tech_str = tech_match.group(1)
+                                    # Split by common delimiters
+                                    techs = re.split(r'[,;|]', tech_str)
+                                    current_project['technologies'].extend([t.strip() for t in techs if t.strip()])
+                    else:
+                        # This is likely a project name
+                        # Save previous project
+                        if current_project:
+                            projects.append(current_project)
+                        
+                        # Start new project - remove leading numbers/bullets
+                        project_name = re.sub(r'^[\d\.\)]+\s*', '', line.strip())
+                        current_project = {
+                            'name': project_name,
+                            'description': [],
+                            'technologies': [],
+                        }
+            
+            # Add last project
+            if current_project:
+                projects.append(current_project)
+            
+            # Clean up projects
+            for project in projects:
+                project['description'] = ' '.join(project['description'])
+                # Remove duplicates from technologies
+                project['technologies'] = list(set(project['technologies']))
+            
+            return projects
+        except Exception as e:
+            logger.error(f"Projects extraction error: {e}")
+            return []
+    
+    def extract_languages(self, lines: List[str], text: str) -> List[Dict[str, str]]:
+        """Extract languages with proficiency levels"""
+        languages = []
+        seen = set()  # Track seen languages to avoid duplicates
+        
+        try:
+            language_keywords = ['languages', 'language skills', 'language proficiency']
+            proficiency_levels = {
+                'native': 'native',
+                'fluent': 'fluent',
+                'professional': 'professional',
+                'working': 'working',
+                'intermediate': 'intermediate',
+                'basic': 'basic',
+                'elementary': 'elementary',
+                'beginner': 'beginner',
+            }
+            
+            # Common languages
+            common_languages = [
+                'english', 'spanish', 'french', 'german', 'italian', 'portuguese',
+                'chinese', 'mandarin', 'japanese', 'korean', 'arabic', 'russian',
+                'hindi', 'bengali', 'punjabi', 'tamil', 'telugu', 'marathi',
+                'dutch', 'swedish', 'norwegian', 'danish', 'finnish', 'polish',
+                'turkish', 'vietnamese', 'thai', 'indonesian', 'malay',
+            ]
+            
+            in_language_section = False
+            
+            for i, line in enumerate(lines):
+                line_lower = line.lower().strip()
+                
+                # Check if entering language section
+                if any(keyword == line_lower for keyword in language_keywords):
+                    in_language_section = True
+                    continue
+                
+                # Check if leaving language section
+                if in_language_section and line_lower in ['education', 'experience', 'skills', 'certifications', 'projects']:
+                    in_language_section = False
+                    break
+                
+                # Extract from section
+                if in_language_section and line.strip():
+                    # Pattern: Language: Proficiency or Language (Proficiency)
+                    lang_match = re.findall(r'([A-Za-z]+)\s*[:\(]?\s*([A-Za-z\s/]+)?[\)]?', line)
+                    
+                    for match in lang_match:
+                        lang_name = match[0].strip()
+                        proficiency = match[1].strip() if match[1] else None
+                        
+                        # Validate it's a real language
+                        if lang_name.lower() in common_languages:
+                            # Normalize proficiency
+                            normalized_prof = None
+                            if proficiency:
+                                for key, value in proficiency_levels.items():
+                                    if key in proficiency.lower():
+                                        normalized_prof = value
+                                        break
+                            
+                            languages.append({
+                                'language': lang_name.capitalize(),
+                                'proficiency': normalized_prof,
+                            })
+                
+            # Also check for simple format: "Languages: English, Spanish, French" anywhere in text
+            for line in lines:
+                line_lower = line.lower().strip()
+                if 'language' in line_lower and ':' in line:
+                    parts = line.split(':', 1)
+                    if len(parts) == 2:
+                        lang_list = parts[1].strip()
+                        # Split by commas or spaces
+                        potential_langs = re.split(r'[,;]|\s+', lang_list)
+                        for lang in potential_langs:
+                            lang = lang.strip()
+                            if lang and len(lang) > 2:  # At least 3 characters
+                                lang_lower = lang.lower()
+                                if lang_lower in common_languages:
+                                    if lang_lower not in seen:
+                                        seen.add(lang_lower)
+                                        languages.append({
+                                            'language': lang.capitalize(),
+                                            'proficiency': None,
+                                        })
+            
+            return languages
+        except Exception as e:
+            logger.error(f"Languages extraction error: {e}")
+            return []

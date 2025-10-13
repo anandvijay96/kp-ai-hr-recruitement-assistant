@@ -30,6 +30,7 @@ from api.v1 import auth as auth_v1
 from api.v1 import simple_auth
 from api.v1 import dashboard as dashboard_v1
 from api.v1 import matching as matching_v1
+from api.v1 import ratings as ratings_v1
 try:
     from api.v1 import vetting as vetting_v1
     VETTING_ENABLED = True
@@ -149,6 +150,7 @@ app.include_router(resumes_v1.router, prefix="/api/v1/resumes", tags=["resumes"]
 app.include_router(candidates_v1.router, prefix="/api/v1/candidates", tags=["candidates"])
 app.include_router(dashboard_v1.router, prefix="/api/v1", tags=["dashboard"])
 app.include_router(matching_v1.router, prefix="/api/v1", tags=["matching"])
+app.include_router(ratings_v1.router, prefix="/api/v1", tags=["ratings"])
 if VETTING_ENABLED:
     app.include_router(vetting_v1.router, prefix="/api/v1/vetting", tags=["vetting"])
 
