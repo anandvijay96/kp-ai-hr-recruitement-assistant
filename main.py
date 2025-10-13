@@ -166,9 +166,36 @@ else:
     app.include_router(simple_auth.router, prefix="/api/auth", tags=["auth"])
 
 @app.get("/", response_class=HTMLResponse)
-@require_auth
 async def home(request: Request):
-    """Main dashboard - requires authentication, routes to role-specific dashboard"""
+    """Home page - shows landing page for non-authenticated users, dashboard for authenticated users"""
+    try:
+        # Try to get current user
+        user = await get_current_user(request)
+        
+        if user:
+            # User is authenticated - show dashboard
+            # Route to role-specific dashboard
+            if hasattr(user, 'role'):
+                if user.role == "admin":
+                    return templates.TemplateResponse("dashboards/admin_dashboard.html", {"request": request, "user": user})
+                elif user.role == "hr":
+                    return templates.TemplateResponse("dashboards/hr_dashboard.html", {"request": request, "user": user})
+                elif user.role == "vendor":
+                    return templates.TemplateResponse("dashboards/vendor_dashboard.html", {"request": request, "user": user})
+            
+            # Default to HR dashboard if no role or role not recognized
+            return templates.TemplateResponse("dashboards/hr_dashboard.html", {"request": request, "user": user})
+    except:
+        # User is not authenticated - show landing page
+        pass
+    
+    # Show public landing page
+    return templates.TemplateResponse("landing.html", {"request": request, "user": None})
+
+@app.get("/dashboard", response_class=HTMLResponse)
+@require_auth
+async def dashboard(request: Request):
+    """Dashboard page - requires authentication"""
     user = await get_current_user(request)
     
     # Route to role-specific dashboard
@@ -182,11 +209,6 @@ async def home(request: Request):
     
     # Default to HR dashboard if no role or role not recognized
     return templates.TemplateResponse("dashboards/hr_dashboard.html", {"request": request, "user": user})
-
-@app.get("/landing", response_class=HTMLResponse)
-async def landing_page(request: Request):
-    """Landing page for non-authenticated users"""
-    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/upload", response_class=HTMLResponse)
 async def upload_form(request: Request):
