@@ -37,12 +37,18 @@ def get_engine():
     global _engine
     if _engine is None:
         logger.info(f"Creating async engine with URL: {settings.database_url}")
+        
+        # Configure connect_args based on database type
+        connect_args = {}
+        if "sqlite" in settings.database_url.lower():
+            connect_args = {"check_same_thread": False}  # For SQLite only
+        
         _engine = create_async_engine(
             settings.database_url,
             echo=settings.debug,
             pool_pre_ping=True,
             future=True,
-            connect_args={"check_same_thread": False}  # For SQLite
+            connect_args=connect_args
         )
     return _engine
 
@@ -73,11 +79,17 @@ def get_sync_session():
     from sqlalchemy.orm import sessionmaker
     
     # Convert async URL to sync URL
-    sync_url = settings.database_url.replace('+aiosqlite', '')
+    sync_url = settings.database_url.replace('+aiosqlite', '').replace('+asyncpg', '')
+    
+    # Configure connect_args based on database type
+    connect_args = {}
+    if "sqlite" in sync_url.lower():
+        connect_args = {"check_same_thread": False}
+    
     sync_engine = create_sync_engine(
         sync_url,
         echo=settings.debug,
-        connect_args={"check_same_thread": False}
+        connect_args=connect_args
     )
     return sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
 
