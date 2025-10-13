@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Details - HR Recruitment System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .info-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+        .status-active { background-color: #28a745; color: white; }
+        .status-inactive { background-color: #dc3545; color: white; }
+        .status-on-hold { background-color: #ffc107; color: black; }
+        .status-blacklisted { background-color: #000; color: white; }
+        .rating-stars {
+            color: #ffc107;
+            font-size: 1.5rem;
+        }
+        .tab-content {
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">HR Recruitment System</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/jobs">Jobs</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/clients">Clients</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/vendors">Vendors</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/users">Users</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-handshake"></i> Vendor Details</h1>
+            <div>
+                <a href="/vendors" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to List
+                </a>
+                <a href="#" id="editBtn" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+            </div>
+        </div>
+
+        <div id="loadingSpinner" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <div id="vendorDetails" style="display: none;">
+            <!-- Vendor Header -->
+            <div class="info-card">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h2 id="vendorName"></h2>
+                        <p class="text-muted mb-2">
+                            <strong>Vendor Code:</strong> <span id="vendorCode"></span>
+                            <span id="statusBadge" class="status-badge ms-2"></span>
+                        </p>
+                        <p class="mb-2">
+                            <strong>Service Category:</strong> <span id="serviceCategory"></span>
+                        </p>
+                        <div id="ratingSection" class="mb-2" style="display: none;">
+                            <strong>Overall Rating:</strong>
+                            <span id="ratingStars" class="rating-stars ms-2"></span>
+                            <span id="ratingValue" class="text-muted"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="mb-2">
+                            <strong>Contracts:</strong> <span id="activeContracts"></span> active / <span id="totalContracts"></span> total
+                        </div>
+                        <div>
+                            <strong>Compliance:</strong> <span id="complianceStatus" class="badge"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <ul class="nav nav-tabs" id="vendorTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="info-tab" data-bs-toggle="tab" data-bs-target="#info" type="button">
+                        <i class="fas fa-info-circle"></i> Information
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="contracts-tab" data-bs-toggle="tab" data-bs-target="#contracts" type="button">
+                        <i class="fas fa-file-contract"></i> Contracts
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button">
+                        <i class="fas fa-star"></i> Reviews
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="compliance-tab" data-bs-toggle="tab" data-bs-target="#compliance" type="button">
+                        <i class="fas fa-shield-alt"></i> Compliance
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="vendorTabContent">
+                <!-- Information Tab -->
+                <div class="tab-pane fade show active" id="info" role="tabpanel">
+                    <h5>Contact Information</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Contact Person:</strong> <span id="contactPerson">-</span></p>
+                            <p><strong>Email:</strong> <span id="contactEmail"></span></p>
+                            <p><strong>Phone:</strong> <span id="contactPhone">-</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Alternate Contact:</strong> <span id="alternateContact">-</span></p>
+                            <p><strong>Website:</strong> <span id="website">-</span></p>
+                        </div>
+                    </div>
+
+                    <h5 class="mt-4">Address</h5>
+                    <div id="addressSection">
+                        <p id="fullAddress">-</p>
+                    </div>
+
+                    <h5 class="mt-4">Additional Information</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Tax ID:</strong> <span id="taxId">-</span></p>
+                            <p><strong>Vendor Manager:</strong> <span id="vendorManager">-</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Created:</strong> <span id="createdAt"></span></p>
+                            <p><strong>Last Updated:</strong> <span id="updatedAt"></span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contracts Tab -->
+                <div class="tab-pane fade" id="contracts" role="tabpanel">
+                    <div id="contractsList">Loading contracts...</div>
+                </div>
+
+                <!-- Reviews Tab -->
+                <div class="tab-pane fade" id="reviews" role="tabpanel">
+                    <div id="reviewsList">Loading reviews...</div>
+                </div>
+
+                <!-- Compliance Tab -->
+                <div class="tab-pane fade" id="compliance" role="tabpanel">
+                    <div id="complianceList">Loading compliance documents...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorAlert" class="alert alert-danger" style="display: none;"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const vendorId = window.location.pathname.split('/').pop();
+
+        async function loadVendorDetails() {
+            try {
+                const response = await fetch(`/api/vendors/${vendorId}`);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `Error ${response.status}: ${response.statusText}`);
+                }
+                
+                const vendor = await response.json();
+                
+                // Populate vendor details
+                document.getElementById('vendorName').textContent = vendor.name;
+                document.getElementById('vendorCode').textContent = vendor.vendor_code;
+                document.getElementById('serviceCategory').textContent = vendor.service_category;
+                document.getElementById('contactEmail').textContent = vendor.contact_email;
+                document.getElementById('activeContracts').textContent = vendor.active_contracts;
+                document.getElementById('totalContracts').textContent = vendor.total_contracts;
+                
+                // Status badge
+                const statusBadge = document.getElementById('statusBadge');
+                statusBadge.textContent = vendor.status;
+                statusBadge.className = `status-badge status-${vendor.status}`;
+                
+                // Compliance status
+                const complianceBadge = document.getElementById('complianceStatus');
+                complianceBadge.textContent = vendor.compliance_status.replace('_', ' ');
+                complianceBadge.className = `badge bg-${vendor.compliance_status === 'compliant' ? 'success' : 'warning'}`;
+                
+                // Rating
+                if (vendor.overall_rating) {
+                    document.getElementById('ratingSection').style.display = 'block';
+                    const rating = parseFloat(vendor.overall_rating);
+                    document.getElementById('ratingStars').textContent = '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
+                    document.getElementById('ratingValue').textContent = `(${rating})`;
+                }
+                
+                // Contact info
+                document.getElementById('contactPerson').textContent = vendor.contact_person || '-';
+                document.getElementById('contactPhone').textContent = vendor.contact_phone || '-';
+                document.getElementById('alternateContact').textContent = vendor.alternate_contact || '-';
+                
+                if (vendor.website) {
+                    document.getElementById('website').innerHTML = `<a href="${vendor.website}" target="_blank">${vendor.website}</a>`;
+                }
+                
+                // Address
+                const addressParts = [
+                    vendor.address,
+                    vendor.city,
+                    vendor.state,
+                    vendor.country,
+                    vendor.postal_code
+                ].filter(Boolean);
+                document.getElementById('fullAddress').textContent = addressParts.length > 0 ? addressParts.join(', ') : '-';
+                
+                // Additional info
+                document.getElementById('taxId').textContent = vendor.tax_id || '-';
+                if (vendor.vendor_manager) {
+                    document.getElementById('vendorManager').textContent = vendor.vendor_manager.full_name;
+                }
+                document.getElementById('createdAt').textContent = new Date(vendor.created_at).toLocaleString();
+                document.getElementById('updatedAt').textContent = new Date(vendor.updated_at).toLocaleString();
+                
+                // Edit button
+                document.getElementById('editBtn').href = `/vendors/${vendorId}/edit`;
+                
+                // Show details, hide loading
+                document.getElementById('loadingSpinner').style.display = 'none';
+                document.getElementById('vendorDetails').style.display = 'block';
+                
+                // Load related data
+                loadContracts();
+                loadReviews();
+                loadCompliance();
+                
+            } catch (error) {
+                console.error('Error loading vendor:', error);
+                document.getElementById('loadingSpinner').style.display = 'none';
+                document.getElementById('errorAlert').textContent = error.message || 'Error loading vendor details. Please try again.';
+                document.getElementById('errorAlert').style.display = 'block';
+            }
+        }
+
+        async function loadContracts() {
+            try {
+                const response = await fetch(`/api/vendors/${vendorId}/contracts`);
+                const contracts = await response.json();
+                
+                const container = document.getElementById('contractsList');
+                if (contracts.length === 0) {
+                    container.innerHTML = '<p class="text-muted">No contracts found.</p>';
+                    return;
+                }
+                
+                container.innerHTML = contracts.map(c => `
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <h6>${c.title}</h6>
+                            <p class="mb-1"><strong>Contract #:</strong> ${c.contract_number}</p>
+                            <p class="mb-1"><strong>Period:</strong> ${c.start_date} to ${c.end_date}</p>
+                            <p class="mb-0"><strong>Status:</strong> <span class="badge bg-info">${c.status}</span></p>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('contractsList').innerHTML = '<p class="text-danger">Error loading contracts.</p>';
+            }
+        }
+
+        async function loadReviews() {
+            try {
+                const response = await fetch(`/api/vendors/${vendorId}/reviews`);
+                const reviews = await response.json();
+                
+                const container = document.getElementById('reviewsList');
+                if (reviews.length === 0) {
+                    container.innerHTML = '<p class="text-muted">No reviews found.</p>';
+                    return;
+                }
+                
+                container.innerHTML = reviews.map(r => `
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <h6>${r.review_period} - ${r.review_type}</h6>
+                            <p class="mb-1"><strong>Overall Rating:</strong> ${r.overall_rating} / 5.0</p>
+                            <p class="mb-0"><strong>Review Date:</strong> ${r.review_date}</p>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('reviewsList').innerHTML = '<p class="text-danger">Error loading reviews.</p>';
+            }
+        }
+
+        async function loadCompliance() {
+            try {
+                const response = await fetch(`/api/vendors/${vendorId}/compliance-documents`);
+                const documents = await response.json();
+                
+                const container = document.getElementById('complianceList');
+                if (documents.length === 0) {
+                    container.innerHTML = '<p class="text-muted">No compliance documents found.</p>';
+                    return;
+                }
+                
+                container.innerHTML = documents.map(d => `
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <h6>${d.document_name}</h6>
+                            <p class="mb-1"><strong>Type:</strong> ${d.document_type}</p>
+                            <p class="mb-1"><strong>Status:</strong> <span class="badge bg-${d.status === 'valid' ? 'success' : 'warning'}">${d.status}</span></p>
+                            ${d.expiry_date ? `<p class="mb-0"><strong>Expires:</strong> ${d.expiry_date}</p>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('complianceList').innerHTML = '<p class="text-danger">Error loading compliance documents.</p>';
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', loadVendorDetails);
+    </script>
+</body>
+</html>

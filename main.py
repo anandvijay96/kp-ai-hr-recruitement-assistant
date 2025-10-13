@@ -18,7 +18,7 @@ from services.document_processor import DocumentProcessor
 from services.resume_analyzer import ResumeAuthenticityAnalyzer
 from services.jd_matcher import JDMatcher
 from services.result_storage import ResultStorage
-from api import auth, resumes, candidates, jobs, jobs_management, users
+from api import auth, resumes, candidates, jobs, jobs_management, users, clients, vendors
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -37,6 +37,8 @@ app.include_router(candidates.router)
 app.include_router(jobs.router)
 app.include_router(jobs_management.router)  # NEW: Jobs Management feature
 app.include_router(users.router)  # NEW: User Management feature
+app.include_router(clients.router)  # NEW: Client Management feature
+app.include_router(vendors.router)  # NEW: Vendor Management feature
 
 # Mount static files (only if directory exists)
 if os.path.exists("static"):
@@ -876,6 +878,53 @@ async def export_results_csv():
     except Exception as e:
         logger.error(f"Error exporting results: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to export results")
+
+# Client Management Web Pages
+@app.get("/clients", response_class=HTMLResponse)
+async def clients_page(request: Request):
+    """Client management page"""
+    return templates.TemplateResponse("clients/list.html", {"request": request})
+
+@app.get("/clients/create", response_class=HTMLResponse)
+async def clients_create_page(request: Request):
+    """Client creation page"""
+    return templates.TemplateResponse("clients/create.html", {"request": request})
+
+@app.get("/clients/{client_id}", response_class=HTMLResponse)
+async def client_detail_page(request: Request, client_id: str):
+    """Client detail page"""
+    return templates.TemplateResponse("clients/detail.html", {"request": request})
+
+@app.get("/clients/{client_id}/edit", response_class=HTMLResponse)
+async def client_edit_page(request: Request, client_id: str):
+    """Client edit page"""
+    return templates.TemplateResponse("clients/edit.html", {"request": request})
+
+# Vendor Management Web Pages
+@app.get("/vendors", response_class=HTMLResponse)
+async def vendors_page(request: Request):
+    """Vendor management page"""
+    return templates.TemplateResponse("vendors/list.html", {"request": request})
+
+@app.get("/vendors/dashboard", response_class=HTMLResponse)
+async def vendors_dashboard_page(request: Request):
+    """Vendor dashboard page"""
+    return templates.TemplateResponse("vendors/dashboard.html", {"request": request})
+
+@app.get("/vendors/create", response_class=HTMLResponse)
+async def vendors_create_page(request: Request):
+    """Vendor creation page"""
+    return templates.TemplateResponse("vendors/create.html", {"request": request})
+
+@app.get("/vendors/{vendor_id}", response_class=HTMLResponse)
+async def vendor_detail_page(request: Request, vendor_id: str):
+    """Vendor detail page"""
+    return templates.TemplateResponse("vendors/detail.html", {"request": request})
+
+@app.get("/vendors/{vendor_id}/edit", response_class=HTMLResponse)
+async def vendor_edit_page(request: Request, vendor_id: str):
+    """Vendor edit page"""
+    return templates.TemplateResponse("vendors/edit.html", {"request": request})
 
 if __name__ == "__main__":
     import uvicorn

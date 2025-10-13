@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Dashboard - HR Recruitment System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .stat-card {
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            color: white;
+            transition: transform 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+        .stat-card h2 {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .stat-card p {
+            margin: 0;
+            opacity: 0.9;
+        }
+        .bg-primary-custom { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .bg-success-custom { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .bg-warning-custom { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .bg-danger-custom { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .bg-info-custom { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); }
+        .bg-secondary-custom { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 30px;
+        }
+        
+        .alert-item {
+            border-left: 4px solid;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .alert-item.critical { border-color: #dc3545; background-color: #f8d7da; }
+        .alert-item.warning { border-color: #ffc107; background-color: #fff3cd; }
+        .alert-item.info { border-color: #17a2b8; background-color: #d1ecf1; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">HR Recruitment System</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/jobs">Jobs</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/clients">Clients</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/vendors">Vendors</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/users">Users</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-chart-line"></i> Vendor Management Dashboard</h1>
+            <div>
+                <a href="/vendors" class="btn btn-outline-primary">
+                    <i class="fas fa-list"></i> Vendor List
+                </a>
+                <a href="/vendors/create" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Vendor
+                </a>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading dashboard data...</p>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div id="dashboardContent" style="display: none;">
+            <!-- Key Metrics Row 1 -->
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stat-card bg-primary-custom">
+                        <i class="fas fa-building fa-2x"></i>
+                        <h2 id="totalVendors">0</h2>
+                        <p>Total Vendors</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card bg-success-custom">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                        <h2 id="activeVendors">0</h2>
+                        <p>Active Vendors</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card bg-warning-custom">
+                        <i class="fas fa-file-contract fa-2x"></i>
+                        <h2 id="totalContracts">0</h2>
+                        <p>Total Contracts</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card bg-danger-custom">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        <h2 id="complianceAlerts">0</h2>
+                        <p>Compliance Alerts</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key Metrics Row 2 -->
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stat-card bg-info-custom">
+                        <i class="fas fa-handshake fa-2x"></i>
+                        <h2 id="activeContracts">0</h2>
+                        <p>Active Contracts</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card bg-secondary-custom text-dark">
+                        <i class="fas fa-clock fa-2x"></i>
+                        <h2 id="expiringContracts">0</h2>
+                        <p>Expiring Soon</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card bg-primary-custom">
+                        <i class="fas fa-star fa-2x"></i>
+                        <h2 id="pendingReviews">0</h2>
+                        <p>Pending Reviews</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card bg-success-custom">
+                        <i class="fas fa-file-alt fa-2x"></i>
+                        <h2 id="expiredDocuments">0</h2>
+                        <p>Expired Documents</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-chart-pie"></i> Vendors by Status</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="vendorStatusChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-chart-bar"></i> Vendors by Service Category</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="vendorCategoryChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts and Recent Activity -->
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-bell"></i> Recent Alerts</h5>
+                        </div>
+                        <div class="card-body" id="alertsList">
+                            <p class="text-muted">No alerts at this time.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-history"></i> Quick Stats</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Inactive Vendors:</strong></td>
+                                        <td id="inactiveVendors">0</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>On-Hold Vendors:</strong></td>
+                                        <td id="onHoldVendors">0</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Blacklisted Vendors:</strong></td>
+                                        <td id="blacklistedVendors">0</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Compliant Vendors:</strong></td>
+                                        <td id="compliantVendors">0</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Non-Compliant Vendors:</strong></td>
+                                        <td id="nonCompliantVendors">0</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let statusChart = null;
+        let categoryChart = null;
+
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/vendors/dashboard');
+                if (!response.ok) throw new Error('Failed to load dashboard');
+                
+                const data = await response.json();
+                
+                // Update stat cards
+                document.getElementById('totalVendors').textContent = data.total_vendors || 0;
+                document.getElementById('activeVendors').textContent = data.active_vendors || 0;
+                document.getElementById('totalContracts').textContent = data.total_contracts || 0;
+                document.getElementById('complianceAlerts').textContent = data.compliance_alerts || 0;
+                document.getElementById('activeContracts').textContent = data.active_contracts || 0;
+                document.getElementById('expiringContracts').textContent = data.expiring_contracts || 0;
+                document.getElementById('pendingReviews').textContent = data.pending_reviews || 0;
+                document.getElementById('expiredDocuments').textContent = data.expired_documents || 0;
+                
+                // Update quick stats
+                document.getElementById('inactiveVendors').textContent = data.inactive_vendors || 0;
+                document.getElementById('onHoldVendors').textContent = data.on_hold_vendors || 0;
+                document.getElementById('blacklistedVendors').textContent = data.blacklisted_vendors || 0;
+                document.getElementById('compliantVendors').textContent = data.compliant_vendors || 0;
+                document.getElementById('nonCompliantVendors').textContent = data.non_compliant_vendors || 0;
+                
+                // Create charts
+                createStatusChart(data);
+                createCategoryChart(data);
+                
+                // Generate alerts
+                generateAlerts(data);
+                
+                // Show dashboard
+                document.getElementById('loadingSpinner').style.display = 'none';
+                document.getElementById('dashboardContent').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                document.getElementById('loadingSpinner').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i> Error loading dashboard. Please try again.
+                    </div>
+                `;
+            }
+        }
+
+        function createStatusChart(data) {
+            const ctx = document.getElementById('vendorStatusChart').getContext('2d');
+            
+            if (statusChart) statusChart.destroy();
+            
+            statusChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Active', 'Inactive', 'On Hold', 'Blacklisted'],
+                    datasets: [{
+                        data: [
+                            data.active_vendors || 0,
+                            data.inactive_vendors || 0,
+                            data.on_hold_vendors || 0,
+                            data.blacklisted_vendors || 0
+                        ],
+                        backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#000000']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function createCategoryChart(data) {
+            const ctx = document.getElementById('vendorCategoryChart').getContext('2d');
+            
+            if (categoryChart) categoryChart.destroy();
+            
+            // Mock data for categories (you can enhance this with real data from API)
+            categoryChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Recruitment', 'Training', 'Staffing', 'Consulting', 'Other'],
+                    datasets: [{
+                        label: 'Number of Vendors',
+                        data: [0, 0, 0, 0, 0], // Will be populated with real data
+                        backgroundColor: '#667eea'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateAlerts(data) {
+            const alertsList = document.getElementById('alertsList');
+            const alerts = [];
+            
+            if (data.expiring_contracts > 0) {
+                alerts.push({
+                    type: 'warning',
+                    icon: 'fa-clock',
+                    message: `${data.expiring_contracts} contract(s) expiring within 30 days`
+                });
+            }
+            
+            if (data.expired_documents > 0) {
+                alerts.push({
+                    type: 'critical',
+                    icon: 'fa-exclamation-triangle',
+                    message: `${data.expired_documents} compliance document(s) expired`
+                });
+            }
+            
+            if (data.compliance_alerts > 0) {
+                alerts.push({
+                    type: 'critical',
+                    icon: 'fa-shield-alt',
+                    message: `${data.compliance_alerts} compliance alert(s) require attention`
+                });
+            }
+            
+            if (data.pending_reviews > 0) {
+                alerts.push({
+                    type: 'info',
+                    icon: 'fa-star',
+                    message: `${data.pending_reviews} performance review(s) pending`
+                });
+            }
+            
+            if (alerts.length === 0) {
+                alertsList.innerHTML = '<p class="text-muted">No alerts at this time. All systems operational! ✅</p>';
+            } else {
+                alertsList.innerHTML = alerts.map(alert => `
+                    <div class="alert-item ${alert.type}">
+                        <i class="fas ${alert.icon}"></i> ${alert.message}
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Load dashboard on page load
+        document.addEventListener('DOMContentLoaded', loadDashboard);
+
+        // Refresh every 5 minutes
+        setInterval(loadDashboard, 300000);
+    </script>
+</body>
+</html>

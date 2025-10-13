@@ -134,6 +134,9 @@ class Resume(Base):
     # Candidate Link (NEW)
     candidate_id = Column(String(36), ForeignKey("candidates.id", ondelete="SET NULL"), index=True)
     
+    # Client Link (Feature 11)
+    client_id = Column(String(36), ForeignKey("clients.id", ondelete="SET NULL"), index=True)
+    
     # Parsed Data
     extracted_text = Column(Text)
     parsed_data = Column(JSON)  # Use JSON for SQLite, JSONB for PostgreSQL
@@ -399,6 +402,9 @@ class Job(Base):
     template_id = Column(String(36), ForeignKey("job_templates.id", ondelete="SET NULL"))
     cloned_from_job_id = Column(String(36), ForeignKey("jobs.id", ondelete="SET NULL"))
     
+    # Client Reference (Feature 11)
+    client_id = Column(String(36), ForeignKey("clients.id", ondelete="SET NULL"), index=True)
+    
     # Search Optimization
     search_text = Column(Text)
     
@@ -661,3 +667,391 @@ class BulkUserOperation(Base):
     started_at = Column(DateTime(timezone=True))
     completed_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+# ============================================================================
+# FEATURE 11: CLIENT MANAGEMENT TABLES
+# ============================================================================
+
+class Client(Base):
+    """Client organization model"""
+    __tablename__ = "clients"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    client_code = Column(String(50), unique=True, nullable=False, index=True)
+    name = Column(String(255), nullable=False, index=True)
+    industry = Column(String(100), index=True)
+    website = Column(String(255))
+    address = Column(Text)
+    city = Column(String(100))
+    state = Column(String(100))
+    country = Column(String(100))
+    postal_code = Column(String(20))
+    logo_url = Column(String(500))
+    status = Column(String(50), default='active', nullable=False, index=True)
+    account_manager_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    created_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    deactivated_at = Column(DateTime(timezone=True))
+    deactivation_reason = Column(Text)
+    
+    # Relationships
+    account_manager = relationship("User", foreign_keys=[account_manager_id])
+    
+    __table_args__ = (
+        CheckConstraint("status IN ('active', 'inactive', 'on-hold', 'archived')", name="chk_client_status"),
+    )
+
+
+class ClientContact(Base):
+    """Client contact persons"""
+    __tablename__ = "client_contacts"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    client_id = Column(String(36), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True)
+    full_name = Column(String(255), nullable=False)
+    title = Column(String(100))
+    email = Column(String(255), nullable=False, index=True)
+    phone = Column(String(50))
+    mobile = Column(String(50))
+    is_primary = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ClientCommunication(Base):
+    """Client communication tracking"""
+    __tablename__ = "client_communications"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    client_id = Column(String(36), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True)
+    communication_type = Column(String(50), nullable=False, index=True)
+    subject = Column(String(500))
+    notes = Column(Text)
+    communication_date = Column(DateTime(timezone=True), nullable=False, index=True)
+    participants = Column(JSON)
+    job_reference_id = Column(String(36), ForeignKey("jobs.id", ondelete="SET NULL"))
+    logged_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
+    is_important = Column(Boolean, default=False)
+    follow_up_required = Column(Boolean, default=False)
+    follow_up_date = Column(Date)
+    attachments = Column(JSON)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    __table_args__ = (
+        CheckConstraint("communication_type IN ('meeting', 'phone_call', 'email', 'video_call', 'contract_signed')", name="chk_comm_type"),
+    )
+
+
+class ClientFeedback(Base):
+    """Client performance feedback"""
+    __tablename__ = "client_feedback"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    client_id = Column(String(36), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True)
+    feedback_period = Column(String(20))
+    feedback_date = Column(Date, nullable=False, index=True)
+    responsiveness_rating = Column(Integer, nullable=False)
+    communication_rating = Column(Integer, nullable=False)
+    requirements_clarity_rating = Column(Integer, nullable=False)
+    decision_speed_rating = Column(Integer, nullable=False)
+    overall_satisfaction = Column(Integer, nullable=False)
+    written_feedback = Column(Text)
+    submitted_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
+    finalized_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"))
+    is_finalized = Column(Boolean, default=False)
+    finalized_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    __table_args__ = (
+        CheckConstraint("responsiveness_rating BETWEEN 1 AND 5", name="chk_responsiveness_rating"),
+        CheckConstraint("communication_rating BETWEEN 1 AND 5", name="chk_communication_rating"),
+        CheckConstraint("requirements_clarity_rating BETWEEN 1 AND 5", name="chk_requirements_clarity_rating"),
+        CheckConstraint("decision_speed_rating BETWEEN 1 AND 5", name="chk_decision_speed_rating"),
+        CheckConstraint("overall_satisfaction BETWEEN 1 AND 5", name="chk_overall_satisfaction"),
+    )
+
+
+class ClientJobAssignment(Base):
+    """Job assignments to clients"""
+    __tablename__ = "client_job_assignments"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    client_id = Column(String(36), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id = Column(String(36), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    assigned_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=False)
+    assigned_at = Column(DateTime(timezone=True), server_default=func.now())
+    unassigned_at = Column(DateTime(timezone=True))
+    unassigned_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"))
+    is_active = Column(Boolean, default=True, index=True)
+
+
+class ClientAnalytics(Base):
+    """Daily aggregated client analytics"""
+    __tablename__ = "client_analytics"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    client_id = Column(String(36), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True)
+    date = Column(Date, nullable=False, index=True)
+    active_jobs_count = Column(Integer, default=0)
+    total_candidates_count = Column(Integer, default=0)
+    screened_count = Column(Integer, default=0)
+    shortlisted_count = Column(Integer, default=0)
+    interviewed_count = Column(Integer, default=0)
+    hired_count = Column(Integer, default=0)
+    avg_time_to_fill_days = Column(Integer)
+    avg_candidate_quality_score = Column(String(10))
+    revenue_generated = Column(String(20))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ============================================================================
+# FEATURE 12: VENDOR MANAGEMENT TABLES
+# ============================================================================
+
+class Vendor(Base):
+    """Vendor/supplier model"""
+    __tablename__ = "vendors"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    vendor_code = Column(String(50), unique=True, nullable=False, index=True)
+    name = Column(String(255), nullable=False, index=True)
+    service_category = Column(String(100), nullable=False, index=True)
+    contact_person = Column(String(255))
+    contact_email = Column(String(255), nullable=False, index=True)
+    contact_phone = Column(String(50))
+    alternate_contact = Column(String(255))
+    website = Column(String(255))
+    address = Column(Text)
+    city = Column(String(100))
+    state = Column(String(100))
+    country = Column(String(100))
+    postal_code = Column(String(20))
+    tax_id = Column(String(100))
+    logo_url = Column(String(500))
+    status = Column(String(50), nullable=False, default='active', index=True)
+    overall_rating = Column(String(10))  # Store as string for decimal precision
+    total_contracts = Column(Integer, default=0)
+    active_contracts = Column(Integer, default=0)
+    vendor_manager_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    created_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    deactivated_at = Column(DateTime(timezone=True))
+    deactivation_reason = Column(Text)
+    last_evaluation_date = Column(Date)
+    compliance_status = Column(String(50), default='pending', index=True)
+    
+    # Relationships
+    vendor_manager = relationship("User", foreign_keys=[vendor_manager_id])
+    
+    __table_args__ = (
+        CheckConstraint("status IN ('active', 'inactive', 'on-hold', 'blacklisted')", name="chk_vendor_status"),
+        CheckConstraint("compliance_status IN ('pending', 'compliant', 'non_compliant', 'under_review')", name="chk_compliance_status"),
+    )
+
+
+class VendorContract(Base):
+    """Vendor contracts"""
+    __tablename__ = "vendor_contracts"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_number = Column(String(100), unique=True, nullable=False, index=True)
+    contract_type = Column(String(100), nullable=False)
+    title = Column(String(255), nullable=False)
+    description = Column(Text)
+    contract_value = Column(String(20))  # Store as string for decimal precision
+    currency = Column(String(10), default='USD')
+    start_date = Column(Date, nullable=False, index=True)
+    end_date = Column(Date, nullable=False, index=True)
+    payment_terms = Column(Text)
+    renewal_terms = Column(Text)
+    file_url = Column(String(500), nullable=False)
+    file_name = Column(String(255))
+    file_size = Column(Integer)
+    version = Column(Integer, default=1)
+    status = Column(String(50), nullable=False, default='draft', index=True)
+    approval_status = Column(String(50), default='pending', index=True)
+    approved_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"))
+    approved_at = Column(DateTime(timezone=True))
+    termination_date = Column(Date)
+    termination_reason = Column(Text)
+    auto_renew = Column(Boolean, default=False)
+    renewal_notice_days = Column(Integer, default=90)
+    created_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    parent_contract_id = Column(String(36), ForeignKey("vendor_contracts.id", ondelete="SET NULL"))
+    
+    __table_args__ = (
+        CheckConstraint("status IN ('draft', 'pending_approval', 'approved', 'active', 'expired', 'terminated')", name="chk_contract_status"),
+        CheckConstraint("approval_status IN ('pending', 'approved', 'rejected')", name="chk_approval_status"),
+    )
+
+
+class VendorPerformanceReview(Base):
+    """Vendor performance reviews"""
+    __tablename__ = "vendor_performance_reviews"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False, index=True)
+    review_period = Column(String(50), nullable=False)
+    review_date = Column(Date, nullable=False, index=True)
+    review_type = Column(String(50), nullable=False)
+    service_quality_rating = Column(Integer, nullable=False)
+    timeliness_rating = Column(Integer, nullable=False)
+    communication_rating = Column(Integer, nullable=False)
+    cost_effectiveness_rating = Column(Integer, nullable=False)
+    compliance_rating = Column(Integer, nullable=False)
+    overall_rating = Column(String(10), nullable=False)  # Store as string for decimal precision
+    strengths = Column(Text)
+    areas_for_improvement = Column(Text)
+    recommendations = Column(Text)
+    written_feedback = Column(Text)
+    status = Column(String(50), default='draft', index=True)
+    finalized_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"))
+    finalized_at = Column(DateTime(timezone=True))
+    reviewed_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    __table_args__ = (
+        CheckConstraint("service_quality_rating BETWEEN 1 AND 5", name="chk_service_quality_rating"),
+        CheckConstraint("timeliness_rating BETWEEN 1 AND 5", name="chk_timeliness_rating"),
+        CheckConstraint("communication_rating BETWEEN 1 AND 5", name="chk_vendor_communication_rating"),
+        CheckConstraint("cost_effectiveness_rating BETWEEN 1 AND 5", name="chk_cost_effectiveness_rating"),
+        CheckConstraint("compliance_rating BETWEEN 1 AND 5", name="chk_vendor_compliance_rating"),
+        CheckConstraint("status IN ('draft', 'finalized', 'archived')", name="chk_review_status"),
+    )
+
+
+class VendorComplianceDocument(Base):
+    """Vendor compliance documents"""
+    __tablename__ = "vendor_compliance_documents"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False, index=True)
+    document_type = Column(String(100), nullable=False, index=True)
+    document_name = Column(String(255), nullable=False)
+    document_number = Column(String(100))
+    issue_date = Column(Date)
+    expiry_date = Column(Date, index=True)
+    issuing_authority = Column(String(255))
+    file_url = Column(String(500), nullable=False)
+    file_name = Column(String(255))
+    file_size = Column(Integer)
+    status = Column(String(50), nullable=False, default='valid', index=True)
+    verification_status = Column(String(50), default='pending', index=True)
+    verified_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"))
+    verified_at = Column(DateTime(timezone=True))
+    notes = Column(Text)
+    uploaded_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
+    uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
+    version = Column(Integer, default=1)
+    parent_document_id = Column(String(36), ForeignKey("vendor_compliance_documents.id", ondelete="SET NULL"))
+    
+    __table_args__ = (
+        CheckConstraint("status IN ('valid', 'expiring_soon', 'expired', 'pending_review', 'rejected')", name="chk_document_status"),
+        CheckConstraint("verification_status IN ('pending', 'verified', 'rejected', 'expired')", name="chk_verification_status"),
+    )
+
+
+class VendorCommunication(Base):
+    """Vendor communications log"""
+    __tablename__ = "vendor_communications"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False, index=True)
+    communication_type = Column(String(50), nullable=False, index=True)
+    communication_date = Column(DateTime(timezone=True), nullable=False, index=True)
+    subject = Column(String(255), nullable=False)
+    details = Column(Text)
+    attendees = Column(Text)  # JSON array
+    outcome = Column(Text)
+    follow_up_required = Column(Boolean, default=False)
+    follow_up_date = Column(Date)
+    follow_up_notes = Column(Text)
+    tags = Column(String(255))
+    attachment_urls = Column(Text)  # JSON array
+    is_important = Column(Boolean, default=False, index=True)
+    logged_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    __table_args__ = (
+        CheckConstraint("communication_type IN ('meeting', 'phone_call', 'email', 'video_call', 'site_visit', 'other')", name="chk_vendor_comm_type"),
+    )
+
+
+class VendorNotification(Base):
+    """Vendor-related notifications"""
+    __tablename__ = "vendor_notifications"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False, index=True)
+    notification_type = Column(String(100), nullable=False, index=True)
+    priority = Column(String(50), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+    action_required = Column(Text)
+    deadline = Column(Date)
+    recipient_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    is_read = Column(Boolean, default=False, index=True)
+    read_at = Column(DateTime(timezone=True))
+    is_actioned = Column(Boolean, default=False)
+    actioned_at = Column(DateTime(timezone=True))
+    related_entity_type = Column(String(50))
+    related_entity_id = Column(String(36))
+    sent_via_email = Column(Boolean, default=False)
+    email_sent_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    
+    __table_args__ = (
+        CheckConstraint("priority IN ('low', 'medium', 'high', 'urgent')", name="chk_notification_priority"),
+        CheckConstraint("notification_type IN ('contract_expiry', 'document_expiry', 'review_due', 'compliance_alert', 'general')", name="chk_notification_type"),
+    )
+
+
+class VendorJobAssignment(Base):
+    """Job assignments to vendors"""
+    __tablename__ = "vendor_job_assignments"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id = Column(String(36), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_id = Column(String(36), ForeignKey("vendor_contracts.id", ondelete="SET NULL"))
+    assignment_date = Column(Date, nullable=False, index=True)
+    status = Column(String(50), default='active', index=True)
+    fee_structure = Column(String(100))
+    fee_amount = Column(String(20))  # Store as string for decimal precision
+    candidates_submitted = Column(Integer, default=0)
+    candidates_hired = Column(Integer, default=0)
+    notes = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    __table_args__ = (
+        CheckConstraint("status IN ('active', 'completed', 'cancelled')", name="chk_assignment_status"),
+    )
+
+
+class VendorAnalytics(Base):
+    """Daily aggregated vendor analytics"""
+    __tablename__ = "vendor_analytics"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False, index=True)
+    date = Column(Date, nullable=False, index=True)
+    total_jobs_assigned = Column(Integer, default=0)
+    active_jobs = Column(Integer, default=0)
+    candidates_submitted = Column(Integer, default=0)
+    candidates_interviewed = Column(Integer, default=0)
+    candidates_hired = Column(Integer, default=0)
+    total_revenue = Column(String(20), default='0')  # Store as string for decimal precision
+    average_rating = Column(String(10))
+    response_time_hours = Column(String(10))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

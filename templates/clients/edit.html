@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Client - HR Recruitment System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .required::after {
+            content: " *";
+            color: red;
+        }
+        .form-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .contact-item {
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">HR Recruitment System</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/jobs">Jobs</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/clients">Clients</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/users">Users</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Loading State -->
+        <div id="loadingState" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading client data...</p>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-edit"></i> Edit Client</h1>
+                <a href="#" id="backButton" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Details
+                </a>
+            </div>
+
+            <form id="editClientForm">
+                <!-- Basic Information -->
+                <div class="form-section">
+                    <h4 class="mb-3"><i class="fas fa-info-circle"></i> Basic Information</h4>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label required">Client Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="industry" class="form-label">Industry</label>
+                            <select class="form-select" id="industry" name="industry">
+                                <option value="">Select Industry</option>
+                                <option value="Technology">Technology</option>
+                                <option value="Finance">Finance</option>
+                                <option value="Healthcare">Healthcare</option>
+                                <option value="Manufacturing">Manufacturing</option>
+                                <option value="Retail">Retail</option>
+                                <option value="Education">Education</option>
+                                <option value="Consulting">Consulting</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="website" class="form-label">Website</label>
+                            <input type="url" class="form-control" id="website" name="website" placeholder="https://example.com">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="on-hold">On Hold</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Address Information -->
+                <div class="form-section">
+                    <h4 class="mb-3"><i class="fas fa-map-marker-alt"></i> Address Information</h4>
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Street Address</label>
+                        <textarea class="form-control" id="address" name="address" rows="2"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="city" class="form-label">City</label>
+                            <input type="text" class="form-control" id="city" name="city">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="state" class="form-label">State/Province</label>
+                            <input type="text" class="form-control" id="state" name="state">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="country" class="form-label">Country</label>
+                            <input type="text" class="form-control" id="country" name="country">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="postal_code" class="form-label">Postal Code</label>
+                            <input type="text" class="form-control" id="postal_code" name="postal_code">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="d-flex justify-content-end gap-2 mb-5">
+                    <a href="#" id="cancelButton" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const clientId = window.location.pathname.split('/').slice(-2)[0];
+
+        async function loadClientData() {
+            try {
+                const response = await fetch(`/api/clients/${clientId}`);
+                if (!response.ok) throw new Error('Client not found');
+                
+                const client = await response.json();
+
+                // Populate form fields
+                document.getElementById('name').value = client.name || '';
+                document.getElementById('industry').value = client.industry || '';
+                document.getElementById('website').value = client.website || '';
+                document.getElementById('status').value = client.status || 'active';
+                document.getElementById('address').value = client.address || '';
+                document.getElementById('city').value = client.city || '';
+                document.getElementById('state').value = client.state || '';
+                document.getElementById('country').value = client.country || '';
+                document.getElementById('postal_code').value = client.postal_code || '';
+
+                // Show form
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('loadingState').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i> Error loading client data
+                    </div>
+                    <a href="/clients/${clientId}" class="btn btn-primary">Back to Client</a>
+                `;
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('editClientForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = {
+                name: document.getElementById('name').value,
+                industry: document.getElementById('industry').value || null,
+                website: document.getElementById('website').value || null,
+                status: document.getElementById('status').value,
+                address: document.getElementById('address').value || null,
+                city: document.getElementById('city').value || null,
+                state: document.getElementById('state').value || null,
+                country: document.getElementById('country').value || null,
+                postal_code: document.getElementById('postal_code').value || null
+            };
+
+            try {
+                const response = await fetch(`/api/clients/${clientId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to update client');
+                }
+
+                alert('Client updated successfully!');
+                window.location.href = `/clients/${clientId}`;
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating client: ' + error.message);
+            }
+        });
+
+        // Set up back buttons
+        document.getElementById('backButton').href = `/clients/${clientId}`;
+        document.getElementById('cancelButton').href = `/clients/${clientId}`;
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', loadClientData);
+    </script>
+</body>
+</html>
