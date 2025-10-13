@@ -5,13 +5,13 @@ Simple script to promote an existing user to admin role
 import asyncio
 import sys
 from sqlalchemy import select, update
-from core.database import async_session_maker
+from core.database import AsyncSessionLocal
 from models.database import User
 
 async def make_user_admin(email: str):
     """Promote existing user to admin role"""
     
-    async with async_session_maker() as session:
+    async with AsyncSessionLocal() as session:
         try:
             # Find user by email
             result = await session.execute(

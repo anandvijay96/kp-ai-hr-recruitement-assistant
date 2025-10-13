@@ -5,7 +5,7 @@ Run this script to create an admin user in the production database
 import asyncio
 import sys
 from sqlalchemy import select
-from core.database import async_session_maker
+from core.database import AsyncSessionLocal
 from models.database import User
 from services.password_service import PasswordService
 import uuid
@@ -14,7 +14,7 @@ from datetime import datetime
 async def create_admin_user(email: str, password: str, full_name: str = "Admin User"):
     """Create an admin user in the database"""
     
-    async with async_session_maker() as session:
+    async with AsyncSessionLocal() as session:
         try:
             # Check if user already exists
             result = await session.execute(
