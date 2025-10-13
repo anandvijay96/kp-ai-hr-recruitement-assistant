@@ -102,7 +102,11 @@ async def on_startup():
         await init_db()
         logger.info("Database initialized successfully")
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        # Log the error but don't crash if tables already exist
+        if "already exists" in str(e) or "duplicate key" in str(e):
+            logger.warning(f"Database tables already exist (this is normal with multiple workers): {e}")
+        else:
+            logger.error(f"Failed to initialize database: {e}")
 
 # Mount static files (only if directory exists)
 if os.path.exists("static"):
