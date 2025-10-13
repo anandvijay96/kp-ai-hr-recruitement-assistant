@@ -388,10 +388,32 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 extracted_text = scan_result.get('extracted_text', '')
                 extracted_data = scan_result.get('extracted_data', {})
                 
+                # If extracted_data is None or empty, try to re-extract
+                if not extracted_data or extracted_data is None:
+                    logger.info(f"Re-extracting data for {file_name}")
+                    try:
+                        extracted_data = resume_data_extractor.extract_all(extracted_text)
+                        if not extracted_data:
+                            extracted_data = {}
+                        else:
+                            # Log what was extracted
+                            logger.info(f"Extracted data keys: {list(extracted_data.keys())}")
+                            logger.info(f"Education type: {type(extracted_data.get('education'))}, count: {len(extracted_data.get('education', []))}")
+                            logger.info(f"Work experience type: {type(extracted_data.get('work_experience'))}, count: {len(extracted_data.get('work_experience', []))}")
+                    except Exception as e:
+                        logger.error(f"Failed to re-extract data: {e}")
+                        extracted_data = {}
+                
                 # Extract candidate information from parsed data
-                candidate_name = extracted_data.get('name', 'Unknown Candidate')
+                candidate_name = extracted_data.get('name') or extracted_data.get('full_name')
                 candidate_email = extracted_data.get('email')
-                candidate_phone = extracted_data.get('phone')
+                candidate_phone = extracted_data.get('phone') or extracted_data.get('phone_number')
+                
+                # If still no name, try to extract from filename
+                if not candidate_name:
+                    # Try to get name from filename (remove extension and underscores)
+                    candidate_name = os.path.splitext(file_name)[0].replace('_', ' ').replace('-', ' ').strip()
+                    logger.info(f"Using filename as candidate name: {candidate_name}")
                 
                 # Validate candidate data before creating
                 invalid_names = [
@@ -409,14 +431,11 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     })
                     continue
                     
+                # Generate a unique email if missing (using file hash)
                 if not candidate_email or '@' not in candidate_email:
-                    logger.warning(f"Skipping resume without valid email: {candidate_email}")
-                    failed.append({
-                        "file_name": resume_data.get('file_name'),
-                        "reason": "Invalid or missing email address in resume",
-                        "status": "error"
-                    })
-                    continue
+                    logger.warning(f"No valid email found for {candidate_name}, generating placeholder")
+                    # Use file hash to create unique email
+                    candidate_email = f"candidate_{file_hash[:12]}@placeholder.com"
                 
                 # Check if candidate already exists by email
                 candidate = None
@@ -435,7 +454,6 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                         phone=candidate_phone,
                         linkedin_url=extracted_data.get('linkedin_url'),
                         location=extracted_data.get('location'),
-                        professional_summary=extracted_data.get('summary'),  
                         source="vetting",
                         status="new",
                         created_by="system"
@@ -475,30 +493,57 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     
                     # Store education
                     education_data = extracted_data.get('education', [])
-                    if education_data:
+                    if education_data and isinstance(education_data, list):
                         from models.database import Education
+                        logger.info(f"Storing {len(education_data)} education records for {candidate_name}")
                         for edu in education_data:
-                            if not edu.get('degree'):
+                            if not isinstance(edu, dict):
+                                logger.warning(f"Skipping invalid education entry: {type(edu)}")
+                                continue
+                            if not edu.get('degree') and not edu.get('institution'):
                                 continue
                             education = Education(
                                 candidate_id=candidate.id,
                                 degree=edu.get('degree'),
                                 field=edu.get('field'),
                                 institution=edu.get('institution'),
-                                start_date=edu.get('start_year'),
-                                end_date=edu.get('end_year'),
+                                start_date=edu.get('start_year') or edu.get('start_date'),
+                                end_date=edu.get('end_year') or edu.get('end_date'),
                                 gpa=edu.get('gpa')
                             )
                             db.add(education)
                         await db.commit()
+                    else:
+                        logger.warning(f"Education data is not a list: {type(education_data)}")
                     
                     # Store work experience
                     experience_data = extracted_data.get('work_experience', [])
-                    if experience_data:
+                    if experience_data and isinstance(experience_data, list):
                         from models.database import WorkExperience
+                        logger.info(f"Storing {len(experience_data)} work experience records for {candidate_name}")
                         for exp in experience_data:
-                            if not exp.get('company'):
+                            if not isinstance(exp, dict):
+                                logger.warning(f"Skipping invalid experience entry: {type(exp)}")
                                 continue
+                            if not exp.get('company') and not exp.get('title'):
+                                logger.warning(f"Skipping experience with no company or title")
+                                continue
+                            
+                            # Get description and limit length to avoid storing entire resume
+                            description = exp.get('description', '') or exp.get('responsibilities', '')
+                            if isinstance(description, list):
+                                # If responsibilities is a list, join them
+                                description = '\n• ' + '\n• '.join(str(item) for item in description[:5])  # Limit to first 5 items
+                            elif isinstance(description, str):
+                                # Check if it's suspiciously long (likely entire resume)
+                                if len(description) > 2000:
+                                    logger.warning(f"Description too long ({len(description)} chars), truncating")
+                                    description = description[:500] + '...'
+                                elif len(description) > 1000:
+                                    description = description[:1000] + '...'
+                            
+                            logger.info(f"Adding work exp: {exp.get('title')} at {exp.get('company')} ({exp.get('start_date')} - {exp.get('end_date')})")
+                            
                             work_exp = WorkExperience(
                                 candidate_id=candidate.id,
                                 company=exp.get('company'),
@@ -507,10 +552,15 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                                 start_date=exp.get('start_date'),
                                 end_date=exp.get('end_date'),
                                 is_current=exp.get('is_current', False),
-                                description=exp.get('description')
+                                description=description
                             )
                             db.add(work_exp)
                         await db.commit()
+                    elif isinstance(experience_data, str):
+                        # If it's a string (entire resume text), don't store it
+                        logger.error(f"Work experience is a string ({len(experience_data)} chars), not storing. Extraction failed!")
+                    else:
+                        logger.warning(f"Work experience data is not a list: {type(experience_data)}")
                     
                     # Store certifications
                     certifications_data = extracted_data.get('certifications', [])

@@ -1,0 +1,295 @@
+<!-- Unified Navigation Bar Component -->
+<!-- AI Powered HR Assistant - Consistent across all pages -->
+<nav class="navbar navbar-expand-lg navbar-dark sticky-top" id="unified-navbar">
+    <div class="container-fluid px-4">
+        <!-- Brand -->
+        <a class="navbar-brand fw-bold d-flex align-items-center" href="/">
+            <span class="brand-icon">🤖</span>
+            <span class="brand-text">AI Powered HR Assistant</span>
+        </a>
+        
+        <!-- Mobile Toggle -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
+                data-bs-target="#navbarNav" aria-controls="navbarNav" 
+                aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <!-- Navigation Links -->
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <!-- Dashboard (All Roles) -->
+                <li class="nav-item">
+                    <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" 
+                       href="/">
+                        <i class="bi bi-house-door-fill"></i>
+                        <span class="nav-text">Dashboard</span>
+                    </a>
+                </li>
+                
+                <!-- Vetting (HR & Admin only) -->
+                {% if user and user.role in ['hr', 'admin'] %}
+                <li class="nav-item">
+                    <a class="nav-link {% if 'vet' in request.url.path %}active{% endif %}" 
+                       href="/vet-resumes">
+                        <i class="bi bi-shield-check"></i>
+                        <span class="nav-text">Vetting</span>
+                    </a>
+                </li>
+                {% endif %}
+                
+                <!-- Candidates (HR & Admin) -->
+                {% if user and user.role in ['hr', 'admin'] %}
+                <li class="nav-item">
+                    <a class="nav-link {% if 'candidates' in request.url.path or 'search' in request.url.path %}active{% endif %}" 
+                       href="/candidates">
+                        <i class="bi bi-people-fill"></i>
+                        <span class="nav-text">Candidates</span>
+                    </a>
+                </li>
+                {% endif %}
+                
+                <!-- Jobs (All Roles) -->
+                <li class="nav-item">
+                    <a class="nav-link {% if 'jobs' in request.url.path and 'jobs-management' not in request.url.path %}active{% endif %}" 
+                       href="/jobs">
+                        <i class="bi bi-briefcase-fill"></i>
+                        <span class="nav-text">Jobs</span>
+                    </a>
+                </li>
+                
+                <!-- Jobs Management Dashboard (HR & Admin) -->
+                {% if user and user.role in ['hr', 'admin'] %}
+                <li class="nav-item">
+                    <a class="nav-link {% if 'jobs-management' in request.url.path %}active{% endif %}" 
+                       href="/jobs-management">
+                        <i class="bi bi-graph-up"></i>
+                        <span class="nav-text">Analytics</span>
+                    </a>
+                </li>
+                {% endif %}
+                
+                <!-- Users (Admin Only) -->
+                {% if user and user.role == 'admin' %}
+                <li class="nav-item">
+                    <a class="nav-link {% if 'users' in request.url.path %}active{% endif %}" 
+                       href="/users">
+                        <i class="bi bi-person-gear"></i>
+                        <span class="nav-text">Users</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+            
+            <!-- Right Side: User Menu or Login -->
+            <ul class="navbar-nav">
+                {% if user %}
+                <!-- Logged In User Menu -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" 
+                       href="#" id="userDropdown" role="button" 
+                       data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-person-circle me-2" style="font-size: 1.5rem;"></i>
+                        <div class="d-flex flex-column align-items-start">
+                            <span class="user-name">{{ user.name or user.email }}</span>
+                            <span class="user-role-badge">{{ user.role|title if user.role else 'User' }}</span>
+                        </div>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                        <li>
+                            <a class="dropdown-item" href="/profile">
+                                <i class="bi bi-person"></i> Profile
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="/settings">
+                                <i class="bi bi-gear"></i> Settings
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="#" onclick="logout(event)">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                {% else %}
+                <!-- Not Logged In -->
+                <li class="nav-item">
+                    <a class="nav-link" href="/auth/login">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        <span class="nav-text">Login</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="btn btn-outline-light btn-sm ms-2" href="/auth/register">
+                        Sign Up
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<style>
+    /* Unified Navbar Styles */
+    #unified-navbar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        padding: 0.75rem 0;
+        z-index: 1030;
+    }
+    
+    /* Brand Styling */
+    #unified-navbar .navbar-brand {
+        font-size: 1.25rem;
+        color: white !important;
+        transition: opacity 0.2s;
+    }
+    
+    #unified-navbar .navbar-brand:hover {
+        opacity: 0.9;
+    }
+    
+    #unified-navbar .brand-icon {
+        font-size: 1.75rem;
+        margin-right: 0.5rem;
+    }
+    
+    #unified-navbar .brand-text {
+        font-weight: 700;
+    }
+    
+    /* Navigation Links */
+    #unified-navbar .nav-link {
+        color: rgba(255, 255, 255, 0.9) !important;
+        border-radius: 0.375rem;
+        margin: 0 0.25rem;
+        padding: 0.5rem 1rem !important;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    #unified-navbar .nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+        color: white !important;
+    }
+    
+    #unified-navbar .nav-link.active {
+        background-color: rgba(255, 255, 255, 0.25);
+        color: white !important;
+        font-weight: 600;
+    }
+    
+    #unified-navbar .nav-link i {
+        font-size: 1.1rem;
+    }
+    
+    /* User Dropdown */
+    #unified-navbar .dropdown-toggle {
+        color: white !important;
+        padding: 0.5rem 1rem !important;
+    }
+    
+    #unified-navbar .dropdown-toggle:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+    }
+    
+    #unified-navbar .user-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+        line-height: 1.2;
+    }
+    
+    #unified-navbar .user-role-badge {
+        font-size: 0.7rem;
+        background: rgba(255, 255, 255, 0.3);
+        padding: 0.1rem 0.5rem;
+        border-radius: 0.25rem;
+        margin-top: 0.1rem;
+    }
+    
+    #unified-navbar .dropdown-menu {
+        border: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border-radius: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    
+    #unified-navbar .dropdown-item {
+        padding: 0.6rem 1.25rem;
+        transition: background-color 0.2s;
+    }
+    
+    #unified-navbar .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    #unified-navbar .dropdown-item i {
+        width: 1.25rem;
+        margin-right: 0.5rem;
+    }
+    
+    /* Mobile Responsive */
+    @media (max-width: 991px) {
+        #unified-navbar .brand-text {
+            font-size: 1rem;
+        }
+        
+        #unified-navbar .nav-link {
+            margin: 0.25rem 0;
+        }
+        
+        #unified-navbar .navbar-nav {
+            padding: 1rem 0;
+        }
+        
+        #unified-navbar .nav-text {
+            margin-left: 0.5rem;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        #unified-navbar .brand-text {
+            display: none;
+        }
+        
+        #unified-navbar .brand-icon {
+            font-size: 1.5rem;
+            margin-right: 0;
+        }
+    }
+</style>
+
+<script>
+    function logout(event) {
+        event.preventDefault();
+        
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            // Just clear and redirect
+            localStorage.clear();
+            window.location.href = '/login';
+            return;
+        }
+        
+        // Call logout API
+        fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        }).finally(() => {
+            // Clear all tokens and redirect
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        });
+    }
+</script>

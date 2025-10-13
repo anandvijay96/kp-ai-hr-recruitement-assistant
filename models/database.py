@@ -1,5 +1,5 @@
 """SQLAlchemy ORM models for authentication and resume management"""
-from sqlalchemy import Column, String, Boolean, Integer, DateTime, Date, Text, ForeignKey, CheckConstraint, JSON
+from sqlalchemy import Column, String, Boolean, Integer, DateTime, Date, Text, ForeignKey, CheckConstraint, JSON, ARRAY
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -134,8 +134,9 @@ class Resume(Base):
     # Candidate Link (NEW)
     candidate_id = Column(String(36), ForeignKey("candidates.id", ondelete="SET NULL"), index=True)
     
-    # Relationship
+    # Relationships
     candidate = relationship("Candidate", back_populates="resumes")
+    job_matches = relationship("ResumeJobMatch", back_populates="resume", cascade="all, delete-orphan")
     
     # Parsed Data
     extracted_text = Column(Text)
@@ -415,6 +416,9 @@ class Job(Base):
     # Search Optimization
     search_text = Column(Text)
     
+    # Relationships
+    resume_matches = relationship("ResumeJobMatch", back_populates="job", cascade="all, delete-orphan")
+    
     __table_args__ = (
         CheckConstraint("work_type IN ('onsite', 'remote', 'hybrid')", name="chk_work_type"),
         CheckConstraint("employment_type IN ('full_time', 'part_time', 'contract', 'internship')", name="chk_employment_type"),
@@ -674,3 +678,32 @@ class BulkUserOperation(Base):
     started_at = Column(DateTime(timezone=True))
     completed_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class ResumeJobMatch(Base):
+    """Resume-Job matching results"""
+    __tablename__ = "resume_job_matches"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    resume_id = Column(String(36), ForeignKey("resumes.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id = Column(String(36), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    match_score = Column(Integer, nullable=False, index=True)
+    skill_score = Column(Integer)
+    experience_score = Column(Integer)
+    education_score = Column(Integer)
+    matched_skills = Column(ARRAY(String))
+    missing_skills = Column(ARRAY(String))
+    match_details = Column(JSONB)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    resume = relationship("Resume", back_populates="job_matches")
+    job = relationship("Job", back_populates="resume_matches")
+    
+    __table_args__ = (
+        CheckConstraint("match_score >= 0 AND match_score <= 100", name="check_match_score_range"),
+        CheckConstraint("skill_score >= 0 AND skill_score <= 100", name="check_skill_score_range"),
+        CheckConstraint("experience_score >= 0 AND experience_score <= 100", name="check_experience_score_range"),
+        CheckConstraint("education_score >= 0 AND education_score <= 100", name="check_education_score_range"),
+    )

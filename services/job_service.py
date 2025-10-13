@@ -104,6 +104,9 @@ class JobService:
     
     async def _add_job_skills(self, job_id: str, skills: List) -> None:
         """Add skills to a job"""
+        # Track added skill IDs to prevent duplicates
+        added_skill_ids = set()
+        
         for skill_data in skills:
             # Get or create skill
             skill_id = skill_data.skill_id
@@ -120,6 +123,13 @@ class JobService:
                     await self.db.flush()
                 
                 skill_id = skill.id
+            
+            # Skip if already added (prevent duplicate constraint error)
+            if skill_id in added_skill_ids:
+                logger.warning(f"Skipping duplicate skill {skill_id} for job {job_id}")
+                continue
+            
+            added_skill_ids.add(skill_id)
             
             # Create job-skill relationship
             job_skill = JobSkill(

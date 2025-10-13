@@ -3,9 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jobs - HR Recruitment System</title>
+    <title>Jobs - AI Powered HR Assistant</title>
+    
+    <!-- Bootstrap 5.3 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Font Awesome (for existing icons) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Unified Styles -->
+    <link rel="stylesheet" href="/static/css/unified_styles.css">
     <style>
         .job-card {
             border: 1px solid #dee2e6;
@@ -42,22 +52,8 @@
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">HR Recruitment System</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="/jobs">Jobs</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/candidates">Candidates</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/upload">Upload Resume</a></li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <!-- Unified Navigation -->
+    {% include 'components/unified_navbar.html' %}
 
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -124,6 +120,49 @@
         </nav>
     </div>
 
+    <!-- Close Job Modal -->
+    <div class="modal fade" id="closeJobModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Close Job</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Why are you closing "<span id="closeJobTitle"></span>"?</p>
+                    <div class="mb-3">
+                        <label for="closeReason" class="form-label">Reason</label>
+                        <select class="form-select" id="closeReason">
+                            <option value="filled">Position Filled</option>
+                            <option value="cancelled">Position Cancelled</option>
+                            <option value="on_hold">Put On Hold</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="closeNotes" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="closeNotes" rows="3" placeholder="Add any additional notes..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning" onclick="confirmCloseJob()">Close Job</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Error Toast -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <div id="notificationToast" class="toast" role="alert">
+            <div class="toast-header">
+                <strong class="me-auto" id="toastTitle">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastMessage"></div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let currentPage = 1;
@@ -155,22 +194,53 @@
             if (workType) params.append('work_type', workType);
 
             try {
+                // Get access token from localStorage
+                const accessToken = localStorage.getItem('access_token');
+                
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                // Add Authorization header if token exists
+                if (accessToken) {
+                    headers['Authorization'] = `Bearer ${accessToken}`;
+                }
+                
                 const response = await fetch(`/api/jobs?${params.toString()}`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-                    }
+                    credentials: 'include',
+                    headers: headers
                 });
 
-                if (!response.ok) throw new Error('Failed to load jobs');
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error:', response.status, errorText);
+                    
+                    // If 401/403, might need to re-login
+                    if (response.status === 401 || response.status === 403) {
+                        console.error('Authentication failed. Redirecting to login...');
+                        window.location.href = '/login';
+                        return;
+                    }
+                    
+                    throw new Error(`Failed to load jobs: ${response.status}`);
+                }
 
                 const data = await response.json();
-                renderJobs(data.data.jobs);
-                renderPagination(data.data.total_pages, data.data.page);
+                console.log('Jobs API response:', data);
+                
+                // Handle different response formats
+                const jobs = data.data?.jobs || data.jobs || [];
+                const totalPages = data.data?.total_pages || data.total_pages || 1;
+                const currentPageNum = data.data?.page || data.page || 1;
+                
+                renderJobs(jobs);
+                renderPagination(totalPages, currentPageNum);
             } catch (error) {
                 console.error('Error loading jobs:', error);
                 document.getElementById('jobList').innerHTML = `
                     <div class="alert alert-danger">
                         <i class="fas fa-exclamation-triangle"></i> Failed to load jobs. Please try again.
+                        <br><small class="text-muted">${error.message}</small>
                     </div>
                 `;
             }
@@ -230,8 +300,19 @@
                                     </button>
                                 ` : ''}
                                 ${job.status === 'open' ? `
-                                    <button onclick="closeJob('${job.id}', '${job.title}')" class="btn btn-sm btn-outline-warning">
+                                    <a href="/jobs/${job.id}/edit" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <button onclick="openCloseJobModal('${job.id}', '${job.title}')" class="btn btn-sm btn-outline-warning">
                                         <i class="fas fa-times-circle"></i> Close
+                                    </button>
+                                ` : ''}
+                                ${job.status === 'closed' ? `
+                                    <a href="/jobs/${job.id}/edit" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <button onclick="reopenJob('${job.id}', '${job.title}')" class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-check-circle"></i> Reopen
                                     </button>
                                 ` : ''}
                             </div>
@@ -460,28 +541,55 @@
             }
         }
 
-        async function closeJob(jobId, jobTitle) {
-            // Ask for reason (optional)
-            const notes = prompt(`Why are you closing "${jobTitle}"?\n\nReason (optional):`);
+        let currentJobId = null;
+        
+        function openCloseJobModal(jobId, jobTitle) {
+            currentJobId = jobId;
+            document.getElementById('closeJobTitle').textContent = jobTitle;
+            document.getElementById('closeReason').value = 'filled';
+            document.getElementById('closeNotes').value = '';
+            new bootstrap.Modal(document.getElementById('closeJobModal')).show();
+        }
+        
+        function showToast(title, message, isSuccess = true) {
+            const toast = document.getElementById('notificationToast');
+            const toastTitle = document.getElementById('toastTitle');
+            const toastMessage = document.getElementById('toastMessage');
+            const toastHeader = toast.querySelector('.toast-header');
             
-            if (notes === null) {
-                return; // User cancelled
+            toastTitle.textContent = title;
+            toastMessage.textContent = message;
+            
+            // Remove old classes
+            toastHeader.classList.remove('bg-success', 'bg-danger', 'text-white');
+            
+            // Add appropriate class
+            if (isSuccess) {
+                toastHeader.classList.add('bg-success', 'text-white');
+            } else {
+                toastHeader.classList.add('bg-danger', 'text-white');
             }
+            
+            new bootstrap.Toast(toast).show();
+        }
+        
+        async function confirmCloseJob() {
+            const jobId = currentJobId;
+            const reason = document.getElementById('closeReason').value;
+            const notes = document.getElementById('closeNotes').value;
 
             try {
                 const token = localStorage.getItem('access_token');
                 if (!token) {
-                    alert('You are not logged in. Please login first.');
-                    window.location.href = '/login';
+                    showToast('Not Logged In', 'Please login first.', false);
+                    setTimeout(() => window.location.href = '/login', 2000);
                     return;
                 }
 
                 const closeData = {
-                    close_reason: 'filled',  // Default reason
+                    close_reason: reason,
                     notes: notes || null
                 };
-
-                console.log('Closing job with data:', closeData);
 
                 const response = await fetch(`/api/jobs/${jobId}/close`, {
                     method: 'POST',
@@ -499,39 +607,81 @@
                     result = { detail: 'Failed to parse server response' };
                 }
 
-                console.log('Close response:', { status: response.status, result });
-
+                // Close modal
+                bootstrap.Modal.getInstance(document.getElementById('closeJobModal')).hide();
+                
                 if (!response.ok) {
                     if (response.status === 401) {
-                        alert('Authentication failed. Please login again.');
-                        window.location.href = '/login';
+                        showToast('Authentication Failed', 'Please login again.', false);
+                        setTimeout(() => window.location.href = '/login', 2000);
                     } else if (response.status === 403) {
-                        alert('You do not have permission to close this job.');
-                    } else if (response.status === 422) {
-                        const errors = result.detail;
-                        let errorMsg = 'Validation errors:\n\n';
-                        if (Array.isArray(errors)) {
-                            errors.forEach(err => {
-                                errorMsg += `• ${err.loc.join('.')}: ${err.msg}\n`;
-                            });
-                        } else {
-                            errorMsg = JSON.stringify(errors, null, 2);
-                        }
-                        alert(errorMsg);
+                        showToast('Permission Denied', 'You do not have permission to close this job.', false);
                     } else {
                         const errorMsg = typeof result.detail === 'string' 
                             ? result.detail 
                             : JSON.stringify(result.detail || result);
-                        alert('Error: ' + errorMsg);
+                        showToast('Error', errorMsg, false);
                     }
                     return;
                 }
 
-                alert('Job closed successfully!');
-                loadJobs(); // Reload the job list
+                showToast('Success', 'Job closed successfully!', true);
+                setTimeout(() => loadJobs(), 1000); // Reload the job list
             } catch (error) {
                 console.error('Error closing job:', error);
-                alert('Network error: ' + error.message + '\n\nCheck browser console for details.');
+                bootstrap.Modal.getInstance(document.getElementById('closeJobModal'))?.hide();
+                showToast('Network Error', error.message, false);
+            }
+        }
+        
+        async function reopenJob(jobId, jobTitle) {
+            if (!confirm(`Are you sure you want to reopen "${jobTitle}"?`)) {
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    showToast('Not Logged In', 'Please login first.', false);
+                    setTimeout(() => window.location.href = '/login', 2000);
+                    return;
+                }
+
+                const response = await fetch(`/api/jobs/${jobId}/reopen`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                let result;
+                try {
+                    result = await response.json();
+                } catch (e) {
+                    result = { detail: 'Failed to parse server response' };
+                }
+                
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        showToast('Authentication Failed', 'Please login again.', false);
+                        setTimeout(() => window.location.href = '/login', 2000);
+                    } else if (response.status === 403) {
+                        showToast('Permission Denied', 'You do not have permission to reopen this job.', false);
+                    } else {
+                        const errorMsg = typeof result.detail === 'string' 
+                            ? result.detail 
+                            : JSON.stringify(result.detail || result);
+                        showToast('Error', errorMsg, false);
+                    }
+                    return;
+                }
+
+                showToast('Success', 'Job reopened successfully!', true);
+                setTimeout(() => loadJobs(), 1000);
+            } catch (error) {
+                console.error('Error reopening job:', error);
+                showToast('Network Error', error.message, false);
             }
         }
     </script>

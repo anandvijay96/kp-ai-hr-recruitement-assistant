@@ -3,9 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Management - HR Recruitment System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>User Management - AI Powered HR Assistant</title>
+    
+    <!-- Bootstrap 5.3 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Font Awesome (for existing icons) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Unified Styles -->
+    <link rel="stylesheet" href="/static/css/unified_styles.css">
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -26,6 +36,9 @@
     </style>
 </head>
 <body>
+    <!-- Unified Navigation -->
+    {% include 'components/unified_navbar.html' %}
+    
 <div class="container-fluid mt-4">
     <div class="row mb-4">
         <div class="col">
@@ -171,7 +184,8 @@
                     </div>
                     <div class="form-group">
                         <label>Mobile</label>
-                        <input type="tel" class="form-control" name="mobile" placeholder="+1234567890">
+                        <input type="tel" class="form-control" name="mobile" placeholder="+1234567890" pattern="[\+]?[0-9]{0,15}">
+                        <small class="form-text text-muted">Optional. Include country code if applicable (e.g., +919655852369)</small>
                     </div>
                     <div class="form-group">
                         <label>Role *</label>
@@ -184,6 +198,20 @@
                     <div class="form-group">
                         <label>Department</label>
                         <input type="text" class="form-control" name="department" placeholder="e.g., Engineering, Sales">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select class="form-control" name="status">
+                            <option value="active" selected>Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Password Option</label>
+                        <select class="form-control" name="password_option">
+                            <option value="auto_generate" selected>Auto Generate</option>
+                            <option value="user_set_on_first_login">User Sets on First Login</option>
+                        </select>
                     </div>
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" name="send_welcome_email" checked>
@@ -245,6 +273,69 @@
     </div>
 </div>
 
+<!-- Success/Error Message Modal -->
+<div class="modal fade" id="messageModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" id="message-modal-header">
+                <h5 class="modal-title" id="message-modal-title">
+                    <i class="fas fa-check-circle me-2" id="message-modal-icon"></i>
+                    <span id="message-modal-title-text">Success</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="message-modal-body" class="mb-0"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #message-modal-header.success {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+    }
+    
+    #message-modal-header.error {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+    }
+    
+    #message-modal-header.warning {
+        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+        color: white;
+    }
+    
+    #message-modal-header.info {
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        color: white;
+    }
+    
+    #message-modal-header .btn-close {
+        filter: brightness(0) invert(1);
+    }
+    
+    #message-modal-body {
+        font-size: 1.1rem;
+        line-height: 1.6;
+        padding: 1.5rem;
+    }
+    
+    .modal-dialog-centered {
+        display: flex;
+        align-items: center;
+        min-height: calc(100% - 1rem);
+    }
+    
+    #messageModal .modal-footer .btn {
+        min-width: 100px;
+    }
+</style>
+
 <script>
 let currentPage = 1;
 let currentFilters = {};
@@ -284,6 +375,12 @@ function setupEventListeners() {
 
 async function loadUsers() {
     try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            window.location.href = '/login';
+            return;
+        }
+        
         const params = new URLSearchParams({
             page: currentPage,
             limit: 20,
@@ -292,7 +389,8 @@ async function loadUsers() {
         
         const response = await fetch(`/api/users?${params}`, {
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
             }
         });
         
@@ -400,11 +498,15 @@ async function createUser() {
         const data = {
             full_name: formData.get('full_name'),
             email: formData.get('email'),
-            mobile: formData.get('mobile') || null,
+            mobile: formData.get('mobile')?.trim() || null,
             role: formData.get('role'),
-            department: formData.get('department') || null,
+            department: formData.get('department')?.trim() || null,
+            status: formData.get('status'),
+            password_option: formData.get('password_option'),
             send_welcome_email: formData.get('send_welcome_email') === 'on'
         };
+        
+        console.log('Form data being sent:', data);
         
         const response = await fetch('/api/users', {
             method: 'POST',
@@ -416,8 +518,31 @@ async function createUser() {
         });
         
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Failed to create user');
+            const errorData = await response.json().catch(() => ({}));
+            console.error('API Error:', {
+                status: response.status,
+                statusText: response.statusText,
+                errorData: errorData
+            });
+            
+            // Handle validation errors
+            if (response.status === 422 && errorData.detail) {
+                if (Array.isArray(errorData.detail)) {
+                    // Pydantic validation errors
+                    const errors = errorData.detail.map(err => {
+                        const field = err.loc ? err.loc.join('.') : 'unknown';
+                        return `${field}: ${err.msg}`;
+                    }).join(', ');
+                    throw new Error(`Validation Error: ${errors}`);
+                } else if (typeof errorData.detail === 'string') {
+                    throw new Error(errorData.detail);
+                } else {
+                    throw new Error(JSON.stringify(errorData.detail));
+                }
+            }
+            
+            const errorDetail = errorData.detail || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+            throw new Error(typeof errorDetail === 'string' ? errorDetail : JSON.stringify(errorDetail));
         }
         
         const result = await response.json();
@@ -426,7 +551,17 @@ async function createUser() {
         form.reset();
         
         if (result.temporary_password) {
-            showAlert(`User created successfully! Temporary password: ${result.temporary_password}`, 'success');
+            const message = `
+                <div class="text-center">
+                    <p class="mb-3"><strong>User created successfully!</strong></p>
+                    <div class="alert alert-warning mb-0" style="background-color: #fff3cd; border: 2px solid #ffc107;">
+                        <p class="mb-2"><strong>Temporary Password:</strong></p>
+                        <h4 class="mb-2" style="font-family: monospace; color: #856404; letter-spacing: 2px;">${result.temporary_password}</h4>
+                        <small class="text-muted">Please save this password. It will not be shown again.</small>
+                    </div>
+                </div>
+            `;
+            showAlert(message, 'success');
         } else {
             showAlert('User created successfully! Activation email sent.', 'success');
         }
@@ -539,20 +674,40 @@ function debounce(func, wait) {
 }
 
 function showAlert(message, type = 'info') {
-    const alertHtml = `
-        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-            ${message}
-            <button type="button" class="close" data-dismiss="alert">&times;</button>
-        </div>
-    `;
+    // Update modal content
+    const header = document.getElementById('message-modal-header');
+    const icon = document.getElementById('message-modal-icon');
+    const titleText = document.getElementById('message-modal-title-text');
+    const body = document.getElementById('message-modal-body');
     
-    const container = document.querySelector('.container-fluid');
-    container.insertAdjacentHTML('afterbegin', alertHtml);
+    // Remove previous classes
+    header.classList.remove('success', 'error', 'info', 'warning');
     
-    setTimeout(() => {
-        const alert = container.querySelector('.alert');
-        if (alert) alert.remove();
-    }, 5000);
+    // Set content based on type
+    if (type === 'success') {
+        header.classList.add('success');
+        icon.className = 'fas fa-check-circle me-2';
+        titleText.textContent = 'Success';
+    } else if (type === 'danger' || type === 'error') {
+        header.classList.add('error');
+        icon.className = 'fas fa-exclamation-circle me-2';
+        titleText.textContent = 'Error';
+    } else if (type === 'warning') {
+        header.classList.add('warning');
+        icon.className = 'fas fa-exclamation-triangle me-2';
+        titleText.textContent = 'Warning';
+    } else {
+        header.classList.add('info');
+        icon.className = 'fas fa-info-circle me-2';
+        titleText.textContent = 'Information';
+    }
+    
+    // Set message
+    body.innerHTML = message;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('messageModal'));
+    modal.show();
 }
 </script>
 

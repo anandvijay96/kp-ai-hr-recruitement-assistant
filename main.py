@@ -10,6 +10,10 @@ from typing import List
 import logging
 import aiofiles
 
+# Configure logging FIRST
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 from core.config import settings
 from core.auth import require_auth, get_current_user
 from core.cache import SimpleCache
@@ -24,15 +28,28 @@ from api.v1 import resumes as resumes_v1
 from api.v1 import candidates as candidates_v1
 from api.v1 import auth as auth_v1
 from api.v1 import simple_auth
+from api.v1 import dashboard as dashboard_v1
+from api.v1 import matching as matching_v1
 try:
     from api.v1 import vetting as vetting_v1
     VETTING_ENABLED = True
 except ImportError:
     VETTING_ENABLED = False
-    logger = logging.getLogger(__name__)
     logger.warning("Vetting module not available")
 
 # Import new API modules from feature/job-creation branch
+print("\n" + "="*60)
+print("🔍 ATTEMPTING TO LOAD API V2 MODULES...")
+print("="*60)
+
+API_V2_ENABLED = False
+api_jobs = None
+api_jobs_management = None
+api_users = None
+api_resumes = None
+api_candidates = None
+api_auth = None
+
 try:
     from api import auth as api_auth
     from api import jobs as api_jobs
@@ -41,16 +58,27 @@ try:
     from api import resumes as api_resumes
     from api import candidates as api_candidates
     API_V2_ENABLED = True
+    print("✅ API V2 modules loaded successfully!")
+    print("   - Jobs API: ENABLED")
+    print("   - Users API: ENABLED")
+    print("   - Candidates API: ENABLED")
+    logger.info("✅ API V2 modules loaded successfully")
 except ImportError as e:
     API_V2_ENABLED = False
-    logger = logging.getLogger(__name__)
-    logger.warning(f"New API modules not available: {e}")
+    print(f"❌ API V2 modules FAILED to load!")
+    print(f"   Error: {e}")
+    print("   Jobs, Users, and other V2 features will NOT be available")
+    logger.error(f"❌ API V2 modules not available: {e}")
+    logger.error("Jobs, Users, and other V2 features will not be available")
+    import traceback
+    print("\n📋 Full traceback:")
+    traceback.print_exc()
+
+print("="*60)
+print(f"API_V2_ENABLED = {API_V2_ENABLED}")
+print("="*60 + "\n")
 
 from core.database import init_db
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.app_name,
@@ -115,25 +143,46 @@ os.makedirs(settings.temp_dir, exist_ok=True)
 # Include API v1 routers
 app.include_router(resumes_v1.router, prefix="/api/v1/resumes", tags=["resumes"])
 app.include_router(candidates_v1.router, prefix="/api/v1/candidates", tags=["candidates"])
-app.include_router(simple_auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(dashboard_v1.router, prefix="/api/v1", tags=["dashboard"])
+app.include_router(matching_v1.router, prefix="/api/v1", tags=["matching"])
 if VETTING_ENABLED:
     app.include_router(vetting_v1.router, prefix="/api/v1/vetting", tags=["vetting"])
 
 # Include new API routers (job management, user management features)
 if API_V2_ENABLED:
-    app.include_router(api_auth.router, prefix="/api/auth", tags=["auth"])
-    app.include_router(api_jobs.router, prefix="/api/jobs", tags=["jobs"])
-    app.include_router(api_jobs_management.router, prefix="/api/jobs-management", tags=["jobs-management"])
-    app.include_router(api_users.router, prefix="/api/users", tags=["users"])
-    app.include_router(api_resumes.router, prefix="/api/resumes", tags=["resumes"])
-    app.include_router(api_candidates.router, prefix="/api/candidates", tags=["candidates"])
+    # Use V2 auth (full JWT authentication) - router already has /api/auth prefix
+    app.include_router(api_auth.router, tags=["auth"])
+    app.include_router(api_jobs.router, tags=["jobs"])
+    app.include_router(api_jobs_management.router, tags=["jobs-management"])
+    app.include_router(api_users.router, tags=["users"])
+    app.include_router(api_resumes.router, tags=["resumes"])
+    app.include_router(api_candidates.router, tags=["candidates"])
+else:
+    # Fallback to simple auth if V2 not available
+    app.include_router(simple_auth.router, prefix="/api/auth", tags=["auth"])
 
 @app.get("/", response_class=HTMLResponse)
 @require_auth
 async def home(request: Request):
-    """Main dashboard - requires authentication"""
+    """Main dashboard - requires authentication, routes to role-specific dashboard"""
     user = await get_current_user(request)
-    return templates.TemplateResponse("index.html", {"request": request, "user": user})
+    
+    # Route to role-specific dashboard
+    if user and hasattr(user, 'role'):
+        if user.role == "admin":
+            return templates.TemplateResponse("dashboards/admin_dashboard.html", {"request": request, "user": user})
+        elif user.role == "hr":
+            return templates.TemplateResponse("dashboards/hr_dashboard.html", {"request": request, "user": user})
+        elif user.role == "vendor":
+            return templates.TemplateResponse("dashboards/vendor_dashboard.html", {"request": request, "user": user})
+    
+    # Default to HR dashboard if no role or role not recognized
+    return templates.TemplateResponse("dashboards/hr_dashboard.html", {"request": request, "user": user})
+
+@app.get("/landing", response_class=HTMLResponse)
+async def landing_page(request: Request):
+    """Landing page for non-authenticated users"""
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/upload", response_class=HTMLResponse)
 async def upload_form(request: Request):
@@ -191,7 +240,14 @@ async def job_create_page(request: Request):
 @app.get("/jobs/{job_id}", response_class=HTMLResponse)
 async def job_detail_page(job_id: str, request: Request):
     """Job detail page."""
-    return templates.TemplateResponse("jobs/job_detail.html", {"request": request, "job_id": job_id})
+    user = await get_current_user(request)
+    return templates.TemplateResponse("jobs/job_detail.html", {"request": request, "job_id": job_id, "user": user})
+
+@app.get("/jobs/{job_id}/edit", response_class=HTMLResponse)
+async def job_edit_page(job_id: str, request: Request):
+    """Job edit page."""
+    user = await get_current_user(request)
+    return templates.TemplateResponse("jobs/job_edit.html", {"request": request, "job_id": job_id, "user": user})
 
 @app.get("/jobs-management", response_class=HTMLResponse)
 @require_auth
@@ -220,8 +276,9 @@ async def register_page(request: Request):
 # Shortcut routes (redirect to /auth/* paths)
 @app.get("/login", response_class=HTMLResponse)
 async def login_shortcut(request: Request):
-    """Shortcut for login page - simple MVP login."""
-    return templates.TemplateResponse("auth/simple_login.html", {"request": request})
+    """Shortcut for login page - redirects to main login."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/auth/login", status_code=302)
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_shortcut(request: Request):

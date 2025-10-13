@@ -3,26 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Candidate Details - AI HR Assistant</title>
+    <title>Candidate Details - AI Powered HR Assistant</title>
+    
+    <!-- Bootstrap 5.3 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Unified Styles -->
+    <link rel="stylesheet" href="/static/css/unified_styles.css">
     <style>
-        :root {
-            --primary-color: #366092;
-            --secondary-color: #4a90e2;
-            --success-color: #28a745;
-            --danger-color: #dc3545;
-            --warning-color: #ffc107;
-        }
-        
         body {
             background-color: #f8f9fa;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .navbar {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .detail-card {
@@ -215,23 +209,8 @@
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/search">
-                <i class="bi bi-arrow-left me-2"></i>
-                Back to Search
-            </a>
-            <div class="d-flex gap-2">
-                <button class="btn btn-light btn-sm" id="editBtn">
-                    <i class="bi bi-pencil me-1"></i> Edit
-                </button>
-                <button class="btn btn-success btn-sm" id="contactBtn">
-                    <i class="bi bi-envelope me-1"></i> Contact
-                </button>
-            </div>
-        </div>
-    </nav>
+    <!-- Unified Navigation -->
+    {% include 'components/unified_navbar.html' %}
 
     <div class="container-fluid mt-4">
         <!-- Loading State -->
@@ -419,6 +398,22 @@
                         </div>
                     </div>
 
+                    <!-- Job Matches -->
+                    <div class="detail-card">
+                        <h5 class="section-title">
+                            <i class="bi bi-briefcase-fill me-2"></i>
+                            Job Matches
+                        </h5>
+                        <div id="jobMatchesContainer">
+                            <div class="text-center text-muted py-3">
+                                <div class="spinner-border spinner-border-sm me-2" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                Loading matches...
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Quick Actions -->
                     <div class="detail-card">
                         <h5 class="section-title">
@@ -426,6 +421,9 @@
                             Quick Actions
                         </h5>
                         <div class="d-grid gap-2">
+                            <button class="btn btn-warning" id="editCandidateBtn">
+                                <i class="bi bi-pencil-square me-1"></i> Edit Candidate
+                            </button>
                             <button class="btn btn-primary" id="scheduleInterviewBtn">
                                 <i class="bi bi-calendar-check me-1"></i> Schedule Interview
                             </button>
@@ -795,9 +793,113 @@
                 // Display candidate data
                 displayCandidateDetails(data);
                 
+                // Load job matches
+                loadJobMatches(data.resumes);
+                
             } catch (error) {
                 console.error('Error loading candidate:', error);
                 showError();
+            }
+        }
+        
+        // Load job matches for candidate's resumes
+        async function loadJobMatches(resumes) {
+            const container = $('#jobMatchesContainer');
+            
+            if (!resumes || resumes.length === 0) {
+                container.html('<p class="text-muted text-center py-3">No resumes uploaded yet</p>');
+                return;
+            }
+            
+            try {
+                // Get matches for the first resume
+                const resumeId = resumes[0].id;
+                const response = await fetch(`/api/v1/matching/resume/${resumeId}/matches?min_score=50&limit=5`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load matches');
+                }
+                
+                const data = await response.json();
+                
+                if (!data.matches || data.matches.length === 0) {
+                    container.html(`
+                        <div class="text-center text-muted py-3">
+                            <i class="bi bi-search fs-3 d-block mb-2"></i>
+                            <p class="mb-2">No job matches found</p>
+                            <small>Try lowering the minimum score or upload more resumes</small>
+                        </div>
+                    `);
+                    return;
+                }
+                
+                // Display matches
+                let html = '';
+                data.matches.forEach(match => {
+                    const scoreColor = match.match_score >= 80 ? 'success' : match.match_score >= 60 ? 'warning' : 'secondary';
+                    html += `
+                        <div class="border-bottom pb-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">
+                                        <a href="/jobs/${match.job_id}" class="text-decoration-none">
+                                            ${match.job_title || 'Untitled Job'}
+                                        </a>
+                                    </h6>
+                                    <small class="text-muted">Match Score</small>
+                                </div>
+                                <span class="badge bg-${scoreColor} fs-6">${match.match_score}%</span>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Skills</small>
+                                    <strong>${match.skill_score || 0}%</strong>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Experience</small>
+                                    <strong>${match.experience_score || 0}%</strong>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Education</small>
+                                    <strong>${match.education_score || 0}%</strong>
+                                </div>
+                            </div>
+                            ${match.matched_skills && match.matched_skills.length > 0 ? `
+                                <div class="mb-2">
+                                    <small class="text-muted d-block mb-1">Matched Skills:</small>
+                                    <div>
+                                        ${match.matched_skills.slice(0, 5).map(skill => 
+                                            `<span class="badge bg-success bg-opacity-10 text-success me-1 mb-1">${skill}</span>`
+                                        ).join('')}
+                                        ${match.matched_skills.length > 5 ? `<span class="badge bg-secondary">+${match.matched_skills.length - 5} more</span>` : ''}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            ${match.missing_skills && match.missing_skills.length > 0 ? `
+                                <div>
+                                    <small class="text-muted d-block mb-1">Missing Skills:</small>
+                                    <div>
+                                        ${match.missing_skills.slice(0, 3).map(skill => 
+                                            `<span class="badge bg-danger bg-opacity-10 text-danger me-1 mb-1">${skill}</span>`
+                                        ).join('')}
+                                        ${match.missing_skills.length > 3 ? `<span class="badge bg-secondary">+${match.missing_skills.length - 3} more</span>` : ''}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                
+                container.html(html);
+                
+            } catch (error) {
+                console.error('Error loading job matches:', error);
+                container.html(`
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Could not load job matches. Please try again later.
+                    </div>
+                `);
             }
         }
         
@@ -1617,6 +1719,41 @@
         $('#addExperienceBtn').click(addNewExperience);
         $('#addEducationBtn').click(addNewEducation);
         $('#addCertificationBtn').click(addNewCertification);
+        
+        // Bind edit candidate button
+        $('#editCandidateBtn').click(function() {
+            // Load candidate data into edit modal
+            fetch(`/api/v1/candidates/${candidateId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Populate personal info
+                    $('#editFullName').val(data.full_name || '');
+                    $('#editEmail').val(data.email || '');
+                    $('#editPhone').val(data.phone || '');
+                    $('#editLinkedin').val(data.linkedin_url || '');
+                    $('#editLocation').val(data.location || '');
+                    $('#editProfessionalSummary').val(data.professional_summary || '');
+                    
+                    // Populate skills
+                    renderSkillsEdit(data.skills || []);
+                    
+                    // Populate experience
+                    renderExperienceEdit(data.work_experience || []);
+                    
+                    // Populate education
+                    renderEducationEdit(data.education || []);
+                    
+                    // Populate certifications
+                    renderCertificationsEdit(data.certifications || []);
+                    
+                    // Show modal
+                    new bootstrap.Modal(document.getElementById('editCandidateModal')).show();
+                })
+                .catch(error => {
+                    console.error('Error loading candidate data:', error);
+                    alert('Failed to load candidate data for editing.');
+                });
+        });
     </script>
 </body>
 </html>

@@ -1,0 +1,60 @@
+<!-- Reusable Stat Card Component -->
+<!-- Usage: {% include 'dashboards/components/stat_card.html' with title="..." value="..." icon="..." %} -->
+
+<div class="col-md-3 col-sm-6 mb-3">
+    <div class="card stat-card h-100">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-muted mb-2 text-uppercase" style="font-size: 0.75rem; font-weight: 600;">
+                        {{ title }}
+                    </h6>
+                    <h2 class="mb-0 fw-bold">{{ value }}</h2>
+                    {% if subtitle %}
+                    <small class="text-muted">{{ subtitle }}</small>
+                    {% endif %}
+                    {% if change %}
+                    <div class="mt-2">
+                        <span class="badge {% if change > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                            <i class="bi bi-{% if change > 0 %}arrow-up{% else %}arrow-down{% endif %}"></i>
+                            {{ change }}%
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="stat-icon">
+                    <i class="bi bi-{{ icon }}"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.stat-card {
+    border-left: 4px solid var(--primary-solid);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: var(--radius-lg);
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    color: var(--primary-solid);
+    opacity: 0.2;
+    line-height: 1;
+}
+
+.stat-card h2 {
+    color: var(--text-primary);
+    font-size: 2rem;
+}
+
+.stat-card h6 {
+    letter-spacing: 0.5px;
+}
+</style>

@@ -3,23 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Job - HR Recruitment System</title>
+    <title>Edit Job - AI Powered HR Assistant</title>
+    
+    <!-- Bootstrap 5.3 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Font Awesome (for existing icons) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Unified Styles -->
+    <link rel="stylesheet" href="/static/css/unified_styles.css">
+    
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">HR Recruitment System</a>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="/jobs">Jobs</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/candidates">Candidates</a></li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <!-- Unified Navigation -->
+    {% include 'components/unified_navbar.html' %}
 
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -44,13 +45,22 @@
                     </div>
                     <div class="card-body">
                         <div class="row mb-3">
-                            <div class="col-md-8">
+                            <div class="col-md-6">
                                 <label for="title" class="form-label">Job Title *</label>
                                 <input type="text" class="form-control" id="title" required>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label for="department" class="form-label">Department</label>
                                 <input type="text" class="form-control" id="department">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="status" class="form-label">Status *</label>
+                                <select class="form-select" id="status" required>
+                                    <option value="draft">Draft</option>
+                                    <option value="open">Open</option>
+                                    <option value="closed">Closed</option>
+                                    <option value="on_hold">On Hold</option>
+                                </select>
                             </div>
                         </div>
                         
@@ -93,10 +103,43 @@
         <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
     </div>
 
+    <!-- Success/Error Toast -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <div id="notificationToast" class="toast" role="alert">
+            <div class="toast-header">
+                <strong class="me-auto" id="toastTitle">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastMessage"></div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const jobId = '{{ job_id }}';
         let jobData = null;
+
+        function showToast(title, message, isSuccess = true) {
+            const toast = document.getElementById('notificationToast');
+            const toastTitle = document.getElementById('toastTitle');
+            const toastMessage = document.getElementById('toastMessage');
+            const toastHeader = toast.querySelector('.toast-header');
+            
+            toastTitle.textContent = title;
+            toastMessage.textContent = message;
+            
+            // Remove old classes
+            toastHeader.classList.remove('bg-success', 'bg-danger', 'text-white');
+            
+            // Add appropriate class
+            if (isSuccess) {
+                toastHeader.classList.add('bg-success', 'text-white');
+            } else {
+                toastHeader.classList.add('bg-danger', 'text-white');
+            }
+            
+            new bootstrap.Toast(toast).show();
+        }
 
         document.addEventListener('DOMContentLoaded', function() {
             loadJobDetails();
@@ -151,6 +194,7 @@
         function populateForm(job) {
             document.getElementById('title').value = job.title || '';
             document.getElementById('department').value = job.department || '';
+            document.getElementById('status').value = job.status || 'draft';
             document.getElementById('locationCity').value = job.location_city || '';
             document.getElementById('locationState').value = job.location_state || '';
             document.getElementById('numOpenings').value = job.num_openings || 1;
@@ -174,18 +218,19 @@
                 
                 // Validate required fields
                 if (!title || title.length < 3) {
-                    alert('Job title must be at least 3 characters long');
+                    showToast('Validation Error', 'Job title must be at least 3 characters long', false);
                     return;
                 }
                 
                 if (!description || description.length < 50) {
-                    alert('Job description must be at least 50 characters long');
+                    showToast('Validation Error', 'Job description must be at least 50 characters long', false);
                     return;
                 }
                 
                 const updateData = {
                     title: title,
                     department: document.getElementById('department').value || null,
+                    status: document.getElementById('status').value,
                     location: {
                         city: document.getElementById('locationCity').value || null,
                         state: document.getElementById('locationState').value || null,
@@ -200,8 +245,8 @@
 
                 const token = localStorage.getItem('access_token');
                 if (!token) {
-                    alert('You are not logged in. Please login first.');
-                    window.location.href = '/login';
+                    showToast('Not Logged In', 'Please login first.', false);
+                    setTimeout(() => window.location.href = '/login', 2000);
                     return;
                 }
 
@@ -235,26 +280,26 @@
                         } else {
                             errorMsg = JSON.stringify(errors, null, 2);
                         }
-                        alert(errorMsg);
+                        showToast('Validation Error', errorMsg, false);
                     } else if (response.status === 401) {
-                        alert('Authentication failed. Please login again.');
-                        window.location.href = '/login';
+                        showToast('Authentication Failed', 'Please login again.', false);
+                        setTimeout(() => window.location.href = '/login', 2000);
                     } else if (response.status === 403) {
-                        alert('You do not have permission to update this job.');
+                        showToast('Permission Denied', 'You do not have permission to update this job.', false);
                     } else if (response.status === 500) {
-                        alert('Server error: ' + (result.detail || 'Internal server error. Please check the server logs.'));
+                        showToast('Server Error', result.detail || 'Internal server error. Please check the server logs.', false);
                     } else {
                         const errorDetail = result.detail || result.message || 'Failed to update job';
-                        alert(`Error (${response.status}): ${errorDetail}\n\nCheck browser console (F12) for more details.`);
+                        showToast('Error', `Error (${response.status}): ${errorDetail}`, false);
                     }
                     return;
                 }
 
-                alert('Job updated successfully!');
-                window.location.href = `/jobs/${jobId}`;
+                showToast('Success', 'Job updated successfully!', true);
+                setTimeout(() => window.location.href = `/jobs/${jobId}`, 1000);
             } catch (error) {
                 console.error('Error updating job:', error);
-                alert('Network error: ' + error.message + '\n\nPlease check your connection and try again.');
+                showToast('Network Error', error.message, false);
             }
         }
     </script>

@@ -6,18 +6,42 @@ from sqlalchemy import pool
 from alembic import context
 
 # Import the Base and settings
-from core.database import Base
 from core.config import settings
+from sqlalchemy.orm import declarative_base
+import sys
+import os
 
-# Import all models so Alembic can detect them
-from models.db import Candidate, Resume, Education, WorkExperience, Skill, candidate_skills
+# Add project root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+# Create Base for Alembic
+Base = declarative_base()
+
+# Import models without circular dependency
+try:
+    # Just import the models module to register them
+    from models import database as db_models
+    # Use the metadata from the imported models
+    Base.metadata = db_models.Base.metadata
+except Exception as e:
+    print(f"Warning: Could not import models: {e}")
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
-# Override sqlalchemy.url from settings
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Override sqlalchemy.url from settings - convert async URL to sync
+# Also handle absolute path for SQLite
+db_url = settings.database_url.replace('sqlite+aiosqlite://', 'sqlite:///')
+# Ensure absolute path for SQLite
+if db_url.startswith('sqlite:///') and not db_url.startswith('sqlite:////'):
+    # Relative path - make it absolute
+    db_path = db_url.replace('sqlite:///', '')
+    if not os.path.isabs(db_path):
+        db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), db_path)
+        db_url = f'sqlite:///{db_path}'
+
+config.set_main_option("sqlalchemy.url", db_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

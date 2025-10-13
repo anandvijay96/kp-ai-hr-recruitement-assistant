@@ -1,0 +1,71 @@
+<!-- Reusable Widget Card Component -->
+<!-- Wraps content in a consistent card layout with header and optional action link -->
+
+<div class="col-md-{{ width|default('6') }} mb-4">
+    <div class="card widget-card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">
+                {% if icon %}<i class="bi bi-{{ icon }} me-2"></i>{% endif %}
+                {{ title }}
+                {% if count is defined %}
+                <span class="badge bg-primary ms-2">{{ count }}</span>
+                {% endif %}
+            </h6>
+            {% if action_url %}
+            <a href="{{ action_url }}" class="btn btn-sm btn-link text-decoration-none">
+                {{ action_text|default('View All') }} <i class="bi bi-arrow-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        <div class="card-body {% if scrollable %}scrollable-content{% endif %}">
+            {{ content }}
+        </div>
+    </div>
+</div>
+
+<style>
+.widget-card {
+    border: none;
+    box-shadow: var(--shadow);
+    border-radius: var(--radius-lg);
+    transition: box-shadow 0.2s ease;
+}
+
+.widget-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.widget-card .card-header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--border-light);
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.widget-card .card-header h6 {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.widget-card .card-body {
+    padding: 0;
+}
+
+.scrollable-content {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.scrollable-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.scrollable-content::-webkit-scrollbar-track {
+    background: var(--border-light);
+}
+
+.scrollable-content::-webkit-scrollbar-thumb {
+    background: var(--primary-light);
+    border-radius: 3px;
+}
+</style>

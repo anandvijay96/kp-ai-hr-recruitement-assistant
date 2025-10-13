@@ -35,8 +35,14 @@ async def get_current_user(
     # TODO: Implement token validation
     # For now, return a mock user (replace with actual implementation)
     from sqlalchemy import select
-    result = await db.execute(select(User).where(User.email == "admin@example.com"))
+    # Try to fetch the real admin seeded in the DB
+    result = await db.execute(select(User).where(User.email == "admin@bmad.com"))
     user = result.scalar_one_or_none()
+    
+    # Fallback: if the specific admin is not found, return any existing user
+    if not user:
+        result = await db.execute(select(User))
+        user = result.scalar_one_or_none()
     
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
@@ -115,6 +121,7 @@ async def create_user(
     Requires: user.manage permission
     """
     try:
+        logger.info(f"Creating user with data: {user_data.model_dump()}")
         service = UserManagementService(db)
         result = await service.create_user(
             user_data=user_data,
@@ -124,9 +131,10 @@ async def create_user(
         )
         return result
     except ValueError as e:
+        logger.error(f"ValueError creating user: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error creating user: {str(e)}")
+        logger.error(f"Error creating user: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

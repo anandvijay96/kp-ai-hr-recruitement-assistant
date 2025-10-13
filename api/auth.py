@@ -211,8 +211,38 @@ async def refresh_token(
         )
 
 
+@router.post("/set-session", response_model=StandardResponse)
+async def set_session(
+    request: Request,
+    session_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Set session data for page authentication
+    This bridges JWT auth (for APIs) with session auth (for pages)
+    """
+    try:
+        # Set session data
+        request.session["user_id"] = session_data.get("user_id")
+        request.session["user_email"] = session_data.get("user_email")
+        request.session["user_name"] = session_data.get("user_name")
+        request.session["user_role"] = session_data.get("user_role")
+        
+        return StandardResponse(
+            success=True,
+            message="Session set successfully"
+        )
+    except Exception as e:
+        logger.error(f"Error setting session: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to set session"
+        )
+
+
 @router.post("/logout", response_model=StandardResponse)
 async def logout(
+    request: Request,
     response: Response,
     current_user: dict = Depends(get_current_user),
     credentials: HTTPAuthorizationCredentials = Depends(security),
@@ -229,6 +259,9 @@ async def logout(
         
         # Clear refresh token cookie
         response.delete_cookie(key="refresh_token")
+        
+        # Clear session
+        request.session.clear()
         
         return StandardResponse(
             success=True,

@@ -3,15 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jobs Management Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Jobs Management Dashboard - AI Powered HR Assistant</title>
+    
+    <!-- Bootstrap 5.3 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Unified Styles -->
+    <link rel="stylesheet" href="/static/css/unified_styles.css">
+    
+    <!-- Jobs Management Styles -->
     <link rel="stylesheet" href="/static/css/jobs_management.css">
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: #f5f5f5;
             margin: 0;
-            padding: 0;
         }
         .icon-plus::before { content: "+"; }
         .icon-download::before { content: "↓"; }
@@ -22,6 +31,9 @@
     </style>
 </head>
 <body>
+    <!-- Unified Navigation -->
+    {% include 'components/unified_navbar.html' %}
+    
 <div class="jobs-management-dashboard">
     <!-- Header -->
     <div class="dashboard-header">
@@ -119,8 +131,11 @@
             </thead>
             <tbody id="jobs-table-body">
                 <tr>
-                    <td colspan="9" class="text-center">
-                        <div class="loading-spinner">Loading...</div>
+                    <td colspan="9" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Loading jobs...</p>
                     </td>
                 </tr>
             </tbody>
