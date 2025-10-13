@@ -1,8 +1,50 @@
 # Context Bundle for Next Development Session
 
-**📅 Created:** October 13, 2025 - 6:35 PM IST  
+**📅 Created:** October 13, 2025 - 11:55 PM IST  
 **🎯 Purpose:** Complete context transfer for continuing development  
 **📊 Session Summary:** LinkedIn verification fixed, UI improved, production deployed
+
+---
+
+## 🚨 **CRITICAL ISSUES IDENTIFIED**
+
+### **Issue 1: Admin User Creation** ⚠️ URGENT
+**Problem:** Cannot create admin users from UI. All registrations default to "Recruiter".
+
+**Solution:** Two scripts created:
+1. `create_production_admin.py` - Create new admin user
+2. `make_user_admin.py` - Promote existing user to admin
+
+**Usage on Production:**
+```bash
+# SSH into Dokploy container
+docker exec -it <container_name> bash
+
+# Promote your existing account to admin
+python make_user_admin.py your@email.com
+
+# Or create new admin
+python create_production_admin.py admin@company.com SecurePass123!
+```
+
+---
+
+### **Issue 2: Resume Content Extraction Incomplete** ⚠️ HIGH PRIORITY
+**Problem:** Only extracting basic info (name, email, phone, skills). Missing:
+- Work experience details (companies, titles, dates, descriptions)
+- Education details (degrees, institutions, dates, GPA)
+- Certifications (names, issuers, dates)
+- Projects, languages, awards
+
+**Impact:** Incomplete candidate profiles, poor search results, limited JD matching
+
+**Priority:** HIGH (2-3 days work needed)
+
+**Files to Fix:**
+- `services/enhanced_resume_extractor.py` - Add extraction methods
+- `models/database.py` - Add database fields
+- `api/v1/resumes.py` - Return extracted data
+- `templates/resume_preview.html` - Display data
 
 ---
 
@@ -125,9 +167,28 @@ This is the comprehensive master document containing:
 
 ## 🎯 **IMMEDIATE NEXT STEPS**
 
+### **🚨 CRITICAL (Do First)**
+
+**0. Create Admin User** (5 minutes) ⚠️ URGENT
+- Run `make_user_admin.py your@email.com` on production
+- Or use `create_production_admin.py` to create new admin
+- **Required:** To access admin features and user management
+
 ### **For HR Demo (Priority Order)**
 
-**1. Manual Rating System** (2-3 days) 🔥 HIGH PRIORITY
+**1. Complete Resume Content Extraction** (2-3 days) 🔥 HIGH PRIORITY
+- File: `services/enhanced_resume_extractor.py`
+- Add methods for:
+  - Work experience extraction (companies, titles, dates, descriptions)
+  - Education extraction (degrees, institutions, dates, GPA)
+  - Certifications extraction (names, issuers, dates)
+  - Projects, languages, awards extraction
+- Update database models to store extracted data
+- Update API to return extracted data
+- Update UI to display extracted data
+- **Critical:** Needed for accurate candidate profiles and search
+
+**2. Manual Rating System** (2-3 days) 🔥 HIGH PRIORITY
 - Location: Create `api/v1/ratings.py` and `templates/ratings.html`
 - Database: Add `ratings` table
 - UI: Star rating component (1-5 stars)

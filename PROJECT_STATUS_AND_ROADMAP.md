@@ -1,9 +1,95 @@
 # AI-Powered HR Recruitment Assistant - Project Status & Roadmap
 
-**📅 Last Updated:** October 13, 2025 - 6:35 PM IST  
+**📅 Last Updated:** October 13, 2025 - 11:55 PM IST  
 **🎯 Branch:** mvp-1  
 **📊 Progress:** 70% Complete (3 of 5 P0 features done)  
 **🚀 Next Milestone:** HR Team Demo
+
+---
+
+## 🚨 **CRITICAL ISSUES TO ADDRESS**
+
+### **Issue 1: Admin User Creation** ⚠️ URGENT
+**Problem:** New registrations default to "Recruiter" role. No way to create admin users from UI.
+
+**Solution Provided:**
+- ✅ Created `create_production_admin.py` - Create new admin user
+- ✅ Created `make_user_admin.py` - Promote existing user to admin
+
+**Usage:**
+```bash
+# Option 1: Create new admin user
+python create_production_admin.py admin@company.com SecurePass123! "Admin Name"
+
+# Option 2: Promote existing user to admin
+python make_user_admin.py existing@company.com
+```
+
+**For Production (Dokploy):**
+```bash
+# SSH into container or use Dokploy console
+docker exec -it <container_name> python make_user_admin.py your@email.com
+```
+
+---
+
+### **Issue 2: Resume Content Extraction Incomplete** ⚠️ HIGH PRIORITY
+**Problem:** Resume data extraction may not be capturing all information from resumes.
+
+**Current Extraction Coverage:**
+- ✅ Name (with filename fallback)
+- ✅ Email
+- ✅ Phone
+- ✅ Skills (200+ skills database)
+- ⚠️ Work Experience (partial)
+- ⚠️ Education (partial)
+- ⚠️ Certifications (partial)
+- ❌ Projects (not extracted)
+- ❌ Languages (not extracted)
+- ❌ Awards/Achievements (not extracted)
+
+**Service:** `services/enhanced_resume_extractor.py`
+
+**Required Improvements:**
+1. **Work Experience Extraction:**
+   - [ ] Extract company names
+   - [ ] Extract job titles
+   - [ ] Extract employment dates (start/end)
+   - [ ] Extract job descriptions/responsibilities
+   - [ ] Calculate total years of experience
+   - [ ] Identify current vs previous roles
+
+2. **Education Extraction:**
+   - [ ] Extract degree types (Bachelor's, Master's, PhD)
+   - [ ] Extract field of study
+   - [ ] Extract institution names
+   - [ ] Extract graduation dates
+   - [ ] Extract GPA/grades (if available)
+
+3. **Certifications Extraction:**
+   - [ ] Extract certification names
+   - [ ] Extract issuing organizations
+   - [ ] Extract certification dates
+   - [ ] Extract expiry dates (if applicable)
+   - [ ] Validate against known certifications
+
+4. **Additional Fields:**
+   - [ ] Projects (name, description, technologies)
+   - [ ] Languages (language name, proficiency level)
+   - [ ] Awards and achievements
+   - [ ] Publications (for research roles)
+   - [ ] Patents (if applicable)
+   - [ ] Professional memberships
+
+**Priority:** HIGH (needed for accurate candidate profiles)
+
+**Estimated Time:** 2-3 days
+
+**Files to Modify:**
+- `services/enhanced_resume_extractor.py` - Add extraction methods
+- `models/database.py` - Add fields to Resume/Candidate models
+- `api/v1/resumes.py` - Return extracted data in API
+- `templates/resume_preview.html` - Display extracted data
 
 ---
 
@@ -345,21 +431,34 @@ API Integration → Audit Logs
 
 ## 📋 **PRIORITY TASK LIST**
 
+### **🚨 CRITICAL (Fix Immediately)**
+
+0. **Admin User Creation** ⚠️ URGENT
+   - Use `make_user_admin.py` to promote your account to admin
+   - Estimated Time: 5 minutes
+   - **Action Required:** Run script on production server
+
 ### **🔥 HIGH PRIORITY (For Demo)**
 
-1. **Manual Rating System** (Feature 5)
+1. **Complete Resume Content Extraction** (Issue 2)
+   - Estimated Time: 2-3 days
+   - Blocker: Incomplete candidate profiles
+   - **Critical:** Work experience, education, certifications
+   - Files: `services/enhanced_resume_extractor.py`
+
+2. **Manual Rating System** (Feature 5)
    - Estimated Time: 2-3 days
    - Blocker: No ratings = incomplete candidate workflow
 
-2. **Advanced Search & Filtering** (Feature 4 completion)
+3. **Advanced Search & Filtering** (Feature 4 completion)
    - Estimated Time: 1-2 days
    - Blocker: Can't effectively search candidates
 
-3. **Driver.js Tutorial** (Feature 8)
+4. **Driver.js Tutorial** (Feature 8)
    - Estimated Time: 1 day
    - Impact: Impressive demo feature, easy onboarding
 
-4. **Demo Preparation**
+5. **Demo Preparation**
    - Test all workflows end-to-end
    - Prepare demo data (sample resumes)
    - Create demo script
