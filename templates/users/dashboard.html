@@ -308,6 +308,7 @@
 let currentPage = 1;
 let currentFilters = {};
 let selectedUserId = null;
+let allLoadedUsers = []; // Store users for export
 
 // Load users on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -379,6 +380,9 @@ async function loadUsers() {
         document.getElementById('active-users').textContent = data.summary.active;
         document.getElementById('inactive-users').textContent = data.summary.inactive;
         document.getElementById('locked-users').textContent = data.summary.locked;
+        
+        // Store users for export
+        allLoadedUsers = data.users || [];
         
         // Populate table
         renderUsersTable(data.users);
@@ -684,9 +688,92 @@ async function saveUserEdit() {
     }
 }
 
-function exportUsers() {
-    // TODO: Implement export functionality
-    showAlert('Export functionality coming soon', 'info');
+async function exportUsers() {
+    try {
+        showAlert('Preparing export...', 'info');
+        
+        let users = [];
+        
+        // Try to fetch all users (without pagination)
+        try {
+            const response = await fetch('/api/users?limit=1000');
+            if (response.ok) {
+                const data = await response.json();
+                users = data.users || [];
+            } else {
+                // If fetch fails, use currently loaded users
+                console.warn('Failed to fetch all users, using currently loaded users');
+                users = allLoadedUsers;
+            }
+        } catch (fetchError) {
+            console.warn('Error fetching users for export, using currently loaded users:', fetchError);
+            users = allLoadedUsers;
+        }
+        
+        if (users.length === 0) {
+            showAlert('No users to export. Please ensure users are loaded.', 'warning');
+            return;
+        }
+        
+        // Convert to CSV
+        const csvContent = convertToCSV(users);
+        
+        // Create download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        const timestamp = new Date().toISOString().split('T')[0];
+        link.setAttribute('href', url);
+        link.setAttribute('download', `users_export_${timestamp}.csv`);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showAlert(`Successfully exported ${users.length} users`, 'success');
+        
+    } catch (error) {
+        console.error('Error exporting users:', error);
+        showAlert('Failed to export users: ' + error.message, 'danger');
+    }
+}
+
+function convertToCSV(users) {
+    // Define CSV headers
+    const headers = ['Name', 'Email', 'Mobile', 'Role', 'Department', 'Status', 'Active', 'Email Verified', 'Last Login', 'Login Count', 'Created At'];
+    
+    // Create CSV rows
+    const rows = users.map(user => [
+        escapeCSV(user.full_name || ''),
+        escapeCSV(user.email || ''),
+        escapeCSV(user.mobile || ''),
+        escapeCSV(user.role || ''),
+        escapeCSV(user.department || ''),
+        escapeCSV(user.status || ''),
+        user.is_active ? 'Yes' : 'No',
+        user.email_verified ? 'Yes' : 'No',
+        user.last_login ? new Date(user.last_login).toLocaleString() : 'Never',
+        user.login_count || 0,
+        user.created_at ? new Date(user.created_at).toLocaleString() : ''
+    ]);
+    
+    // Combine headers and rows
+    const csvRows = [headers, ...rows];
+    
+    // Convert to CSV string
+    return csvRows.map(row => row.join(',')).join('\n');
+}
+
+function escapeCSV(value) {
+    // Escape CSV special characters
+    if (value === null || value === undefined) return '';
+    const stringValue = String(value);
+    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return '"' + stringValue.replace(/"/g, '""') + '"';
+    }
+    return stringValue;
 }
 
 // Utility functions
