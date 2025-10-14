@@ -147,7 +147,7 @@ class Resume(Base):
     jd_match_score = Column(Integer)  # 0-100
     
     # Upload Metadata
-    uploaded_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
+    uploaded_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)  # Nullable for system uploads
     upload_date = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     upload_ip = Column(String(45))
     upload_user_agent = Column(Text)

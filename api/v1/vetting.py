@@ -513,7 +513,7 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                         "location": extracted_data.get('location'),
                         "source": "vetting",
                         "status": "new",
-                        "created_by": "system"
+                        "created_by": None  # NULL for system-created candidates
                     }
                     
                     # Only add professional_summary if column exists
@@ -734,7 +734,7 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     parsed_data=parsed_data_json,  # Store as JSON string
                     authenticity_score=authenticity_score,
                     jd_match_score=matching_score,
-                    uploaded_by="system",  # For MVP, use system user
+                    uploaded_by=None,  # NULL for system uploads (no user context in vetting)
                     candidate_id=candidate.id,  # Link to candidate
                     candidate_name=candidate_name,
                     candidate_email=candidate_email,
