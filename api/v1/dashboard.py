@@ -143,7 +143,7 @@ async def get_active_jobs(db: AsyncSession, limit: int = 10) -> List[Dict[str, A
     Get active jobs with real data
     """
     from models.database import Job, ResumeJobMatch
-    from datetime import datetime
+    from datetime import datetime, timezone
     
     try:
         # Query active/open jobs
@@ -154,6 +154,8 @@ async def get_active_jobs(db: AsyncSession, limit: int = 10) -> List[Dict[str, A
         result = await db.execute(query)
         jobs = result.scalars().all()
         
+        logger.info(f"Found {len(jobs)} active jobs")
+        
         job_list = []
         for job in jobs:
             # Count candidates for this job
@@ -163,8 +165,12 @@ async def get_active_jobs(db: AsyncSession, limit: int = 10) -> List[Dict[str, A
             count_result = await db.execute(candidate_count_stmt)
             candidate_count = count_result.scalar() or 0
             
-            # Calculate days open
-            days_open = (datetime.now() - job.created_at).days if job.created_at else 0
+            # Calculate days open (timezone-aware)
+            if job.created_at:
+                now = datetime.now(timezone.utc)
+                days_open = (now - job.created_at).days
+            else:
+                days_open = 0
             
             job_list.append({
                 "id": job.id,

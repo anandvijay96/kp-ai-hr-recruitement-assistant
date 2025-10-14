@@ -777,14 +777,33 @@ class EnhancedResumeExtractor:
                 
                 # Extract certifications from section
                 if in_cert_section and line.strip():
+                    # Skip lines that look like section headers or work experience
+                    if line.strip().isupper() or len(line.strip()) < 5:
+                        continue
+                    
+                    # Skip lines with file paths or URLs
+                    if 'file:///' in line.lower() or 'http' in line.lower():
+                        continue
+                    
+                    # Skip lines that look like work experience (company names, job titles)
+                    work_indicators = ['lead', 'engineer', 'specialist', 'manager', 'developer', 'analyst', 'consultant']
+                    if any(indicator in line.lower() for indicator in work_indicators):
+                        # Check if it's followed by a date range (work experience pattern)
+                        if re.search(r'\d{4}\s*-\s*\d{4}|\d{4}\s*-\s*present', line.lower()):
+                            continue
+                    
                     # Look for bullet points or numbered items
                     cert_match = re.match(r'^[•\-*●○]?\s*(.+?)(?:\s*\((\d{4})\))?$', line.strip())
                     if cert_match:
                         cert_name = cert_match.group(1).strip()
                         year = cert_match.group(2) if cert_match.group(2) else None
                         
-                        # Avoid duplicates
-                        if cert_name.lower() not in seen_certs and len(cert_name) > 5:
+                        # Additional validation: certification names usually contain certain keywords
+                        cert_keywords = ['certified', 'certification', 'certificate', 'professional', 'associate', 'expert', 'specialist']
+                        has_cert_keyword = any(keyword in cert_name.lower() for keyword in cert_keywords)
+                        
+                        # Avoid duplicates and validate
+                        if cert_name.lower() not in seen_certs and len(cert_name) > 5 and (has_cert_keyword or len(certifications) == 0):
                             seen_certs.add(cert_name.lower())
                             certifications.append({
                                 'name': cert_name,
