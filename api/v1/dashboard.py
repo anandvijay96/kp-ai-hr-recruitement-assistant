@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, desc
 from datetime import datetime, timedelta
 from typing import Dict, List, Any
+import logging
 
 from core.database import get_db
 from models.database import Resume
@@ -16,6 +17,7 @@ from models.database import Candidate
 # from models.user import User  # Uncomment when User model is available
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/dashboard/hr")
@@ -51,6 +53,9 @@ async def get_hr_dashboard_data(
         }
     
     except Exception as e:
+        import traceback
+        logger.error(f"Error fetching dashboard data: {str(e)}")
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error fetching dashboard data: {str(e)}")
 
 

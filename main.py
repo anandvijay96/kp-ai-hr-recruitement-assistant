@@ -291,14 +291,14 @@ async def job_create_page(request: Request):
 
 @app.get("/jobs/{job_id}", response_class=HTMLResponse)
 @require_auth
-async def job_detail_page(job_id: str, request: Request):
+async def job_detail_page(request: Request, job_id: str):
     """Job detail page - requires authentication"""
     user = await get_current_user(request)
     return templates.TemplateResponse("jobs/job_detail.html", {"request": request, "job_id": job_id, "user": user})
 
 @app.get("/jobs/{job_id}/edit", response_class=HTMLResponse)
 @require_auth
-async def job_edit_page(job_id: str, request: Request):
+async def job_edit_page(request: Request, job_id: str):
     """Job edit page - requires authentication"""
     user = await get_current_user(request)
     return templates.TemplateResponse("jobs/job_edit.html", {"request": request, "job_id": job_id, "user": user})

@@ -262,7 +262,9 @@ async def get_recent_activity(db: AsyncSession, limit: int = 10) -> List[Dict]:
     
     activities = []
     for job in jobs:
-        time_diff = datetime.now() - job.created_at
+        # Use timezone-aware datetime for comparison
+        from datetime import timezone
+        time_diff = datetime.now(timezone.utc) - job.created_at
         
         if time_diff.days > 0:
             time_ago = f"{time_diff.days} day{'s' if time_diff.days > 1 else ''} ago"
