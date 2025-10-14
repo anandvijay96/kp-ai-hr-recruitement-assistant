@@ -472,24 +472,63 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 candidate = None
                 if candidate_email:
                     from sqlalchemy import select
-                    stmt = select(Candidate).filter(Candidate.email == candidate_email)
-                    result = await db.execute(stmt)
-                    candidate = result.scalar_one_or_none()
+                    try:
+                        stmt = select(Candidate).filter(Candidate.email == candidate_email)
+                        result = await db.execute(stmt)
+                        candidate = result.scalar_one_or_none()
+                    except Exception as e:
+                        # Handle case where professional_summary column might not exist in DB
+                        if "professional_summary" in str(e):
+                            logger.warning(f"Database schema mismatch detected. Please run migration script.")
+                            # Query without professional_summary
+                            stmt = select(
+                                Candidate.id, Candidate.uuid, Candidate.full_name, 
+                                Candidate.email, Candidate.phone, Candidate.linkedin_url,
+                                Candidate.location, Candidate.source, Candidate.status,
+                                Candidate.created_at, Candidate.updated_at, Candidate.created_by
+                            ).filter(Candidate.email == candidate_email)
+                            result = await db.execute(stmt)
+                            row = result.fetchone()
+                            if row:
+                                # Reconstruct candidate object
+                                candidate = Candidate(
+                                    id=row.id, uuid=row.uuid, full_name=row.full_name,
+                                    email=row.email, phone=row.phone, linkedin_url=row.linkedin_url,
+                                    location=row.location, source=row.source, status=row.status,
+                                    created_at=row.created_at, updated_at=row.updated_at,
+                                    created_by=row.created_by
+                                )
+                        else:
+                            raise
                 
                 # Create new candidate if doesn't exist
                 if not candidate:
-                    candidate = Candidate(
-                        id=str(uuid.uuid4()),
-                        full_name=candidate_name,
-                        email=candidate_email,
-                        phone=candidate_phone,
-                        linkedin_url=extracted_data.get('linkedin_url'),
-                        location=extracted_data.get('location'),
-                        professional_summary=extracted_data.get('summary'),
-                        source="vetting",
-                        status="new",
-                        created_by="system"
-                    )
+                    # Prepare candidate data
+                    candidate_data = {
+                        "id": str(uuid.uuid4()),
+                        "full_name": candidate_name,
+                        "email": candidate_email,
+                        "phone": candidate_phone,
+                        "linkedin_url": extracted_data.get('linkedin_url'),
+                        "location": extracted_data.get('location'),
+                        "source": "vetting",
+                        "status": "new",
+                        "created_by": "system"
+                    }
+                    
+                    # Only add professional_summary if column exists
+                    try:
+                        candidate_data["professional_summary"] = extracted_data.get('summary')
+                        candidate = Candidate(**candidate_data)
+                    except Exception as e:
+                        if "professional_summary" in str(e):
+                            # Column doesn't exist, create without it
+                            logger.warning("Creating candidate without professional_summary (column not in DB)")
+                            del candidate_data["professional_summary"]
+                            candidate = Candidate(**candidate_data)
+                        else:
+                            raise
+                    
                     db.add(candidate)
                     await db.commit()
                     await db.refresh(candidate)

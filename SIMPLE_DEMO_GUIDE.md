@@ -185,7 +185,7 @@
 2. Show the mockup design
 
 **Say:**
-"We're building Client and Vendor management modules. Here's a preview of the interface. These will be ready in 3-4 weeks after we go live with the core system."
+"We're building Client and Vendor management modules. Here's a preview of the interface. These will be ready as soon as possible after we go live with the core system."
 
 **Repeat for:** Vendors page
 
