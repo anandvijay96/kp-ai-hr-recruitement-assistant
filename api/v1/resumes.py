@@ -298,21 +298,26 @@ async def get_job_status(job_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{resume_id}/view")
-async def view_resume(resume_id: str, db: Session = Depends(get_db)):
+async def view_resume(resume_id: str, db: AsyncSession = Depends(get_db)):
     """View/preview a resume file"""
     from models.database import Resume
+    from sqlalchemy import select
     import os
     from fastapi.responses import FileResponse
     
     try:
-        # Get resume from database
-        resume = db.query(Resume).filter(Resume.id == resume_id).first()
+        # Get resume from database (AsyncSession uses select, not query)
+        stmt = select(Resume).filter(Resume.id == resume_id)
+        result = await db.execute(stmt)
+        resume = result.scalar_one_or_none()
         
         if not resume:
             raise HTTPException(status_code=404, detail="Resume not found")
         
         # Resolve file path (handle both absolute and relative paths)
         file_path = resume.file_path
+        logger.info(f"VIEW - Looking for resume file: {file_path}, CWD: {os.getcwd()}")
+        
         if not os.path.isabs(file_path):
             # If relative path, try multiple locations
             possible_paths = [
@@ -323,14 +328,26 @@ async def view_resume(resume_id: str, db: Session = Depends(get_db)):
             
             file_path = None
             for path in possible_paths:
-                if os.path.exists(path):
+                exists = os.path.exists(path)
+                logger.info(f"VIEW - Checking: {path} - Exists: {exists}")
+                if exists:
                     file_path = path
                     break
             
             if not file_path:
+                # Log upload directory contents for debugging
+                for upload_dir in ['uploads', '/app/uploads']:
+                    if os.path.exists(upload_dir):
+                        try:
+                            files = os.listdir(upload_dir)
+                            logger.info(f"VIEW - Files in {upload_dir}: {files[:5]}")
+                        except:
+                            pass
                 raise HTTPException(status_code=404, detail=f"Resume file not found on disk. Tried paths: {possible_paths}")
         elif not os.path.exists(file_path):
             raise HTTPException(status_code=404, detail="Resume file not found on disk")
+        
+        logger.info(f"VIEW - Found file at: {file_path}")
         
         # Return file for viewing
         return FileResponse(
@@ -347,13 +364,14 @@ async def view_resume(resume_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{resume_id}/download")
-async def download_resume(resume_id: str, db: Session = Depends(get_db)):
+async def download_resume(resume_id: str, db: AsyncSession = Depends(get_db)):
     """Download a resume file"""
     from models.database import Resume
     from sqlalchemy import select
+    import os
     
     try:
-        # Get resume from database
+        # Get resume from database (AsyncSession uses select, not query)
         stmt = select(Resume).filter(Resume.id == resume_id)
         result = await db.execute(stmt)
         resume = result.scalar_one_or_none()
@@ -363,6 +381,8 @@ async def download_resume(resume_id: str, db: Session = Depends(get_db)):
         
         # Resolve file path (handle both absolute and relative paths)
         file_path = resume.file_path
+        logger.info(f"DOWNLOAD - Looking for resume file: {file_path}, CWD: {os.getcwd()}")
+        
         if not os.path.isabs(file_path):
             # If relative path, try multiple locations
             possible_paths = [
@@ -373,14 +393,26 @@ async def download_resume(resume_id: str, db: Session = Depends(get_db)):
             
             file_path = None
             for path in possible_paths:
-                if os.path.exists(path):
+                exists = os.path.exists(path)
+                logger.info(f"DOWNLOAD - Checking: {path} - Exists: {exists}")
+                if exists:
                     file_path = path
                     break
             
             if not file_path:
+                # Log upload directory contents for debugging
+                for upload_dir in ['uploads', '/app/uploads']:
+                    if os.path.exists(upload_dir):
+                        try:
+                            files = os.listdir(upload_dir)
+                            logger.info(f"DOWNLOAD - Files in {upload_dir}: {files[:5]}")
+                        except:
+                            pass
                 raise HTTPException(status_code=404, detail=f"Resume file not found on disk. Tried paths: {possible_paths}")
         elif not os.path.exists(file_path):
             raise HTTPException(status_code=404, detail="Resume file not found on disk")
+        
+        logger.info(f"DOWNLOAD - Found file at: {file_path}")
         
         # Return file for download
         return FileResponse(
