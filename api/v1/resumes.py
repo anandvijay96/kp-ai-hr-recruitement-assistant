@@ -301,32 +301,48 @@ async def get_job_status(job_id: str, db: Session = Depends(get_db)):
 async def view_resume(resume_id: str, db: Session = Depends(get_db)):
     """View/preview a resume file"""
     from models.database import Resume
-    from sqlalchemy import select
+    import os
+    from fastapi.responses import FileResponse
     
     try:
         # Get resume from database
-        stmt = select(Resume).filter(Resume.id == resume_id)
-        result = await db.execute(stmt)
-        resume = result.scalar_one_or_none()
+        resume = db.query(Resume).filter(Resume.id == resume_id).first()
         
         if not resume:
             raise HTTPException(status_code=404, detail="Resume not found")
         
-        # Check if file exists
-        if not os.path.exists(resume.file_path):
+        # Resolve file path (handle both absolute and relative paths)
+        file_path = resume.file_path
+        if not os.path.isabs(file_path):
+            # If relative path, try multiple locations
+            possible_paths = [
+                file_path,  # Current directory
+                os.path.join(os.getcwd(), file_path),  # Absolute from cwd
+                os.path.join('/app', file_path),  # Docker container path
+            ]
+            
+            file_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    file_path = path
+                    break
+            
+            if not file_path:
+                raise HTTPException(status_code=404, detail=f"Resume file not found on disk. Tried paths: {possible_paths}")
+        elif not os.path.exists(file_path):
             raise HTTPException(status_code=404, detail="Resume file not found on disk")
         
         # Return file for viewing
         return FileResponse(
-            path=resume.file_path,
+            path=file_path,
             media_type="application/pdf" if resume.file_type == "pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             filename=resume.file_name,
             headers={"Content-Disposition": f"inline; filename={resume.file_name}"}
         )
+    
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error viewing resume: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -345,13 +361,30 @@ async def download_resume(resume_id: str, db: Session = Depends(get_db)):
         if not resume:
             raise HTTPException(status_code=404, detail="Resume not found")
         
-        # Check if file exists
-        if not os.path.exists(resume.file_path):
+        # Resolve file path (handle both absolute and relative paths)
+        file_path = resume.file_path
+        if not os.path.isabs(file_path):
+            # If relative path, try multiple locations
+            possible_paths = [
+                file_path,  # Current directory
+                os.path.join(os.getcwd(), file_path),  # Absolute from cwd
+                os.path.join('/app', file_path),  # Docker container path
+            ]
+            
+            file_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    file_path = path
+                    break
+            
+            if not file_path:
+                raise HTTPException(status_code=404, detail=f"Resume file not found on disk. Tried paths: {possible_paths}")
+        elif not os.path.exists(file_path):
             raise HTTPException(status_code=404, detail="Resume file not found on disk")
         
         # Return file for download
         return FileResponse(
-            path=resume.file_path,
+            path=file_path,
             media_type="application/pdf" if resume.file_type == "pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             filename=resume.file_name,
             headers={"Content-Disposition": f"attachment; filename={resume.file_name}"}
