@@ -744,8 +744,14 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 await db.commit()
                 await db.refresh(resume)
                 
-                # Trigger background processing
-                process_resume.delay(resume.id)
+                # Trigger background processing (optional - gracefully handle Redis connection errors)
+                try:
+                    process_resume.delay(resume.id)
+                    logger.info(f"Triggered background processing for resume {resume.id}")
+                except Exception as celery_error:
+                    # Log but don't fail the upload if Celery/Redis is unavailable
+                    logger.warning(f"Could not trigger background processing (Celery/Redis unavailable): {celery_error}")
+                    logger.info("Resume uploaded successfully, but background processing skipped")
                 
                 uploaded.append({
                     "file_name": file_name,
