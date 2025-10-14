@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import text
-from core.database import get_db_engine
+from core.database import get_engine
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 async def add_professional_summary_column():
     """Add professional_summary column to candidates table if it doesn't exist"""
     
-    engine = get_db_engine()
+    engine = get_engine()
     
     async with engine.begin() as conn:
         # Check if column exists
