@@ -92,7 +92,9 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=settings.secret_key if hasattr(settings, 'secret_key') else "your-secret-key-change-in-production-please",
     session_cookie="hr_session",
-    max_age=86400  # 24 hours
+    max_age=604800,  # 7 days (604800 seconds) - extended for better UX
+    same_site="lax",  # Prevent CSRF while allowing normal navigation
+    https_only=False  # Set to True in production with HTTPS
 )
 
 # Initialize database on startup
@@ -154,6 +156,20 @@ app.include_router(ratings_v1.router, prefix="/api/v1", tags=["ratings"])
 if VETTING_ENABLED:
     app.include_router(vetting_v1.router, prefix="/api/v1/vetting", tags=["vetting"])
 
+# Include jobs analytics router
+try:
+    from api.v1 import jobs_analytics
+    app.include_router(jobs_analytics.router, prefix="/api/v1", tags=["jobs-analytics"])
+except ImportError:
+    logger.warning("Jobs analytics router not available")
+
+# Include feedback router
+try:
+    from api.v1 import feedback
+    app.include_router(feedback.router, prefix="/api/v1", tags=["feedback"])
+except ImportError:
+    logger.warning("Feedback router not available")
+
 # Include new API routers (job management, user management features)
 if API_V2_ENABLED:
     # Use V2 auth (full JWT authentication) - router already has /api/auth prefix
@@ -214,7 +230,13 @@ async def dashboard(request: Request):
 
 @app.get("/upload", response_class=HTMLResponse)
 async def upload_form(request: Request):
-    """Resume upload form"""
+    """
+    Resume upload form - KEPT AS BACKUP
+    
+    Note: This page is maintained as a fallback option.
+    Primary vetting workflow is in /vet-resumes with "Quick Add" mode.
+    This page provides direct upload without quality checks for trusted sources.
+    """
     return templates.TemplateResponse("upload.html", {"request": request})
 
 @app.get("/vet-resumes", response_class=HTMLResponse)
@@ -261,28 +283,32 @@ async def jobs_list_page(request: Request):
     return templates.TemplateResponse("jobs/job_list.html", {"request": request, "user": user})
 
 @app.get("/jobs/create", response_class=HTMLResponse)
+@require_auth
 async def job_create_page(request: Request):
-    """Job creation page."""
-    return templates.TemplateResponse("jobs/job_create.html", {"request": request})
+    """Job creation page - requires authentication"""
+    user = await get_current_user(request)
+    return templates.TemplateResponse("jobs/job_create.html", {"request": request, "user": user})
 
 @app.get("/jobs/{job_id}", response_class=HTMLResponse)
+@require_auth
 async def job_detail_page(job_id: str, request: Request):
-    """Job detail page."""
+    """Job detail page - requires authentication"""
     user = await get_current_user(request)
     return templates.TemplateResponse("jobs/job_detail.html", {"request": request, "job_id": job_id, "user": user})
 
 @app.get("/jobs/{job_id}/edit", response_class=HTMLResponse)
+@require_auth
 async def job_edit_page(job_id: str, request: Request):
-    """Job edit page."""
+    """Job edit page - requires authentication"""
     user = await get_current_user(request)
     return templates.TemplateResponse("jobs/job_edit.html", {"request": request, "job_id": job_id, "user": user})
 
 @app.get("/jobs-management", response_class=HTMLResponse)
 @require_auth
 async def jobs_management_dashboard(request: Request):
-    """Jobs management dashboard - requires authentication"""
+    """Jobs analytics dashboard - requires authentication"""
     user = await get_current_user(request)
-    return templates.TemplateResponse("jobs_management/dashboard.html", {"request": request, "user": user})
+    return templates.TemplateResponse("jobs_management/dashboard_enhanced.html", {"request": request, "user": user})
 
 @app.get("/users", response_class=HTMLResponse)
 @require_auth
@@ -290,6 +316,34 @@ async def users_dashboard(request: Request):
     """User management dashboard - requires authentication"""
     user = await get_current_user(request)
     return templates.TemplateResponse("users/dashboard.html", {"request": request, "user": user})
+
+@app.get("/profile", response_class=HTMLResponse)
+@require_auth
+async def profile_page(request: Request):
+    """User profile page - requires authentication"""
+    user = await get_current_user(request)
+    return templates.TemplateResponse("profile.html", {"request": request, "user": user})
+
+@app.get("/settings", response_class=HTMLResponse)
+@require_auth
+async def settings_page(request: Request):
+    """Settings page - requires authentication"""
+    user = await get_current_user(request)
+    return templates.TemplateResponse("settings.html", {"request": request, "user": user})
+
+@app.get("/clients", response_class=HTMLResponse)
+@require_auth
+async def clients_list_page(request: Request):
+    """Client management page - requires authentication"""
+    user = await get_current_user(request)
+    return templates.TemplateResponse("clients/list.html", {"request": request, "user": user})
+
+@app.get("/vendors", response_class=HTMLResponse)
+@require_auth
+async def vendors_list_page(request: Request):
+    """Vendor management page - requires authentication"""
+    user = await get_current_user(request)
+    return templates.TemplateResponse("vendors/list.html", {"request": request, "user": user})
 
 @app.get("/auth/login", response_class=HTMLResponse)
 async def login_page(request: Request):

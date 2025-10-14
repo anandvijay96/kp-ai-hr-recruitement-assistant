@@ -2,6 +2,7 @@ import os
 import re
 import logging
 from typing import Dict, List, Any, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 try:
     import fitz  # PyMuPDF
@@ -47,13 +48,22 @@ class DocumentProcessor:
         
         return normalized if normalized else "Unknown"
 
-    def extract_text(self, file_path: str) -> str:
-        """Extract text from document based on file extension"""
+    def extract_text(self, file_path: str, use_combined_extraction: bool = True) -> str:
+        """
+        Extract text from document based on file extension.
+        
+        Args:
+            file_path: Path to the document
+            use_combined_extraction: If True, combines OCR + standard extraction for better accuracy
+        """
         file_extension = os.path.splitext(file_path)[1].lower()
 
         try:
             if file_extension == '.pdf':
-                return self._extract_from_pdf(file_path)
+                if use_combined_extraction:
+                    return self._extract_from_pdf_combined(file_path)
+                else:
+                    return self._extract_from_pdf(file_path)
             elif file_extension in ['.docx', '.doc']:
                 return self._extract_from_docx(file_path)
             else:
@@ -110,6 +120,138 @@ class DocumentProcessor:
             logger.error(f"PDF extraction failed: {str(e)}")
 
         return "PDF text extraction not available - install PyMuPDF or pdfplumber"
+
+    def _extract_from_pdf_combined(self, file_path: str) -> str:
+        """
+        Enhanced extraction: Combines standard text extraction with OCR.
+        Runs both methods in parallel and intelligently merges results.
+        """
+        logger.info(f"Starting combined extraction (Standard + OCR) for {file_path}")
+        
+        standard_text = ""
+        ocr_text = ""
+        
+        try:
+            # Run both extractions in parallel
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                # Submit both tasks
+                future_standard = executor.submit(self._extract_standard_pdf_text, file_path)
+                future_ocr = executor.submit(self._extract_with_ocr, file_path)
+                
+                # Collect results
+                try:
+                    standard_text = future_standard.result(timeout=30)
+                    logger.info(f"Standard extraction: {len(standard_text)} characters")
+                except Exception as e:
+                    logger.warning(f"Standard extraction failed: {str(e)}")
+                
+                try:
+                    ocr_text = future_ocr.result(timeout=60)
+                    logger.info(f"OCR extraction: {len(ocr_text)} characters")
+                except Exception as e:
+                    logger.warning(f"OCR extraction failed: {str(e)}")
+            
+            # Merge results intelligently
+            merged_text = self._merge_extracted_texts(standard_text, ocr_text)
+            logger.info(f"Combined extraction result: {len(merged_text)} characters")
+            
+            return merged_text if merged_text.strip() else "No text could be extracted from PDF"
+            
+        except Exception as e:
+            logger.error(f"Combined extraction failed: {str(e)}")
+            # Fallback to standard extraction
+            return self._extract_from_pdf(file_path)
+    
+    def _extract_standard_pdf_text(self, file_path: str) -> str:
+        """Extract text using standard PDF parsing (PyMuPDF/pdfplumber)"""
+        try:
+            # Try PyMuPDF first
+            if fitz:
+                doc = fitz.open(file_path)
+                text_content = []
+                for page in doc:
+                    text_content.append(page.get_text())
+                doc.close()
+                return "\n".join(text_content)
+            
+            # Try pdfplumber
+            try:
+                import pdfplumber
+                with pdfplumber.open(file_path) as pdf:
+                    text_content = []
+                    for page in pdf.pages:
+                        text_content.append(page.extract_text() or "")
+                    return "\n".join(text_content)
+            except ImportError:
+                pass
+            
+        except Exception as e:
+            logger.warning(f"Standard PDF text extraction failed: {str(e)}")
+        
+        return ""
+    
+    def _merge_extracted_texts(self, standard_text: str, ocr_text: str) -> str:
+        """
+        Intelligently merge standard and OCR extracted text.
+        
+        Strategy:
+        1. If standard extraction has good content (>100 chars), use it as base
+        2. If OCR has additional unique content, append it
+        3. Remove duplicates and clean up
+        """
+        standard_clean = standard_text.strip()
+        ocr_clean = ocr_text.strip()
+        
+        # Case 1: Only standard text available
+        if standard_clean and not ocr_clean:
+            logger.info("Using standard extraction only")
+            return standard_clean
+        
+        # Case 2: Only OCR text available
+        if ocr_clean and not standard_clean:
+            logger.info("Using OCR extraction only")
+            return ocr_clean
+        
+        # Case 3: Both available - intelligent merge
+        if standard_clean and ocr_clean:
+            # Check which has more content
+            standard_len = len(standard_clean)
+            ocr_len = len(ocr_clean)
+            
+            logger.info(f"Merging: Standard={standard_len} chars, OCR={ocr_len} chars")
+            
+            # If standard is much longer, it's probably good
+            if standard_len > ocr_len * 1.5:
+                logger.info("Standard extraction is comprehensive, using it")
+                return standard_clean
+            
+            # If OCR is much longer, it caught more content
+            if ocr_len > standard_len * 1.5:
+                logger.info("OCR extraction is more comprehensive, using it")
+                return ocr_clean
+            
+            # Similar lengths - combine and remove duplicates
+            logger.info("Combining both extractions")
+            
+            # Split into lines
+            standard_lines = set(line.strip() for line in standard_clean.split('\n') if line.strip())
+            ocr_lines = set(line.strip() for line in ocr_clean.split('\n') if line.strip())
+            
+            # Find unique lines in OCR
+            unique_ocr_lines = ocr_lines - standard_lines
+            
+            if unique_ocr_lines:
+                # Append unique OCR content
+                combined = standard_clean + "\n\n--- Additional OCR Content ---\n\n" + "\n".join(unique_ocr_lines)
+                logger.info(f"Added {len(unique_ocr_lines)} unique lines from OCR")
+                return combined
+            else:
+                # No unique content in OCR, use standard
+                logger.info("No unique OCR content, using standard")
+                return standard_clean
+        
+        # Case 4: Neither worked
+        return ""
 
     def _extract_with_ocr(self, file_path: str) -> str:
         """Extract text from PDF using OCR (for image-based PDFs)"""

@@ -1,0 +1,513 @@
+<!-- Feedback Widget - Floating Button -->
+<style>
+    .feedback-fab {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        transition: all 0.3s ease;
+        z-index: 1000;
+        border: none;
+    }
+    .feedback-fab:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    .feedback-fab i {
+        font-size: 24px;
+        color: white;
+    }
+    .feedback-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+    .feedback-modal.active {
+        display: flex;
+    }
+    .feedback-modal-content {
+        background: white;
+        border-radius: 16px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+        from {
+            transform: translateY(50px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    .feedback-header {
+        padding: 24px;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        justify-content: between;
+        align-items: center;
+    }
+    .feedback-header h4 {
+        margin: 0;
+        font-weight: 600;
+    }
+    .feedback-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #6c757d;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.2s;
+    }
+    .feedback-close:hover {
+        background: #f8f9fa;
+        color: #000;
+    }
+    .feedback-body {
+        padding: 24px;
+    }
+    .feedback-type-selector {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .feedback-type-btn {
+        flex: 1;
+        padding: 12px;
+        border: 2px solid #e9ecef;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+    .feedback-type-btn:hover {
+        border-color: #667eea;
+        background: #f8f9ff;
+    }
+    .feedback-type-btn.active {
+        border-color: #667eea;
+        background: #667eea;
+        color: white;
+    }
+    .feedback-type-btn i {
+        font-size: 24px;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #495057;
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ced4da;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: border-color 0.2s;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .screenshot-upload {
+        border: 2px dashed #ced4da;
+        border-radius: 8px;
+        padding: 24px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .screenshot-upload:hover {
+        border-color: #667eea;
+        background: #f8f9ff;
+    }
+    .screenshot-upload.dragover {
+        border-color: #667eea;
+        background: #f8f9ff;
+    }
+    .screenshot-preview {
+        margin-top: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .screenshot-item {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+    }
+    .screenshot-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .screenshot-remove {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        background: rgba(220, 53, 69, 0.9);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    .feedback-footer {
+        padding: 16px 24px;
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+    .btn-feedback {
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-feedback-cancel {
+        background: #f8f9fa;
+        color: #495057;
+    }
+    .btn-feedback-cancel:hover {
+        background: #e9ecef;
+    }
+    .btn-feedback-submit {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .btn-feedback-submit:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    .btn-feedback-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    .feedback-success {
+        text-align: center;
+        padding: 40px;
+    }
+    .feedback-success i {
+        font-size: 64px;
+        color: #28a745;
+        margin-bottom: 16px;
+    }
+</style>
+
+<!-- Floating Action Button -->
+<button class="feedback-fab" onclick="openFeedbackModal()" title="Send Feedback">
+    <i class="bi bi-chat-dots"></i>
+</button>
+
+<!-- Feedback Modal -->
+<div class="feedback-modal" id="feedbackModal" onclick="closeFeedbackModalOnOverlay(event)">
+    <div class="feedback-modal-content" onclick="event.stopPropagation()">
+        <div id="feedbackForm">
+            <div class="feedback-header">
+                <h4><i class="bi bi-chat-left-text me-2"></i>Send Feedback</h4>
+                <button class="feedback-close" onclick="closeFeedbackModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            
+            <div class="feedback-body">
+                <!-- Feedback Type -->
+                <div class="form-group">
+                    <label>What type of feedback?</label>
+                    <div class="feedback-type-selector">
+                        <button type="button" class="feedback-type-btn active" data-type="bug" onclick="selectFeedbackType('bug')">
+                            <i class="bi bi-bug"></i>
+                            <span>Bug Report</span>
+                        </button>
+                        <button type="button" class="feedback-type-btn" data-type="feature" onclick="selectFeedbackType('feature')">
+                            <i class="bi bi-lightbulb"></i>
+                            <span>Feature Request</span>
+                        </button>
+                        <button type="button" class="feedback-type-btn" data-type="general" onclick="selectFeedbackType('general')">
+                            <i class="bi bi-chat"></i>
+                            <span>General</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Priority (for bugs) -->
+                <div class="form-group" id="priorityGroup" style="display: block;">
+                    <label>Priority</label>
+                    <select id="feedbackPriority">
+                        <option value="low">Low - Minor issue</option>
+                        <option value="medium" selected>Medium - Affects workflow</option>
+                        <option value="high">High - Blocking issue</option>
+                        <option value="critical">Critical - System down</option>
+                    </select>
+                </div>
+
+                <!-- Title -->
+                <div class="form-group">
+                    <label>Title <span class="text-danger">*</span></label>
+                    <input type="text" id="feedbackTitle" placeholder="Brief description of the issue or suggestion" required>
+                </div>
+
+                <!-- Description -->
+                <div class="form-group">
+                    <label>Description <span class="text-danger">*</span></label>
+                    <textarea id="feedbackDescription" rows="5" placeholder="Please provide as much detail as possible..." required></textarea>
+                </div>
+
+                <!-- Current Page -->
+                <div class="form-group">
+                    <label>Current Page</label>
+                    <input type="text" id="feedbackPage" readonly>
+                </div>
+
+                <!-- Screenshots -->
+                <div class="form-group">
+                    <label>Screenshots (Optional)</label>
+                    <div class="screenshot-upload" id="screenshotUpload" onclick="document.getElementById('screenshotInput').click()">
+                        <i class="bi bi-image" style="font-size: 32px; color: #6c757d;"></i>
+                        <p class="mb-0 mt-2">Click to upload or drag & drop screenshots</p>
+                        <small class="text-muted">PNG, JPG up to 5MB each</small>
+                    </div>
+                    <input type="file" id="screenshotInput" accept="image/*" multiple style="display: none;" onchange="handleScreenshotUpload(event)">
+                    <div class="screenshot-preview" id="screenshotPreview"></div>
+                </div>
+            </div>
+
+            <div class="feedback-footer">
+                <button class="btn-feedback btn-feedback-cancel" onclick="closeFeedbackModal()">Cancel</button>
+                <button class="btn-feedback btn-feedback-submit" onclick="submitFeedback()">
+                    <i class="bi bi-send me-2"></i>Submit Feedback
+                </button>
+            </div>
+        </div>
+
+        <!-- Success Message -->
+        <div id="feedbackSuccess" style="display: none;">
+            <div class="feedback-success">
+                <i class="bi bi-check-circle"></i>
+                <h4>Thank You!</h4>
+                <p>Your feedback has been submitted successfully.</p>
+                <p class="text-muted">We'll review it and get back to you if needed.</p>
+                <button class="btn-feedback btn-feedback-submit mt-3" onclick="closeFeedbackModal()">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let selectedFeedbackType = 'bug';
+    let uploadedScreenshots = [];
+
+    function openFeedbackModal() {
+        document.getElementById('feedbackModal').classList.add('active');
+        document.getElementById('feedbackPage').value = window.location.pathname;
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeFeedbackModal() {
+        document.getElementById('feedbackModal').classList.remove('active');
+        document.body.style.overflow = 'auto';
+        resetFeedbackForm();
+    }
+
+    function closeFeedbackModalOnOverlay(event) {
+        if (event.target.id === 'feedbackModal') {
+            closeFeedbackModal();
+        }
+    }
+
+    function selectFeedbackType(type) {
+        selectedFeedbackType = type;
+        
+        // Update button states
+        document.querySelectorAll('.feedback-type-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector(`[data-type="${type}"]`).classList.add('active');
+        
+        // Show/hide priority for bugs
+        document.getElementById('priorityGroup').style.display = type === 'bug' ? 'block' : 'none';
+    }
+
+    function handleScreenshotUpload(event) {
+        const files = Array.from(event.target.files);
+        
+        files.forEach(file => {
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File too large. Maximum size is 5MB.');
+                return;
+            }
+            
+            if (!file.type.startsWith('image/')) {
+                alert('Only image files are allowed.');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedScreenshots.push({
+                    file: file,
+                    dataUrl: e.target.result
+                });
+                renderScreenshots();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function renderScreenshots() {
+        const preview = document.getElementById('screenshotPreview');
+        preview.innerHTML = uploadedScreenshots.map((screenshot, index) => `
+            <div class="screenshot-item">
+                <img src="${screenshot.dataUrl}" alt="Screenshot ${index + 1}">
+                <button class="screenshot-remove" onclick="removeScreenshot(${index})">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    function removeScreenshot(index) {
+        uploadedScreenshots.splice(index, 1);
+        renderScreenshots();
+    }
+
+    // Drag and drop
+    const uploadArea = document.getElementById('screenshotUpload');
+    
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = Array.from(e.dataTransfer.files);
+        const input = document.getElementById('screenshotInput');
+        input.files = e.dataTransfer.files;
+        handleScreenshotUpload({ target: input });
+    });
+
+    async function submitFeedback() {
+        const title = document.getElementById('feedbackTitle').value.trim();
+        const description = document.getElementById('feedbackDescription').value.trim();
+        
+        if (!title || !description) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+        
+        const submitBtn = document.querySelector('.btn-feedback-submit');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Submitting...';
+        
+        try {
+            const formData = new FormData();
+            formData.append('type', selectedFeedbackType);
+            formData.append('priority', document.getElementById('feedbackPriority').value);
+            formData.append('title', title);
+            formData.append('description', description);
+            formData.append('page', document.getElementById('feedbackPage').value);
+            formData.append('userAgent', navigator.userAgent);
+            formData.append('screenResolution', `${window.screen.width}x${window.screen.height}`);
+            
+            // Add screenshots
+            uploadedScreenshots.forEach((screenshot, index) => {
+                formData.append('screenshots', screenshot.file);
+            });
+            
+            const response = await fetch('/api/v1/feedback', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                // Show success message
+                document.getElementById('feedbackForm').style.display = 'none';
+                document.getElementById('feedbackSuccess').style.display = 'block';
+            } else {
+                throw new Error('Failed to submit feedback');
+            }
+            
+        } catch (error) {
+            console.error('Error submitting feedback:', error);
+            alert('Failed to submit feedback. Please try again.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-send me-2"></i>Submit Feedback';
+        }
+    }
+
+    function resetFeedbackForm() {
+        document.getElementById('feedbackTitle').value = '';
+        document.getElementById('feedbackDescription').value = '';
+        document.getElementById('screenshotInput').value = '';
+        uploadedScreenshots = [];
+        renderScreenshots();
+        selectFeedbackType('bug');
+        
+        // Reset views
+        document.getElementById('feedbackForm').style.display = 'block';
+        document.getElementById('feedbackSuccess').style.display = 'none';
+        
+        // Reset submit button
+        const submitBtn = document.querySelector('.btn-feedback-submit');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-send me-2"></i>Submit Feedback';
+    }
+</script>

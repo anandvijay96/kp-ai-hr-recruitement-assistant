@@ -195,10 +195,16 @@
         .score-average { background: #ffc107; color: #212529; }
         .score-poor { background: #dc3545; }
         
-        .loading-spinner {
+        .loading-container {
             text-align: center;
             padding: 60px;
             color: #6c757d;
+        }
+        
+        .loading-container p {
+            margin-top: 16px;
+            color: #6c757d;
+            font-size: 14px;
         }
         
         .error-message {
@@ -339,11 +345,11 @@
 
     <div class="container-fluid mt-4">
         <!-- Loading State -->
-        <div class="loading-spinner" id="loadingSpinner">
-            <div class="spinner-border text-primary" role="status">
+        <div class="loading-container" id="loadingSpinner">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="mt-3">Loading candidate details...</p>
+            <p>Loading candidate details...</p>
         </div>
 
         <!-- Error State -->
@@ -964,6 +970,9 @@
         </div>
     </div>
 
+    <!-- Feedback Widget -->
+    {% include 'components/feedback_widget.html' %}
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
@@ -1002,7 +1011,7 @@
                 displayCandidateDetails(data);
                 
                 // Load job matches
-                loadJobMatches(data.resumes);
+                await loadJobMatches();
                 
                 // Load rating summary
                 await loadRatingSummary(data.id);
@@ -1013,19 +1022,19 @@
             }
         }
         
-        // Load job matches for candidate's resumes
-        async function loadJobMatches(resumes) {
+        // Load job matches for candidate
+        async function loadJobMatches() {
             const container = $('#jobMatchesContainer');
+            const candidateId = window.currentCandidateId;
             
-            if (!resumes || resumes.length === 0) {
-                container.html('<p class="text-muted text-center py-3">No resumes uploaded yet</p>');
+            if (!candidateId) {
+                container.html('<p class="text-muted text-center py-3">Unable to load job matches</p>');
                 return;
             }
             
             try {
-                // Get matches for the first resume
-                const resumeId = resumes[0].id;
-                const response = await fetch(`/api/v1/matching/resume/${resumeId}/matches?min_score=50&limit=5`);
+                // Get matches from new endpoint
+                const response = await fetch(`/api/v1/candidates/${candidateId}/job-matches`);
                 
                 if (!response.ok) {
                     throw new Error('Failed to load matches');
@@ -1033,20 +1042,39 @@
                 
                 const data = await response.json();
                 
-                if (!data.matches || data.matches.length === 0) {
+                // Handle cases with no matches
+                if (data.message) {
                     container.html(`
                         <div class="text-center text-muted py-3">
-                            <i class="bi bi-search fs-3 d-block mb-2"></i>
-                            <p class="mb-2">No job matches found</p>
-                            <small>Try lowering the minimum score or upload more resumes</small>
+                            <i class="bi bi-info-circle fs-3 d-block mb-2"></i>
+                            <p class="mb-0">${data.message}</p>
                         </div>
                     `);
                     return;
                 }
                 
-                // Display matches
-                let html = '';
-                data.matches.forEach(match => {
+                if (!data.matches || data.matches.length === 0) {
+                    container.html(`
+                        <div class="text-center text-muted py-3">
+                            <i class="bi bi-search fs-3 d-block mb-2"></i>
+                            <p class="mb-2">No active jobs available</p>
+                            <small>Create jobs to see matches here</small>
+                        </div>
+                    `);
+                    return;
+                }
+                
+                // Display summary
+                let html = `
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Found ${data.matches.length} job match${data.matches.length !== 1 ? 'es' : ''}</strong>
+                        ${data.best_match_score > 0 ? ` - Best match: ${data.best_match_score}%` : ''}
+                    </div>
+                `;
+                
+                // Display each match (limit to top 5)
+                data.matches.slice(0, 5).forEach(match => {
                     const scoreColor = match.match_score >= 80 ? 'success' : match.match_score >= 60 ? 'warning' : 'secondary';
                     html += `
                         <div class="border-bottom pb-3 mb-3">
@@ -1057,27 +1085,31 @@
                                             ${match.job_title || 'Untitled Job'}
                                         </a>
                                     </h6>
-                                    <small class="text-muted">Match Score</small>
+                                    <small class="text-muted">
+                                        ${match.department ? match.department + ' • ' : ''}
+                                        ${match.location || 'Location not specified'}
+                                        ${match.employment_type ? ' • ' + match.employment_type.replace('_', ' ') : ''}
+                                    </small>
                                 </div>
                                 <span class="badge bg-${scoreColor} fs-6">${match.match_score}%</span>
                             </div>
                             <div class="row g-2 mb-2">
                                 <div class="col-4">
                                     <small class="text-muted d-block">Skills</small>
-                                    <strong>${match.skill_score || 0}%</strong>
+                                    <strong>${match.skills_match || 0}%</strong>
                                 </div>
                                 <div class="col-4">
                                     <small class="text-muted d-block">Experience</small>
-                                    <strong>${match.experience_score || 0}%</strong>
+                                    <strong>${match.experience_match || 0}%</strong>
                                 </div>
                                 <div class="col-4">
                                     <small class="text-muted d-block">Education</small>
-                                    <strong>${match.education_score || 0}%</strong>
+                                    <strong>${match.education_match || 0}%</strong>
                                 </div>
                             </div>
                             ${match.matched_skills && match.matched_skills.length > 0 ? `
                                 <div class="mb-2">
-                                    <small class="text-muted d-block mb-1">Matched Skills:</small>
+                                    <small class="text-muted d-block mb-1"><i class="bi bi-check-circle text-success"></i> Matched Skills:</small>
                                     <div>
                                         ${match.matched_skills.slice(0, 5).map(skill => 
                                             `<span class="badge bg-success bg-opacity-10 text-success me-1 mb-1">${skill}</span>`
@@ -1087,8 +1119,8 @@
                                 </div>
                             ` : ''}
                             ${match.missing_skills && match.missing_skills.length > 0 ? `
-                                <div>
-                                    <small class="text-muted d-block mb-1">Missing Skills:</small>
+                                <div class="mb-2">
+                                    <small class="text-muted d-block mb-1"><i class="bi bi-x-circle text-danger"></i> Missing Skills:</small>
                                     <div>
                                         ${match.missing_skills.slice(0, 3).map(skill => 
                                             `<span class="badge bg-danger bg-opacity-10 text-danger me-1 mb-1">${skill}</span>`
@@ -1097,9 +1129,29 @@
                                     </div>
                                 </div>
                             ` : ''}
+                            ${match.can_apply ? `
+                                <button class="btn btn-sm btn-primary mt-2" onclick="applyToJob('${match.job_id}', '${candidateId}')">
+                                    <i class="bi bi-send me-1"></i>Apply to this Job
+                                </button>
+                            ` : `
+                                <div class="alert alert-warning alert-sm mt-2 mb-0 py-1 px-2">
+                                    <small><i class="bi bi-info-circle me-1"></i>Match score below threshold (${match.match_score}% < 50%)</small>
+                                </div>
+                            `}
                         </div>
                     `;
                 });
+                
+                // Show "view all" link if there are more matches
+                if (data.matches.length > 5) {
+                    html += `
+                        <div class="text-center">
+                            <a href="/jobs?candidate_id=${candidateId}" class="btn btn-sm btn-outline-primary">
+                                View All ${data.matches.length} Matches
+                            </a>
+                        </div>
+                    `;
+                }
                 
                 container.html(html);
                 
@@ -1112,6 +1164,12 @@
                     </div>
                 `);
             }
+        }
+        
+        // Apply candidate to job
+        function applyToJob(jobId, candidateId) {
+            // TODO: Implement job application logic
+            showSuccessMessage('Application feature coming soon! This will apply the candidate to the selected job.');
         }
         
         // Display candidate details
@@ -1328,10 +1386,10 @@
                             <span class="status-badge status-${resume.status.toLowerCase()}">${resume.status}</span>
                         </div>
                         <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-outline-primary" onclick="viewResume(${resume.id})">
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewResume('${resume.id}')">
                                 <i class="bi bi-eye me-1"></i> View
                             </button>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="downloadResume(${resume.id})">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="downloadResume('${resume.id}')">
                                 <i class="bi bi-download me-1"></i> Download
                             </button>
                         </div>
@@ -1460,18 +1518,18 @@
         
         $('#scheduleInterviewBtn').click(() => {
             // Open interview scheduling modal
-            alert('Interview scheduling feature coming soon!');
+            showSuccessMessage('Interview scheduling feature coming soon!');
         });
         
         $('#addToShortlistBtn').click(() => {
             // Add to shortlist
-            alert('Add to shortlist feature coming soon!');
+            showSuccessMessage('Add to shortlist feature coming soon!');
         });
         
         $('#rejectBtn').click(() => {
             // Reject candidate
             if (confirm('Are you sure you want to reject this candidate?')) {
-                alert('Reject candidate feature coming soon!');
+                showSuccessMessage('Reject candidate feature coming soon!');
             }
         });
         
@@ -1489,7 +1547,7 @@
         function openDetailedAnalysisModal() {
             // Get the latest resume for this candidate
             if (!window.currentCandidateData || !window.currentCandidateData.resumes || window.currentCandidateData.resumes.length === 0) {
-                alert('No resume analysis available for this candidate');
+                showErrorMessage('No resume analysis available for this candidate');
                 return;
             }
             
@@ -1633,7 +1691,7 @@
                 })
                 .catch(error => {
                     console.error('Error loading candidate data:', error);
-                    alert('Failed to load candidate data');
+                    showErrorMessage('Failed to load candidate data');
                 });
         }
         
@@ -2013,14 +2071,14 @@
                 bootstrap.Modal.getInstance(document.getElementById('editCandidateModal')).hide();
                 
                 // Show success message
-                alert('Profile updated successfully!');
+                showSuccessMessage('Profile updated successfully!');
                 
                 // Reload candidate data
                 loadCandidateDetails();
             })
             .catch(error => {
                 console.error('Error saving changes:', error);
-                alert('Failed to save changes. Please try again.');
+                showErrorMessage('Failed to save changes. Please try again.');
             })
             .finally(() => {
                 $('#saveChangesBtn').prop('disabled', false).html('<i class="bi bi-save me-1"></i> Save Changes');
@@ -2067,10 +2125,154 @@
                 })
                 .catch(error => {
                     console.error('Error loading candidate data:', error);
-                    alert('Failed to load candidate data for editing.');
+                    showErrorMessage('Failed to load candidate data for editing.');
                 });
         });
+    </script>
 
+    <!-- Rating Modal -->
+    <div class="modal fade" id="ratingModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-star me-2"></i>
+                        Rate Candidate
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="ratingForm">
+                        <!-- Technical Skills -->
+                        <div class="mb-4">
+                            <label class="form-label">Technical Skills</label>
+                            <div class="star-rating" id="technicalSkillsRating" data-category="technical_skills">
+                                <i class="bi bi-star" data-value="1"></i>
+                                <i class="bi bi-star" data-value="2"></i>
+                                <i class="bi bi-star" data-value="3"></i>
+                                <i class="bi bi-star" data-value="4"></i>
+                                <i class="bi bi-star" data-value="5"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Communication -->
+                        <div class="mb-4">
+                            <label class="form-label">Communication</label>
+                            <div class="star-rating" id="communicationRating" data-category="communication">
+                                <i class="bi bi-star" data-value="1"></i>
+                                <i class="bi bi-star" data-value="2"></i>
+                                <i class="bi bi-star" data-value="3"></i>
+                                <i class="bi bi-star" data-value="4"></i>
+                                <i class="bi bi-star" data-value="5"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Culture Fit -->
+                        <div class="mb-4">
+                            <label class="form-label">Culture Fit</label>
+                            <div class="star-rating" id="cultureFitRating" data-category="culture_fit">
+                                <i class="bi bi-star" data-value="1"></i>
+                                <i class="bi bi-star" data-value="2"></i>
+                                <i class="bi bi-star" data-value="3"></i>
+                                <i class="bi bi-star" data-value="4"></i>
+                                <i class="bi bi-star" data-value="5"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Experience Level -->
+                        <div class="mb-4">
+                            <label class="form-label">Experience Level</label>
+                            <div class="star-rating" id="experienceLevelRating" data-category="experience_level">
+                                <i class="bi bi-star" data-value="1"></i>
+                                <i class="bi bi-star" data-value="2"></i>
+                                <i class="bi bi-star" data-value="3"></i>
+                                <i class="bi bi-star" data-value="4"></i>
+                                <i class="bi bi-star" data-value="5"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Recommendation -->
+                        <div class="mb-4">
+                            <label class="form-label">Recommendation</label>
+                            <select class="form-select" id="recommendation">
+                                <option value="">Select recommendation</option>
+                                <option value="highly_recommended">Highly Recommended</option>
+                                <option value="recommended">Recommended</option>
+                                <option value="maybe">Maybe</option>
+                                <option value="not_recommended">Not Recommended</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Comments -->
+                        <div class="mb-4">
+                            <label class="form-label">Comments</label>
+                            <textarea class="form-control" id="ratingComments" rows="3" placeholder="General feedback..."></textarea>
+                        </div>
+                        
+                        <!-- Strengths -->
+                        <div class="mb-4">
+                            <label class="form-label">Strengths</label>
+                            <textarea class="form-control" id="strengths" rows="2" placeholder="What did you like?"></textarea>
+                        </div>
+                        
+                        <!-- Concerns -->
+                        <div class="mb-4">
+                            <label class="form-label">Concerns</label>
+                            <textarea class="form-control" id="concerns" rows="2" placeholder="Any concerns?"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveRatingBtn">
+                        <i class="bi bi-check-circle me-1"></i>Save Rating
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Success/Error Message Modal -->
+    <div class="modal fade" id="messageModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title" id="messageModalTitle">
+                        <i class="bi bi-check-circle-fill text-success me-2" id="messageModalIcon"></i>
+                        <span id="messageModalTitleText">Success</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="messageModalBody" class="mb-0"></p>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Rating System JavaScript -->
+    <script>
+        // ========================================
+        // HELPER FUNCTIONS - MESSAGE MODAL
+        // ========================================
+        
+        function showSuccessMessage(message) {
+            $('#messageModalIcon').removeClass('bi-x-circle-fill text-danger').addClass('bi-check-circle-fill text-success');
+            $('#messageModalTitleText').text('Success');
+            $('#messageModalBody').text(message);
+            new bootstrap.Modal(document.getElementById('messageModal')).show();
+        }
+        
+        function showErrorMessage(message) {
+            $('#messageModalIcon').removeClass('bi-check-circle-fill text-success').addClass('bi-x-circle-fill text-danger');
+            $('#messageModalTitleText').text('Error');
+            $('#messageModalBody').text(message);
+            new bootstrap.Modal(document.getElementById('messageModal')).show();
+        }
+        
         // ========================================
         // RATING SYSTEM
         // ========================================
@@ -2210,34 +2412,90 @@
         }
 
         // Show rating modal
-        $('#addRatingBtn').on('click', function() {
-            // Reset form
-            ratingData = {
-                technical_skills: 0,
-                communication: 0,
-                culture_fit: 0,
-                experience_level: 0
-            };
+        $(document).on('click', '#addRatingBtn', async function() {
+            console.log('Add Rating button clicked!');
+            
+            const candidateId = window.currentCandidateId;
+            
+            // Check if user already has a rating
+            try {
+                const response = await fetch(`/api/v1/candidates/${candidateId}/my-rating`);
+                const data = await response.json();
+                
+                if (data.has_rating) {
+                    // Pre-fill form with existing rating
+                    ratingData = {
+                        technical_skills: data.technical_skills || 0,
+                        communication: data.communication || 0,
+                        culture_fit: data.culture_fit || 0,
+                        experience_level: data.experience_level || 0
+                    };
+                    
+                    // Set form values
+                    $('#recommendation').val(data.recommendation || '');
+                    $('#ratingComments').val(data.comments || '');
+                    $('#strengths').val(data.strengths || '');
+                    $('#concerns').val(data.concerns || '');
+                    
+                    // Update modal title
+                    $('#ratingModal .modal-title').html('<i class="bi bi-pencil-square me-2"></i>Edit Your Rating');
+                    $('#saveRatingBtn').html('<i class="bi bi-check-circle me-1"></i>Update Rating');
+                } else {
+                    // Reset form for new rating
+                    ratingData = {
+                        technical_skills: 0,
+                        communication: 0,
+                        culture_fit: 0,
+                        experience_level: 0
+                    };
+                    $('#ratingForm')[0].reset();
+                    
+                    // Update modal title
+                    $('#ratingModal .modal-title').html('<i class="bi bi-star me-2"></i>Rate Candidate');
+                    $('#saveRatingBtn').html('<i class="bi bi-check-circle me-1"></i>Save Rating');
+                }
+            } catch (error) {
+                console.error('Error loading existing rating:', error);
+                // Reset form on error
+                ratingData = {
+                    technical_skills: 0,
+                    communication: 0,
+                    culture_fit: 0,
+                    experience_level: 0
+                };
+                $('#ratingForm')[0].reset();
+            }
+            
+            // Reset stars first
             $('.star-rating:not(.readonly) i').removeClass('bi-star-fill filled').addClass('bi-star');
-            $('#ratingForm')[0].reset();
             
             // Show modal
             const modal = new bootstrap.Modal(document.getElementById('ratingModal'));
             modal.show();
             
-            // Initialize star ratings
-            initStarRatings();
+            // Initialize star ratings and set values after modal is shown
+            setTimeout(() => {
+                initStarRatings();
+                // Update stars based on loaded data
+                Object.keys(ratingData).forEach(category => {
+                    const value = ratingData[category];
+                    if (value > 0) {
+                        const $rating = $(`.star-rating[data-category="${category}"]`);
+                        updateStars($rating, value);
+                    }
+                });
+            }, 100);
         });
 
-        // Save rating
-        $('#saveRatingBtn').on('click', async function() {
+        // Save rating - Using event delegation
+        $(document).on('click', '#saveRatingBtn', async function() {
             console.log('Save Rating button clicked!');
             
             const candidateId = window.currentCandidateId;
             console.log('Candidate ID:', candidateId);
             
             if (!candidateId) {
-                alert('Error: Candidate ID not found. Please refresh the page.');
+                showErrorMessage('Candidate ID not found. Please refresh the page.');
                 return;
             }
             
@@ -2282,122 +2540,20 @@
                     await loadRatingSummary(candidateId);
                     
                     // Show success message
-                    alert('Rating saved successfully!');
+                    showSuccessMessage('Rating saved successfully!');
                 } else {
                     const error = await response.json();
                     console.error('Error response:', error);
-                    alert('Error saving rating: ' + (error.detail || 'Unknown error'));
+                    showErrorMessage('Error saving rating: ' + (error.detail || 'Unknown error'));
                 }
             } catch (error) {
                 console.error('Error saving rating:', error);
-                alert('Error saving rating: ' + error.message);
+                showErrorMessage('Error saving rating: ' + error.message);
             } finally {
                 // Re-enable button
                 $(this).prop('disabled', false).html('<i class="bi bi-check-circle me-1"></i>Save Rating');
             }
         });
     </script>
-
-    <!-- Rating Modal -->
-    <div class="modal fade" id="ratingModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="bi bi-star me-2"></i>
-                        Rate Candidate
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="ratingForm">
-                        <!-- Technical Skills -->
-                        <div class="mb-4">
-                            <label class="form-label">Technical Skills</label>
-                            <div class="star-rating" id="technicalSkillsRating" data-category="technical_skills">
-                                <i class="bi bi-star" data-value="1"></i>
-                                <i class="bi bi-star" data-value="2"></i>
-                                <i class="bi bi-star" data-value="3"></i>
-                                <i class="bi bi-star" data-value="4"></i>
-                                <i class="bi bi-star" data-value="5"></i>
-                            </div>
-                        </div>
-                        
-                        <!-- Communication -->
-                        <div class="mb-4">
-                            <label class="form-label">Communication</label>
-                            <div class="star-rating" id="communicationRating" data-category="communication">
-                                <i class="bi bi-star" data-value="1"></i>
-                                <i class="bi bi-star" data-value="2"></i>
-                                <i class="bi bi-star" data-value="3"></i>
-                                <i class="bi bi-star" data-value="4"></i>
-                                <i class="bi bi-star" data-value="5"></i>
-                            </div>
-                        </div>
-                        
-                        <!-- Culture Fit -->
-                        <div class="mb-4">
-                            <label class="form-label">Culture Fit</label>
-                            <div class="star-rating" id="cultureFitRating" data-category="culture_fit">
-                                <i class="bi bi-star" data-value="1"></i>
-                                <i class="bi bi-star" data-value="2"></i>
-                                <i class="bi bi-star" data-value="3"></i>
-                                <i class="bi bi-star" data-value="4"></i>
-                                <i class="bi bi-star" data-value="5"></i>
-                            </div>
-                        </div>
-                        
-                        <!-- Experience Level -->
-                        <div class="mb-4">
-                            <label class="form-label">Experience Level</label>
-                            <div class="star-rating" id="experienceLevelRating" data-category="experience_level">
-                                <i class="bi bi-star" data-value="1"></i>
-                                <i class="bi bi-star" data-value="2"></i>
-                                <i class="bi bi-star" data-value="3"></i>
-                                <i class="bi bi-star" data-value="4"></i>
-                                <i class="bi bi-star" data-value="5"></i>
-                            </div>
-                        </div>
-                        
-                        <!-- Recommendation -->
-                        <div class="mb-4">
-                            <label class="form-label">Recommendation</label>
-                            <select class="form-select" id="recommendation">
-                                <option value="">Select recommendation</option>
-                                <option value="highly_recommended">Highly Recommended</option>
-                                <option value="recommended">Recommended</option>
-                                <option value="maybe">Maybe</option>
-                                <option value="not_recommended">Not Recommended</option>
-                            </select>
-                        </div>
-                        
-                        <!-- Comments -->
-                        <div class="mb-4">
-                            <label class="form-label">Comments</label>
-                            <textarea class="form-control" id="ratingComments" rows="3" placeholder="General feedback..."></textarea>
-                        </div>
-                        
-                        <!-- Strengths -->
-                        <div class="mb-4">
-                            <label class="form-label">Strengths</label>
-                            <textarea class="form-control" id="strengths" rows="2" placeholder="What did you like?"></textarea>
-                        </div>
-                        
-                        <!-- Concerns -->
-                        <div class="mb-4">
-                            <label class="form-label">Concerns</label>
-                            <textarea class="form-control" id="concerns" rows="2" placeholder="Any concerns?"></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="saveRatingBtn">
-                        <i class="bi bi-check-circle me-1"></i>Save Rating
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 </body>
 </html>

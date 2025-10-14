@@ -77,10 +77,10 @@ async def create_rating(
         if not user_email:
             raise HTTPException(status_code=401, detail="Not authenticated")
         
-        # Get user
+        # Get user (use first() to handle potential duplicates)
         stmt = select(User).filter(User.email == user_email)
         result = await db.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = result.scalars().first()
         
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
@@ -92,6 +92,14 @@ async def create_rating(
         
         if not candidate:
             raise HTTPException(status_code=404, detail="Candidate not found")
+        
+        # Check if user already has a rating for this candidate
+        stmt = select(CandidateRating).filter(
+            CandidateRating.candidate_id == candidate_id,
+            CandidateRating.user_id == user.id
+        )
+        result = await db.execute(stmt)
+        existing_rating = result.scalar_one_or_none()
         
         # Calculate overall rating if not provided
         overall = rating_data.overall_rating
@@ -106,38 +114,118 @@ async def create_rating(
             if ratings:
                 overall = round(sum(ratings) / len(ratings))
         
-        # Create rating
-        rating = CandidateRating(
-            candidate_id=candidate_id,
-            user_id=user.id,
-            technical_skills=rating_data.technical_skills,
-            communication=rating_data.communication,
-            culture_fit=rating_data.culture_fit,
-            experience_level=rating_data.experience_level,
-            overall_rating=overall,
-            comments=rating_data.comments,
-            strengths=rating_data.strengths,
-            concerns=rating_data.concerns,
-            recommendation=rating_data.recommendation
-        )
-        
-        db.add(rating)
-        await db.commit()
-        await db.refresh(rating)
-        
-        logger.info(f"Rating created for candidate {candidate_id} by user {user.email}")
-        
-        return {
-            "id": rating.id,
-            "candidate_id": rating.candidate_id,
-            "overall_rating": rating.overall_rating,
-            "message": "Rating created successfully"
-        }
+        if existing_rating:
+            # Update existing rating
+            existing_rating.technical_skills = rating_data.technical_skills
+            existing_rating.communication = rating_data.communication
+            existing_rating.culture_fit = rating_data.culture_fit
+            existing_rating.experience_level = rating_data.experience_level
+            existing_rating.overall_rating = overall
+            existing_rating.comments = rating_data.comments
+            existing_rating.strengths = rating_data.strengths
+            existing_rating.concerns = rating_data.concerns
+            existing_rating.recommendation = rating_data.recommendation
+            existing_rating.updated_at = datetime.utcnow()
+            
+            await db.commit()
+            await db.refresh(existing_rating)
+            
+            logger.info(f"Rating updated for candidate {candidate_id} by user {user.email}")
+            
+            return {
+                "id": existing_rating.id,
+                "candidate_id": existing_rating.candidate_id,
+                "overall_rating": existing_rating.overall_rating,
+                "message": "Rating updated successfully"
+            }
+        else:
+            # Create new rating
+            rating = CandidateRating(
+                candidate_id=candidate_id,
+                user_id=user.id,
+                technical_skills=rating_data.technical_skills,
+                communication=rating_data.communication,
+                culture_fit=rating_data.culture_fit,
+                experience_level=rating_data.experience_level,
+                overall_rating=overall,
+                comments=rating_data.comments,
+                strengths=rating_data.strengths,
+                concerns=rating_data.concerns,
+                recommendation=rating_data.recommendation
+            )
+            
+            db.add(rating)
+            await db.commit()
+            await db.refresh(rating)
+            
+            logger.info(f"Rating created for candidate {candidate_id} by user {user.email}")
+            
+            return {
+                "id": rating.id,
+                "candidate_id": rating.candidate_id,
+                "overall_rating": rating.overall_rating,
+                "message": "Rating created successfully"
+            }
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error creating rating: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/candidates/{candidate_id}/my-rating")
+async def get_my_rating(
+    candidate_id: str,
+    request: Request,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """Get current user's rating for a candidate"""
+    try:
+        # Get current user from session
+        user_email = request.session.get("user_email")
+        if not user_email:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        # Get user (use first() to handle potential duplicates)
+        stmt = select(User).filter(User.email == user_email)
+        result = await db.execute(stmt)
+        user = result.scalars().first()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Get user's rating for this candidate
+        stmt = select(CandidateRating).filter(
+            CandidateRating.candidate_id == candidate_id,
+            CandidateRating.user_id == user.id
+        )
+        result = await db.execute(stmt)
+        rating = result.scalar_one_or_none()
+        
+        if not rating:
+            return {"has_rating": False}
+        
+        return {
+            "has_rating": True,
+            "id": rating.id,
+            "technical_skills": rating.technical_skills,
+            "communication": rating.communication,
+            "culture_fit": rating.culture_fit,
+            "experience_level": rating.experience_level,
+            "overall_rating": rating.overall_rating,
+            "comments": rating.comments,
+            "strengths": rating.strengths,
+            "concerns": rating.concerns,
+            "recommendation": rating.recommendation,
+            "created_at": rating.created_at.isoformat() if rating.created_at else None,
+            "updated_at": rating.updated_at.isoformat() if rating.updated_at else None
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting user rating: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

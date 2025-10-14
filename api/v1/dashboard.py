@@ -64,7 +64,7 @@ async def get_hr_stats(db: AsyncSession) -> Dict[str, int]:
     
     # Pending vetting (resumes not yet vetted)
     pending_vetting_query = select(func.count(Resume.id)).where(
-        Resume.authenticity_score == None
+        Resume.authenticity_score.is_(None)
     )
     pending_vetting_result = await db.execute(pending_vetting_query)
     pending_vetting = pending_vetting_result.scalar() or 0
@@ -76,8 +76,11 @@ async def get_hr_stats(db: AsyncSession) -> Dict[str, int]:
     shortlisted_result = await db.execute(shortlisted_query)
     shortlisted = shortlisted_result.scalar() or 0
     
-    # Active jobs (mock for now)
-    active_jobs = 8  # TODO: Replace with actual query when Job model is available
+    # Active jobs (real data)
+    from models.database import Job
+    active_jobs_stmt = select(func.count(Job.id)).where(Job.status.in_(['open', 'active']))
+    active_jobs_result = await db.execute(active_jobs_stmt)
+    active_jobs = active_jobs_result.scalar() or 0
     
     return {
         "total_candidates": total_candidates,
@@ -91,7 +94,7 @@ async def get_pending_vetting(db: AsyncSession, limit: int = 10) -> List[Dict[st
     """Get resumes pending vetting"""
     
     query = select(Resume).where(
-        Resume.authenticity_score == None
+        Resume.authenticity_score.is_(None)
     ).order_by(desc(Resume.upload_date)).limit(limit)
     
     result = await db.execute(query)
@@ -132,51 +135,48 @@ async def get_recent_candidates(db: AsyncSession, limit: int = 10) -> List[Dict[
 
 async def get_active_jobs(db: AsyncSession, limit: int = 10) -> List[Dict[str, Any]]:
     """
-    Get active jobs
-    TODO: Replace with actual query when Job model is available
+    Get active jobs with real data
     """
+    from models.database import Job, ResumeJobMatch
+    from datetime import datetime
     
-    # Mock data for now
-    return [
-        {
-            "id": 1,
-            "title": "Senior Java Developer",
-            "candidate_count": 24,
-            "days_open": 15,
-            "department": "Engineering",
-            "status": "Active",
-            "priority": "High"
-        },
-        {
-            "id": 2,
-            "title": "UI/UX Designer",
-            "candidate_count": 18,
-            "days_open": 8,
-            "department": "Design",
-            "status": "Active",
-            "priority": "Medium"
-        },
-        {
-            "id": 3,
-            "title": "Data Analyst",
-            "candidate_count": 12,
-            "days_open": 22,
-            "department": "Analytics",
-            "status": "Active",
-            "priority": "Low"
-        }
-    ]
-    
-    # Uncomment when Job model is available:
-    # query = select(Job).where(
-    #     Job.status == "active"
-    # ).order_by(desc(Job.created_at)).limit(limit)
-    # 
-    # result = await db.execute(query)
-    # jobs = result.scalars().all()
-    # 
-    # return [
-    #     {
+    try:
+        # Query active/open jobs
+        query = select(Job).where(
+            Job.status.in_(['open', 'active'])
+        ).order_by(desc(Job.created_at)).limit(limit)
+        
+        result = await db.execute(query)
+        jobs = result.scalars().all()
+        
+        job_list = []
+        for job in jobs:
+            # Count candidates for this job
+            candidate_count_stmt = select(func.count(ResumeJobMatch.id)).where(
+                ResumeJobMatch.job_id == job.id
+            )
+            count_result = await db.execute(candidate_count_stmt)
+            candidate_count = count_result.scalar() or 0
+            
+            # Calculate days open
+            days_open = (datetime.now() - job.created_at).days if job.created_at else 0
+            
+            job_list.append({
+                "id": job.id,
+                "title": job.title,
+                "candidate_count": candidate_count,
+                "days_open": days_open,
+                "department": job.department,
+                "status": job.status.title() if job.status else "Active",
+                "priority": job.priority.title() if hasattr(job, 'priority') and job.priority else None
+            })
+        
+        return job_list
+        
+    except Exception as e:
+        logger.error(f"Error getting active jobs: {str(e)}")
+        # Return empty list on error
+        return []
     #         "id": job.id,
     #         "title": job.title,
     #         "candidate_count": len(job.candidates) if hasattr(job, 'candidates') else 0,
@@ -209,17 +209,26 @@ async def get_recent_activity(db: AsyncSession, limit: int = 20) -> List[Dict[st
             "timestamp": resume.upload_date.isoformat() if resume.upload_date else None
         })
     
-    # Recent vetting completions
+    # Recent vetting completions - only show completed vetting with scores
     recent_vetted_query = select(Resume).where(
-        Resume.authenticity_score != None
+        and_(
+            Resume.authenticity_score != None,
+            Resume.authenticity_score > 0,  # Only show actual scores, not 0
+            Resume.processing_status == "completed"  # Only completed vetting
+        )
     ).order_by(desc(Resume.updated_at)).limit(10)
     recent_vetted_result = await db.execute(recent_vetted_query)
     recent_vetted = recent_vetted_result.scalars().all()
     
     for resume in recent_vetted:
+        # Authenticity score should already be 0-100, but ensure it's displayed correctly
+        score = resume.authenticity_score if resume.authenticity_score else 0
+        # If score is less than 1, it might be stored as decimal (0.86 = 86%)
+        if score < 1 and score > 0:
+            score = int(score * 100)
         activities.append({
             "type": "vet",
-            "description": f"Resume vetted: {resume.candidate_name or 'Unknown'} (Score: {resume.authenticity_score}%)",
+            "description": f"Resume vetted: {resume.candidate_name or 'Unknown'} (Score: {score}%)",
             "timestamp": resume.updated_at.isoformat() if resume.updated_at else None
         })
     

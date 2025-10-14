@@ -275,22 +275,14 @@
                 
                 if (search) params.append('search', search);
                 if (status) params.append('status', status);
-                
-                const token = localStorage.getItem('access_token');
-                if (!token) {
-                    window.location.href = '/login';
-                    return;
-                }
 
+                // Use session-based auth (no token needed)
                 const response = await fetch(`/api/candidates?${params}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    credentials: 'include'  // Include session cookies
                 });
                 
                 // Check for authentication errors
                 if (response.status === 401) {
-                    localStorage.removeItem('access_token');
                     alert('Your session has expired. Please login again.');
                     window.location.href = '/login';
                     return;

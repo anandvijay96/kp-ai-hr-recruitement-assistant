@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - AI Powered HR Assistant</title>
+    
+    <!-- Bootstrap 5.3 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Unified Styles -->
+    <link rel="stylesheet" href="/static/css/unified_styles.css">
+    
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        
+        .settings-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 0;
+            margin-bottom: 30px;
+        }
+        
+        .settings-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 30px;
+            margin-bottom: 24px;
+        }
+        
+        .setting-item {
+            padding: 20px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+        
+        .setting-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+        
+        .setting-description {
+            font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Unified Navigation -->
+    {% include 'components/unified_navbar.html' %}
+    
+    <!-- Settings Header -->
+    <div class="settings-header">
+        <div class="container">
+            <div class="text-center">
+                <h2><i class="bi bi-gear me-3"></i>Settings</h2>
+                <p class="mb-0">Manage your account preferences and notifications</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Settings Content -->
+    <div class="container mb-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <!-- Notification Settings -->
+                <div class="settings-card">
+                    <h5 class="mb-4">
+                        <i class="bi bi-bell me-2"></i>
+                        Notifications
+                    </h5>
+                    
+                    <div class="setting-item">
+                        <div class="setting-label">Email Notifications</div>
+                        <div class="setting-description">Receive email updates about candidate activities</div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="emailNotif" checked disabled>
+                            <label class="form-check-label" for="emailNotif">Enable email notifications</label>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-label">New Candidate Alerts</div>
+                        <div class="setting-description">Get notified when new candidates are added</div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="candidateAlerts" checked disabled>
+                            <label class="form-check-label" for="candidateAlerts">Enable candidate alerts</label>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-label">Interview Reminders</div>
+                        <div class="setting-description">Receive reminders for scheduled interviews</div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="interviewReminders" checked disabled>
+                            <label class="form-check-label" for="interviewReminders">Enable interview reminders</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Appearance Settings -->
+                <div class="settings-card">
+                    <h5 class="mb-4">
+                        <i class="bi bi-palette me-2"></i>
+                        Appearance
+                    </h5>
+                    
+                    <div class="setting-item">
+                        <div class="setting-label">Theme</div>
+                        <div class="setting-description">Choose your preferred color theme</div>
+                        <select class="form-select" disabled>
+                            <option selected>Light</option>
+                            <option>Dark</option>
+                            <option>Auto (System)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-label">Compact Mode</div>
+                        <div class="setting-description">Show more content on screen with reduced spacing</div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="compactMode" disabled>
+                            <label class="form-check-label" for="compactMode">Enable compact mode</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Privacy Settings -->
+                <div class="settings-card">
+                    <h5 class="mb-4">
+                        <i class="bi bi-shield-lock me-2"></i>
+                        Privacy & Security
+                    </h5>
+                    
+                    <div class="setting-item">
+                        <div class="setting-label">Two-Factor Authentication</div>
+                        <div class="setting-description">Add an extra layer of security to your account</div>
+                        <button class="btn btn-outline-primary btn-sm" disabled>
+                            <i class="bi bi-shield-check me-1"></i>Enable 2FA
+                        </button>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-label">Session Timeout</div>
+                        <div class="setting-description">Automatically log out after period of inactivity</div>
+                        <select class="form-select" disabled>
+                            <option>15 minutes</option>
+                            <option selected>30 minutes</option>
+                            <option>1 hour</option>
+                            <option>Never</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Data & Storage -->
+                <div class="settings-card">
+                    <h5 class="mb-4">
+                        <i class="bi bi-database me-2"></i>
+                        Data & Storage
+                    </h5>
+                    
+                    <div class="setting-item">
+                        <div class="setting-label">Export Data</div>
+                        <div class="setting-description">Download all your data in CSV format</div>
+                        <button class="btn btn-outline-secondary btn-sm" disabled>
+                            <i class="bi bi-download me-1"></i>Export Data
+                        </button>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-label">Clear Cache</div>
+                        <div class="setting-description">Clear temporary files and cached data</div>
+                        <button class="btn btn-outline-warning btn-sm" disabled>
+                            <i class="bi bi-trash me-1"></i>Clear Cache
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Coming Soon -->
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Settings Functionality Coming Soon!</strong>
+                    <p class="mb-0 mt-2">These settings will be fully functional in the next update. Stay tuned!</p>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="d-flex gap-3">
+                    <button class="btn btn-primary" disabled>
+                        <i class="bi bi-check-circle me-2"></i>Save Changes
+                    </button>
+                    <button class="btn btn-outline-secondary" disabled>
+                        <i class="bi bi-arrow-counterclockwise me-2"></i>Reset to Defaults
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

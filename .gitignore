@@ -93,4 +93,16 @@ test_files/
 demo_files/
 *.sample.*
 
+# Documentation (keep local only)
+*_IMPLEMENTATION.md
+*_UPDATES.md
+*_COMPLETE.md
+*_PLAN.md
+DEMO_*.md
+FEATURE_*.md
+FINAL_*.md
+CLIENT_VENDOR_*.md
+ANALYTICS_*.md
+
 !Business Requirements Document 1.pdf
+!README.md

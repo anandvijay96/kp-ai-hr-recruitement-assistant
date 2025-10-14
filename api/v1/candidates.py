@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, Body
+from fastapi import APIRouter, Depends, Body, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 import io
 
 from core.database import get_db
@@ -9,7 +10,9 @@ from services.filter_service import FilterService
 from services.preset_service import PresetService
 from services.candidate_service import CandidateService
 from services.export_service import ExportService
+from services.jd_matcher import JDMatcher
 from models.filter_models import CandidateFilter, FilterPresetCreate, FilterPresetResponse
+from models.database import Candidate, Job, Resume
 
 router = APIRouter()
 
@@ -478,3 +481,121 @@ async def export_all_candidates_excel(
             "Content-Disposition": f"attachment; filename=all_candidates_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         }
     )
+
+@router.get("/{candidate_id}/job-matches")
+async def get_candidate_job_matches(
+    candidate_id: str,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get all job matches for a candidate.
+    Matches the candidate's resume against all active jobs in the system.
+    Returns jobs sorted by match score (highest first).
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"Job matches request for candidate: {candidate_id}")
+        
+        # Get candidate with resume (async queries)
+        stmt = select(Candidate).filter(Candidate.id == candidate_id)
+        result = await db.execute(stmt)
+        candidate = result.scalar_one_or_none()
+        
+        if not candidate:
+            logger.error(f"Candidate not found: {candidate_id}")
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        
+        logger.info(f"Found candidate: {candidate.full_name}")
+        
+        # Get candidate's resumes (get the latest one)
+        stmt = select(Resume).filter(Resume.candidate_id == candidate_id).order_by(Resume.upload_date.desc())
+        result = await db.execute(stmt)
+        resume = result.scalars().first()
+        
+        if not resume:
+            logger.warning(f"No resume found for candidate: {candidate_id}")
+            return {
+                "candidate_id": candidate_id,
+                "candidate_name": candidate.full_name,
+                "matches": [],
+                "message": "No resume available for this candidate"
+            }
+        
+        if not resume.extracted_text:
+            logger.warning(f"No extracted_text for resume: {resume.id}")
+            return {
+                "candidate_id": candidate_id,
+                "candidate_name": candidate.full_name,
+                "matches": [],
+                "message": "Resume text not yet extracted. Please re-upload the resume."
+            }
+        
+        logger.info(f"Resume text length: {len(resume.extracted_text)} characters")
+        
+        # Get all active jobs
+        stmt = select(Job).filter(Job.status == 'open')
+        result = await db.execute(stmt)
+        jobs = result.scalars().all()
+        logger.info(f"Found {len(jobs)} open jobs")
+        
+        if not jobs:
+            return {
+                "candidate_id": candidate_id,
+                "candidate_name": candidate.full_name,
+                "matches": [],
+                "message": "No active jobs available for matching"
+            }
+        
+        # Initialize JD matcher
+        jd_matcher = JDMatcher()
+        
+        # Match resume against each job
+        matches = []
+        for job in jobs:
+            try:
+                # Match resume with job description
+                match_result = jd_matcher.match_resume_with_jd(
+                    resume.extracted_text,
+                    job.description
+                )
+                
+                matches.append({
+                    "job_id": job.id,
+                    "job_title": job.title,
+                    "department": job.department,
+                    "location": f"{job.location_city or ''} {job.location_state or ''}".strip() or "Remote" if job.is_remote else "Not specified",
+                    "employment_type": job.employment_type,
+                    "match_score": match_result.get("overall_match", 0),
+                    "skills_match": match_result.get("skills_match", 0),
+                    "experience_match": match_result.get("experience_match", 0),
+                    "education_match": match_result.get("education_match", 0),
+                    "matched_skills": match_result.get("matched_skills", []),
+                    "missing_skills": match_result.get("missing_skills", []),
+                    "match_details": match_result.get("details", []),
+                    "can_apply": match_result.get("overall_match", 0) >= 50  # Allow apply if match >= 50%
+                })
+            except Exception as e:
+                # Log error but continue with other jobs
+                print(f"Error matching job {job.id}: {str(e)}")
+                continue
+        
+        # Sort by match score (highest first)
+        matches.sort(key=lambda x: x["match_score"], reverse=True)
+        
+        logger.info(f"Successfully matched {len(matches)} jobs for candidate {candidate_id}")
+        
+        return {
+            "candidate_id": candidate_id,
+            "candidate_name": candidate.full_name,
+            "total_jobs": len(jobs),
+            "matches": matches,
+            "best_match_score": matches[0]["match_score"] if matches else 0
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in job matches endpoint: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error fetching job matches: {str(e)}")

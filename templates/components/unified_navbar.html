@@ -58,13 +58,37 @@
                     </a>
                 </li>
                 
-                <!-- Jobs Management Dashboard (HR & Admin) -->
+                <!-- Jobs Analytics Dashboard (HR & Admin) -->
                 {% if user and user.role in ['hr', 'admin'] %}
                 <li class="nav-item">
                     <a class="nav-link {% if 'jobs-management' in request.url.path %}active{% endif %}" 
                        href="/jobs-management">
                         <i class="bi bi-graph-up"></i>
-                        <span class="nav-text">Analytics</span>
+                        <span class="nav-text">Job Analytics</span>
+                    </a>
+                </li>
+                {% endif %}
+                
+                <!-- Clients (HR & Admin) -->
+                {% if user and user.role in ['hr', 'admin'] %}
+                <li class="nav-item">
+                    <a class="nav-link {% if 'clients' in request.url.path %}active{% endif %}" 
+                       href="/clients">
+                        <i class="bi bi-building"></i>
+                        <span class="nav-text">Clients</span>
+                        <span class="badge bg-warning text-dark ms-1" style="font-size: 0.6rem;">Soon</span>
+                    </a>
+                </li>
+                {% endif %}
+                
+                <!-- Vendors (HR & Admin) -->
+                {% if user and user.role in ['hr', 'admin'] %}
+                <li class="nav-item">
+                    <a class="nav-link {% if 'vendors' in request.url.path %}active{% endif %}" 
+                       href="/vendors">
+                        <i class="bi bi-briefcase"></i>
+                        <span class="nav-text">Vendors</span>
+                        <span class="badge bg-warning text-dark ms-1" style="font-size: 0.6rem;">Soon</span>
                     </a>
                 </li>
                 {% endif %}

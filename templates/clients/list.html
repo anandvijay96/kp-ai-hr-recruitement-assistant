@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Management - AI Powered HR Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/unified_styles.css">
+    <style>
+        .coming-soon-overlay {
+            position: relative;
+        }
+        .coming-soon-badge {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px 50px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .coming-soon-badge.hidden {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.8);
+            pointer-events: none;
+        }
+        .close-preview-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .close-preview-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: rotate(90deg);
+        }
+        .blurred-content {
+            filter: blur(3px);
+            pointer-events: none;
+            user-select: none;
+            transition: filter 0.3s ease;
+        }
+        .blurred-content.active {
+            filter: blur(0);
+            pointer-events: auto;
+            user-select: auto;
+        }
+    </style>
+</head>
+<body>
+    {% include 'components/unified_navbar.html' %}
+
+    <div class="container-fluid mt-4 coming-soon-overlay">
+        <!-- Coming Soon Badge -->
+        <div class="coming-soon-badge text-center text-white" id="comingSoonBadge">
+            <button class="close-preview-btn" onclick="closePreview()" title="Preview UI">
+                <i class="bi bi-x-lg"></i>
+            </button>
+            <i class="bi bi-rocket-takeoff fs-1 d-block mb-3"></i>
+            <h2 class="mb-2">Coming Soon!</h2>
+            <p class="mb-0">Client Management Feature</p>
+        </div>
+
+        <!-- Blurred Preview Content -->
+        <div class="blurred-content" id="previewContent">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="bi bi-building me-2"></i>Client Management</h2>
+                    <p class="text-muted">Manage hiring clients and track job requirements</p>
+                </div>
+                <button class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>New Client
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" placeholder="Search clients...">
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select">
+                                <option>All Status</option>
+                                <option>Active</option>
+                                <option>Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select">
+                                <option>All Industries</option>
+                                <option>Technology</option>
+                                <option>Finance</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select">
+                                <option>All Managers</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-secondary w-100">
+                                <i class="bi bi-x-circle me-1"></i>Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client List -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Client Code</th>
+                                    <th>Name</th>
+                                    <th>Industry</th>
+                                    <th>Account Manager</th>
+                                    <th>Active Jobs</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>CLT-2025-0001</code></td>
+                                    <td>Tech Corp Inc.</td>
+                                    <td><span class="badge bg-info">Technology</span></td>
+                                    <td>John Doe</td>
+                                    <td><span class="badge bg-primary">3</span></td>
+                                    <td><span class="badge bg-success">Active</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary">View</button>
+                                        <button class="btn btn-sm btn-outline-secondary">Edit</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code>CLT-2025-0002</code></td>
+                                    <td>Finance Global Ltd.</td>
+                                    <td><span class="badge bg-warning">Finance</span></td>
+                                    <td>Jane Smith</td>
+                                    <td><span class="badge bg-primary">5</span></td>
+                                    <td><span class="badge bg-success">Active</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary">View</button>
+                                        <button class="btn btn-sm btn-outline-secondary">Edit</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code>CLT-2025-0003</code></td>
+                                    <td>Healthcare Plus</td>
+                                    <td><span class="badge bg-danger">Healthcare</span></td>
+                                    <td>Mike Johnson</td>
+                                    <td><span class="badge bg-primary">2</span></td>
+                                    <td><span class="badge bg-secondary">Inactive</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary">View</button>
+                                        <button class="btn btn-sm btn-outline-secondary">Edit</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <nav>
+                        <ul class="pagination justify-content-center mb-0">
+                            <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
+                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                            <li class="page-item"><a class="page-link" href="#">2</a></li>
+                            <li class="page-item"><a class="page-link" href="#">3</a></li>
+                            <li class="page-item"><a class="page-link" href="#">Next</a></li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function closePreview() {
+            const badge = document.getElementById('comingSoonBadge');
+            const content = document.getElementById('previewContent');
+            
+            badge.classList.add('hidden');
+            content.classList.add('active');
+        }
+    </script>
+</body>
+</html>

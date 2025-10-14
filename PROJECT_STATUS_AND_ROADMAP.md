@@ -1,9 +1,10 @@
 # AI-Powered HR Recruitment Assistant - Project Status & Roadmap
 
-**📅 Last Updated:** October 13, 2025 - 11:55 PM IST  
+**📅 Last Updated:** October 15, 2025 - 1:10 AM IST  
 **🎯 Branch:** mvp-1  
-**📊 Progress:** 70% Complete (3 of 5 P0 features done)  
-**🚀 Next Milestone:** HR Team Demo
+**📊 Progress:** 75% Complete (Manual Rating System Complete)  
+**🚀 Next Milestone:** HR Team Demo (Oct 25, 2025)  
+**🔥 Focus:** Job Matching + OCR Enhancement + Client/Vendor Merge
 
 ---
 
