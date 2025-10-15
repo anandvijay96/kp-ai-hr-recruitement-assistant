@@ -777,41 +777,68 @@ class EnhancedResumeExtractor:
                 
                 # Extract certifications from section
                 if in_cert_section and line.strip():
-                    # Skip lines that look like section headers or work experience
-                    if line.strip().isupper() or len(line.strip()) < 5:
+                    # Skip lines that look like section headers
+                    if line.strip().isupper() and len(line.strip()) < 40:
                         continue
                     
-                    # Skip lines with file paths or URLs
-                    if 'file:///' in line.lower() or 'http' in line.lower():
+                    # Skip very short lines
+                    if len(line.strip()) < 5:
                         continue
                     
-                    # Skip lines that look like work experience (company names, job titles)
-                    work_indicators = ['lead', 'engineer', 'specialist', 'manager', 'developer', 'analyst', 'consultant']
-                    if any(indicator in line.lower() for indicator in work_indicators):
-                        # Check if it's followed by a date range (work experience pattern)
-                        if re.search(r'\d{4}\s*-\s*\d{4}|\d{4}\s*-\s*present', line.lower()):
+                    # Skip lines with file paths or URLs (unless they contain certification name)
+                    if 'file:///' in line.lower():
+                        continue
+                    
+                    # Skip lines that are clearly work experience (company with date range)
+                    if re.search(r'^\w+.*?\s+\d{4}\s*-\s*(\d{4}|present)', line, re.IGNORECASE):
+                        # But allow if it contains certification keywords
+                        cert_keywords_check = ['certified', 'certification', 'certificate', 'license', 'accreditation']
+                        if not any(kw in line.lower() for kw in cert_keywords_check):
                             continue
                     
-                    # Look for bullet points or numbered items
-                    cert_match = re.match(r'^[•\-*●○]?\s*(.+?)(?:\s*\((\d{4})\))?$', line.strip())
-                    if cert_match:
-                        cert_name = cert_match.group(1).strip()
-                        year = cert_match.group(2) if cert_match.group(2) else None
-                        
-                        # Additional validation: certification names usually contain certain keywords
-                        cert_keywords = ['certified', 'certification', 'certificate', 'professional', 'associate', 'expert', 'specialist']
-                        has_cert_keyword = any(keyword in cert_name.lower() for keyword in cert_keywords)
-                        
-                        # Avoid duplicates and validate
-                        if cert_name.lower() not in seen_certs and len(cert_name) > 5 and (has_cert_keyword or len(certifications) == 0):
-                            seen_certs.add(cert_name.lower())
-                            certifications.append({
-                                'name': cert_name,
-                                'issuer': None,
-                                'issue_date': year,
-                                'expiry_date': None,
-                                'credential_id': None,
-                            })
+                    # Clean the line
+                    clean_line = line.strip().lstrip('•-*●○0123456789.) ')
+                    
+                    # Extract year if present
+                    year_match = re.search(r'\((\d{4})\)|\b(\d{4})\b$', clean_line)
+                    year = year_match.group(1) or year_match.group(2) if year_match else None
+                    
+                    # Remove year from cert name
+                    if year:
+                        cert_name = re.sub(r'\s*\(?\d{4}\)?$', '', clean_line).strip()
+                    else:
+                        cert_name = clean_line
+                    
+                    # Validation rules
+                    # 1. Not too short, not too long
+                    if len(cert_name) < 5 or len(cert_name) > 200:
+                        continue
+                    
+                    # 2. Not a duplicate
+                    if cert_name.lower() in seen_certs:
+                        continue
+                    
+                    # 3. Contains certification indicators OR well-known cert abbreviation
+                    cert_keywords = ['certified', 'certification', 'certificate', 'professional', 'associate', 'expert', 'license', 'accreditation']
+                    well_known_certs = ['aws', 'azure', 'gcp', 'pmp', 'cpa', 'cfa', 'cissp', 'ccna', 'comptia', 'itil', 'scrum', 'six sigma']
+                    
+                    has_cert_keyword = any(keyword in cert_name.lower() for keyword in cert_keywords)
+                    has_known_cert = any(cert in cert_name.lower() for cert in well_known_certs)
+                    
+                    # 4. Doesn't look like a job title/company
+                    job_title_indicators = ['at ', ' at ', 'company', 'corporation', 'inc.', 'ltd.', 'pvt.']
+                    looks_like_job = any(indicator in cert_name.lower() for indicator in job_title_indicators)
+                    
+                    # Accept if: has cert keyword OR is well-known cert AND doesn't look like job
+                    if (has_cert_keyword or has_known_cert) and not looks_like_job:
+                        seen_certs.add(cert_name.lower())
+                        certifications.append({
+                            'name': cert_name,
+                            'issuer': None,
+                            'issue_date': year,
+                            'expiry_date': None,
+                            'credential_id': None,
+                        })
             
             return certifications
         except Exception as e:
@@ -874,45 +901,90 @@ class EnhancedResumeExtractor:
             summary_keywords = [
                 'professional summary', 'summary', 'profile', 'objective',
                 'career objective', 'about me', 'introduction', 'overview',
-                'career summary', 'executive summary', 'professional profile'
+                'career summary', 'executive summary', 'professional profile',
+                'professional overview', 'about', 'who am i'
             ]
             
             # Section headers that indicate end of summary
             end_sections = [
                 'experience', 'work experience', 'employment', 'professional experience',
                 'education', 'academic', 'skills', 'technical skills', 'core competencies',
-                'projects', 'certifications', 'achievements'
+                'projects', 'certifications', 'achievements', 'work history'
             ]
             
             for i, line in enumerate(lines):
                 line_lower = line.lower().strip()
                 
-                # Check if this line is a summary header
-                if any(keyword in line_lower for keyword in summary_keywords):
+                # Check if this line is a summary header (exact match or contains keyword)
+                is_summary_header = False
+                for keyword in summary_keywords:
+                    # Exact match or starts with keyword
+                    if line_lower == keyword or line_lower.startswith(keyword + ':') or line_lower.startswith(keyword + ' -'):
+                        is_summary_header = True
+                        break
+                    # For single word keywords like "summary", "profile", "objective" - be more strict
+                    if keyword in ['summary', 'profile', 'objective'] and line_lower == keyword:
+                        is_summary_header = True
+                        break
+                
+                if is_summary_header:
                     # Collect next few lines until blank line or next section
                     summary_lines = []
-                    for j in range(i + 1, min(i + 20, len(lines))):
+                    blank_count = 0
+                    
+                    for j in range(i + 1, min(i + 25, len(lines))):
                         next_line = lines[j].strip()
                         
-                        # Stop at blank line
+                        # Allow one blank line, but stop at two consecutive
                         if not next_line:
-                            break
+                            blank_count += 1
+                            if blank_count >= 2:
+                                break
+                            continue
+                        else:
+                            blank_count = 0
                         
                         # Stop at next section header
-                        if any(section in next_line.lower() for section in end_sections):
+                        next_lower = next_line.lower()
+                        if any(next_lower == section or next_lower.startswith(section + ':') for section in end_sections):
                             break
                         
-                        # Skip lines that look like headers (all caps, short)
-                        if next_line.isupper() and len(next_line) < 30:
+                        # Skip lines that look like section headers (all caps, short, or ends with colon)
+                        if (next_line.isupper() and len(next_line) < 40) or next_line.endswith(':'):
                             break
+                        
+                        # Skip lines that look like contact info
+                        if re.search(r'@|linkedin\.com|github\.com|^\+?\d{10}', next_line, re.IGNORECASE):
+                            continue
                         
                         summary_lines.append(next_line)
                     
                     if summary_lines:
-                        summary_text = ' '.join(summary_lines)
-                        # Validate length (reasonable summary is 30-1000 chars)
-                        if 30 <= len(summary_text) <= 1000:
+                        summary_text = ' '.join(summary_lines).strip()
+                        # Validate length (reasonable summary is 20-1500 chars)
+                        if 20 <= len(summary_text) <= 1500:
                             return summary_text
+            
+            # Fallback: Look for paragraph at the top (before first section header)
+            first_section_idx = None
+            for i, line in enumerate(lines[1:10], start=1):  # Check first 10 lines after name
+                line_lower = line.lower().strip()
+                if any(section in line_lower for section in end_sections):
+                    first_section_idx = i
+                    break
+            
+            if first_section_idx and first_section_idx > 3:
+                # Try to extract text between line 2 and first section
+                potential_summary = []
+                for i in range(2, first_section_idx):
+                    line = lines[i].strip()
+                    if line and not re.search(r'@|linkedin\.com|^\+?\d{10}', line, re.IGNORECASE):
+                        potential_summary.append(line)
+                
+                if potential_summary:
+                    summary_text = ' '.join(potential_summary).strip()
+                    if 20 <= len(summary_text) <= 1500:
+                        return summary_text
             
             return None
         except Exception as e:
