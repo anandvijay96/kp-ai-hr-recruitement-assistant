@@ -2,7 +2,42 @@
 
 **Status:** New requirements received from management  
 **Impact:** High - Affects multiple phases  
-**Priority:** Integrate into existing 6-week plan
+**Priority:** Integrate into existing plan  
+**Timeline:** Extended to 7-9 weeks (+ optional 4-week frontend revamp)
+
+---
+
+## 🔄 MAJOR REPRIORITIZATION
+
+### **KEY CHANGES:**
+1. **🆕 Resume Extraction Enhancement MOVED UP** (Phase 2, Week 3)
+   - Analyze open-resume tool for superior parsing techniques
+   - Core feature that must be excellent before scaling
+   
+2. **🆕 Internal HR Team Features PRIORITIZED** (Phase 3-4, Week 4-6)
+   - Focus on internal team functionality first
+   - User activity tracking (management requirement)
+   - Complete before vendor/client portals
+   
+3. **⏬ Vendors/Clients MOVED LATER** (Phase 6, Week 8-9)
+   - Build on stable foundation
+   - Reduce risk of breaking core features
+   - Multi-tenant when app is bug-free
+   
+4. **🆕 Bug Fixes & Stabilization PHASE ADDED** (Phase 5, Week 6-7)
+   - Ensure working app with no bugs
+   - Comprehensive testing before adding complexity
+   
+5. **🆕 Frontend Revamp FUTURE PHASE** (Phase 7, Week 10-13)
+   - React + shadcn/ui overhaul
+   - Only after all features work perfectly
+   - Professional UI with modern components
+
+### **RATIONALE:**
+- **Extraction is Core:** Must be 95%+ accurate before scaling
+- **Internal First:** HR team features are more critical than vendor portals
+- **Stability Matters:** Bug-free app before adding multi-tenant complexity
+- **Modern UI Later:** Functionality first, then professional frontend
 
 ---
 
@@ -569,162 +604,332 @@ to understand job changes.
 
 ---
 
-## 📊 UPDATED 6-WEEK IMPLEMENTATION PLAN
+## 🆕 RESUME EXTRACTION ENHANCEMENT - OPEN-RESUME TOOL
+**Priority:** HIGH (Move earlier - before Vendor/Client management)  
+**Source:** https://github.com/xitanggg/open-resume
+
+#### **Requirement:**
+Analyze and integrate improvements from open-source resume parser to enhance our extraction accuracy.
+
+#### **What to Analyze:**
+- Parsing algorithms and patterns
+- Section detection logic
+- Entity extraction methods
+- Confidence scoring approach
+- Edge case handling
+
+#### **Integration Plan:**
+1. Fork/study the open-resume codebase
+2. Identify superior parsing techniques
+3. Benchmark against our current extractor
+4. Integrate best practices into `enhanced_resume_extractor.py`
+5. Add test cases from their test suite
+6. Measure accuracy improvements
+
+#### **Expected Benefits:**
+- Higher extraction accuracy (target: 95%+ from current ~85%)
+- Better handling of non-standard resume formats
+- Improved section detection
+- More robust entity recognition
+
+**Estimated Time:** 2-3 days (added to Phase 2)
+
+---
+
+## 🎨 FRONTEND REVAMP (LATER PHASE)
+**Priority:** LOW (After core features are stable and bug-free)  
+**Tech Stack:** React + shadcn/ui
+
+#### **Requirement:**
+Modernize UI from basic HTML templates to React with professional component library.
+
+#### **Why Later:**
+- Current HTML templates work fine
+- Focus on functionality first
+- Reduce technical debt risk
+- Easier to revamp once requirements are stable
+
+#### **Scope:**
+- Convert all templates to React components
+- Use shadcn/ui for pre-built components
+- Modern, professional design
+- Better performance and UX
+- Component reusability
+
+**Estimated Time:** 3-4 weeks (separate phase after Phase 6)
+
+---
+
+## 🎓 DRIVER.JS TUTORIAL IMPLEMENTATION
+**Priority:** LOW (Push to later phase)  
+
+#### **Requirement:**
+Interactive onboarding tutorial for new users using Driver.js
+
+**Scope:**
+- First-time user walkthrough
+- Feature highlights
+- Contextual help bubbles
+- Step-by-step guidance
+
+**Estimated Time:** 2-3 days (added to Phase 6)
+
+---
+
+## 📊 UPDATED 6-8 WEEK IMPLEMENTATION PLAN
 
 ### **PHASE 1: Core Fixes** ✅ COMPLETE
 - Week 1-2: Fix filters, improve extraction
 
-### **PHASE 2: Clients & Vendors**
-- Week 3: UPDATED WITH MULTI-TENANT
+### **PHASE 2: Resume Extraction Enhancement** 🆕 REPRIORITIZED
+- Week 3: FOCUS ON CORE PARSING IMPROVEMENTS
 
-**Original Plan:**
-- Clients management module
-- Vendors management module
+**New Priority:**
+- 🆕 **Analyze open-resume tool** (2 days)
+- 🆕 **Integrate best parsing techniques** (1 day)
+- 🆕 **Benchmark and test improvements** (1 day)
+- ✅ Job hopping detection in vetting (1 day)
+- ✅ Education verification workflow (1 day)
 
-**Updated Plan:**
-- ✅ Clients management module
-- ✅ Vendors management module
-- 🆕 Multi-tenant architecture implementation
-- 🆕 Separate login portals
-- 🆕 Data isolation layer
-- 🆕 Role-based access control
+**Estimated Time:** 5-6 days
 
-**Estimated Time:** 4-5 days (was 3 days)
+**Rationale:** Extraction is core to the platform - must be excellent before scaling
 
-### **PHASE 3: Enhanced Candidate Features**
-- Week 4: UPDATED WITH VETTING ENHANCEMENTS
+### **PHASE 3: Internal HR Team Features** 🆕 REPRIORITIZED
+- Week 4-5: FOCUS ON INTERNAL TEAM FIRST
 
-**Original Plan:**
-- Candidate status workflow
-- Interview scheduling
-- Email templates
+**New Priority:**
+- ✅ Enhanced candidate workflow (2 days)
+- ✅ Interview scheduling (1 day)
+- ✅ Email templates (1 day)
+- ✅ Manual override functionality (1 day)
+- 🆕 **User Activity Tracking System** (3-4 days)
+- 🆕 Admin monitoring dashboard (2 days)
 
-**Updated Plan:**
-- ✅ Candidate status workflow
-- ✅ Interview scheduling
-- ✅ Email templates
-- 🆕 Job hopping detection in vetting
-- 🆕 Education verification workflow
-- 🆕 Enhanced vetting criteria with clarifications
-- 🆕 Manual override UI
+**Estimated Time:** 8-10 days (spans Week 4-5)
 
-**Estimated Time:** 4-5 days (was 3 days)
+**Rationale:** Internal HR team features are more critical than vendor/client portals
 
-### **PHASE 4: Reporting & User Management**
-- Week 5: HEAVILY UPDATED
-
-**Original Plan:**
-- User management & RBAC
-- Advanced analytics
-- Export functionality
+### **PHASE 4: User Management & Reporting**
+- Week 5-6: ENHANCED RBAC & ANALYTICS
 
 **Updated Plan:**
-- ✅ User management & enhanced RBAC (internal/vendor/client roles)
-- ✅ Advanced analytics
-- ✅ Export functionality
-- 🆕 **USER ACTIVITY TRACKING SYSTEM** (major addition)
-- 🆕 Real-time activity monitoring
-- 🆕 Daily/weekly/monthly reports
-- 🆕 Admin monitoring dashboard
-- 🆕 Productivity analytics
-- 🆕 Team performance metrics
+- ✅ User management (internal roles only) (2 days)
+- ✅ Daily/weekly/monthly reports (2 days)
+- ✅ Team performance analytics (2 days)
+- ✅ Export functionality (PDF/Excel) (1 day)
+- ✅ Advanced analytics dashboard (1 day)
 
-**Estimated Time:** 5-6 days (was 2-3 days) - SIGNIFICANT INCREASE
+**Estimated Time:** 7-8 days
 
-### **PHASE 5: Production Ready**
-- Week 6: AS PLANNED
-- Performance optimization
-- Security audit (CRITICAL with multi-tenant)
-- Documentation
+### **PHASE 5: Bug Fixes & Stabilization** 🆕
+- Week 6-7: MAKE APP PRODUCTION-READY
+
+**New Focus:**
+- 🆕 **Comprehensive bug fixes** (3 days)
+- 🆕 **End-to-end testing** (2 days)
+- ✅ Performance optimization (2 days)
+- ✅ Security audit (1 day)
+- ✅ Documentation (2 days)
+
+**Estimated Time:** 8-10 days
+
+**Rationale:** Ensure solid foundation before adding vendors/clients
+
+### **PHASE 6: Clients & Vendors + Multi-Tenant** 🆕 MOVED LATER
+- Week 8-9: AFTER CORE APP IS STABLE
+
+**Moved from Phase 2:**
+- ✅ Multi-tenant architecture implementation (2 days)
+- ✅ Separate login portals (1 day)
+- ✅ Data isolation layer (1 day)
+- ✅ Clients management module (2 days)
+- ✅ Vendors management module (2 days)
+- 🆕 Driver.js tutorial implementation (2 days)
+
+**Estimated Time:** 10 days
+
+**Rationale:** Build on stable foundation, less risk of breaking core features
+
+### **PHASE 7: Frontend Revamp** 🆕 FUTURE PHASE
+- Week 10-13: MODERN UI OVERHAUL
+
+**Long-term Enhancement:**
+- Convert to React + shadcn/ui
+- Modern design system
+- Component library
+- Performance improvements
+- Better UX
+
+**Estimated Time:** 3-4 weeks
+
+**Rationale:** Only when all features work perfectly
 
 ---
 
-## 🎯 UPDATED PRIORITY MATRIX
+## 🎯 UPDATED PRIORITY MATRIX (REPRIORITIZED)
 
-### **MUST HAVE (P0):**
-1. ✅ Fix candidate filters (COMPLETE)
-2. ✅ Improve resume extraction (COMPLETE)
-3. 🆕 Multi-tenant architecture (Vendors/Clients login)
-4. 🆕 User activity tracking & reporting
-5. Clients management module
-6. Vendors management module
+### **MUST HAVE (P0) - Internal HR Team First:**
+1. ✅ Fix candidate filters (COMPLETE - Phase 1)
+2. ✅ Improve resume extraction (COMPLETE - Phase 1)
+3. 🆕 **Analyze & integrate open-resume tool** (Phase 2 - Week 3)
+4. 🆕 **Job hopping detection in vetting** (Phase 2 - Week 3)
+5. 🆕 **Education verification workflow** (Phase 2 - Week 3)
+6. **Enhanced candidate workflow** (Phase 3 - Week 4)
+7. **Interview scheduling** (Phase 3 - Week 4)
+8. 🆕 **User activity tracking & reporting** (Phase 3 - Week 4-5)
+9. **User management & RBAC (internal only)** (Phase 4 - Week 5)
+10. **Team performance analytics** (Phase 4 - Week 5-6)
+11. 🆕 **Comprehensive bug fixes** (Phase 5 - Week 6-7)
 
-### **SHOULD HAVE (P1):**
-7. 🆕 Job hopping detection in vetting
-8. 🆕 Education verification workflow
-9. Enhanced candidate workflow
-10. Interview scheduling
-11. User management & RBAC
+### **SHOULD HAVE (P1) - After Core is Stable:**
+12. 🆕 **Multi-tenant architecture** (Phase 6 - Week 8)
+13. **Clients management module** (Phase 6 - Week 8)
+14. **Vendors management module** (Phase 6 - Week 8-9)
+15. Email templates & automation
+16. Advanced analytics & dashboards
+17. Export functionality (PDF/Excel)
+18. 🆕 **Driver.js tutorial** (Phase 6 - Week 9)
 
-### **NICE TO HAVE (P2):**
-12. Email templates & automation
-13. Advanced analytics
-14. Export functionality
-15. Performance optimization
+### **NICE TO HAVE (P2) - Future Enhancements:**
+19. Performance optimization
+20. Security enhancements
+21. 🆕 **Frontend revamp (React + shadcn)** (Phase 7 - Week 10-13)
+22. Mobile app
+23. API for external integrations
 
 ---
 
-## 📅 REVISED TIMELINE
+## 📅 REVISED TIMELINE (REPRIORITIZED FOR INTERNAL FOCUS)
 
 ### **Week 1-2: Phase 1** ✅ COMPLETE
-- Candidate filters
-- Resume extraction improvements
+- ✅ Candidate filters working
+- ✅ Resume extraction improvements
+- ✅ Professional summary enhanced
+- ✅ Certifications validation
 
-### **Week 3: Phase 2 (Extended)**
+### **Week 3: Phase 2 - Resume Enhancement & Vetting** 🆕
 **Day 1-2:**
-- Multi-tenant database schema
-- Authentication layer for vendors/clients
+- 🆕 Study open-resume codebase
+- 🆕 Identify superior parsing techniques
+- 🆕 Benchmark against current extractor
 
-**Day 3-4:**
-- Clients management module
-- Client portal UI
+**Day 3:**
+- 🆕 Integrate improvements into enhanced_resume_extractor.py
+- 🆕 Add test cases
+
+**Day 4:**
+- 🆕 Job hopping detection algorithm
+- 🆕 Enhanced vetting criteria
 
 **Day 5:**
-- Vendors management module
-- Vendor portal UI
+- 🆕 Education verification workflow
+- Manual override UI
 
-### **Week 4: Phase 3 (Expanded)**
-**Day 1-2:**
-- Job hopping detection algorithm
-- Education verification workflow
-- Enhanced vetting UI
+### **Week 4-5: Phase 3 - Internal HR Team Features** 🆕
+**Week 4 - Day 1-2:**
+- Enhanced candidate workflow (status transitions)
+- Candidate notes/comments system
 
-**Day 2-3:**
-- Candidate status workflow
-- Interview scheduling
+**Week 4 - Day 3:**
+- Interview scheduling UI
+- Calendar integration basics
 
-**Day 4-5:**
+**Week 4 - Day 4-5:**
 - Email templates
 - Manual override functionality
 
-### **Week 5: Phase 4 (MAJOR)**
-**Day 1-2:**
-- User activity tracking infrastructure
-- Activity logging middleware
+**Week 5 - Day 1-2:**
+- 🆕 User activity tracking infrastructure
+- 🆕 Activity logging middleware
+- 🆕 Event tracking across all actions
 
-**Day 3:**
-- Daily/weekly/monthly report generation
-- Report export (PDF/Excel)
+**Week 5 - Day 3-4:**
+- 🆕 Admin monitoring dashboard
+- 🆕 Real-time activity feed
+- 🆕 Individual user performance page
 
-**Day 4-5:**
-- Admin monitoring dashboard
-- Team analytics page
+**Week 5 - Day 5:**
+- 🆕 Daily/weekly/monthly report generation
+- 🆕 Report export (PDF/Excel)
 
-### **Week 6: Phase 5**
-**Day 1-2:**
+### **Week 5-6: Phase 4 - User Management & Analytics**
+**Week 5/6 - Day 1-2:**
+- Enhanced user management (internal roles)
+- RBAC for different permission levels
+
+**Week 6 - Day 3:**
+- Team performance analytics
+- Productivity metrics
+
+**Week 6 - Day 4:**
+- Advanced analytics dashboard
+- Custom report builder
+
+**Week 6 - Day 5:**
+- Export functionality enhancements
+- Scheduled reports
+
+### **Week 6-7: Phase 5 - Bug Fixes & Stabilization** 🆕
+**Week 7 - Day 1-3:**
+- 🆕 **Comprehensive bug hunting**
+- 🆕 Fix all known issues
+- 🆕 Edge case handling
+- 🆕 Error handling improvements
+
+**Week 7 - Day 4:**
+- 🆕 **End-to-end testing**
+- 🆕 User acceptance testing
+- 🆕 Integration testing
+
+**Week 7 - Day 5:**
 - Performance optimization
 - Query optimization
-- Caching
+- Caching implementation
 
-**Day 3:**
-- Security audit
-- Penetration testing
-- Multi-tenant security validation
+### **Week 8-9: Phase 6 - Vendors/Clients (MOVED LATER)** 🆕
+**Week 8 - Day 1-2:**
+- Multi-tenant architecture implementation
+- Separate authentication for vendors/clients
+- Data isolation layer
 
-**Day 4-5:**
-- Documentation
-- Deployment preparation
-- Training materials
+**Week 8 - Day 3-4:**
+- Clients management module
+- Client portal UI
+- Client-specific dashboard
+
+**Week 8 - Day 5 / Week 9 - Day 1:**
+- Vendors management module
+- Vendor portal UI
+- Vendor-specific dashboard
+
+**Week 9 - Day 2-3:**
+- Row-level security implementation
+- Multi-tenant testing
+- Security audit for data isolation
+
+**Week 9 - Day 4-5:**
+- 🆕 **Driver.js tutorial implementation**
+- Onboarding flow
+- Interactive guides
+- Help system
+
+### **Week 10-13: Phase 7 - Frontend Revamp** 🆕 FUTURE
+**Week 10-11:**
+- React project setup
+- Component architecture
+- shadcn/ui integration
+- Design system
+
+**Week 12:**
+- Convert core pages to React
+- Implement reusable components
+- State management
+
+**Week 13:**
+- Final polish
+- Performance testing
+- Deployment
 
 ---
 
