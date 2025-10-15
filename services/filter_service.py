@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select, func, or_, and_, extract, text
 from sqlalchemy.dialects.postgresql import TSVECTOR
-from models.database import Candidate, Resume, CandidateSkill
+from models.database import Candidate, Resume, CandidateSkill, Skill, Education, WorkExperience
 import logging
 from datetime import datetime, timedelta
 import re
@@ -91,8 +91,13 @@ class FilterService:
             Dict with results and pagination info
         """
         try:
-            # Build base query with resume join for additional data
-            stmt = select(Candidate).outerjoin(Candidate.resumes)
+            # Build base query with relationships preloaded for filtering
+            stmt = select(Candidate)
+            
+            # Track if we need joins
+            needs_skill_join = False
+            needs_education_join = False
+            needs_experience_join = False
             
             # Apply filters
             filter_conditions = []
@@ -129,15 +134,48 @@ class FilterService:
                 else:
                     filter_conditions.append(Candidate.status == filters.status)
             
-            # Filter by education (search in resume extracted data if available)
-            if filters.education:
-                # For now, just log it - will implement when education data is in resumes
-                logger.info(f"Education filter requested: {filters.education}")
+            # Filter by skills (match ANY of the selected skills)
+            if filters.skills and len(filters.skills) > 0:
+                needs_skill_join = True
+                stmt = stmt.join(CandidateSkill, Candidate.id == CandidateSkill.candidate_id)
+                stmt = stmt.join(Skill, CandidateSkill.skill_id == Skill.id)
+                filter_conditions.append(Skill.name.in_(filters.skills))
+                logger.info(f"Filtering by skills: {filters.skills}")
             
-            # Filter by skills (search in resume extracted data if available)
-            if filters.skills:
-                # For now, just log it - will implement when skills data is properly indexed
-                logger.info(f"Skills filter requested: {filters.skills}")
+            # Filter by education level
+            if filters.education and len(filters.education) > 0:
+                needs_education_join = True
+                if not needs_skill_join:  # Avoid duplicate candidate selection
+                    stmt = stmt.join(Education, Candidate.id == Education.candidate_id)
+                else:
+                    stmt = stmt.outerjoin(Education, Candidate.id == Education.candidate_id)
+                filter_conditions.append(Education.degree.in_(filters.education))
+                logger.info(f"Filtering by education: {filters.education}")
+            
+            # Filter by experience range (in months)
+            if filters.min_experience is not None or filters.max_experience is not None:
+                needs_experience_join = True
+                # Subquery to calculate total experience per candidate
+                exp_subquery = (
+                    select(
+                        WorkExperience.candidate_id,
+                        func.sum(WorkExperience.duration_months).label('total_months')
+                    )
+                    .group_by(WorkExperience.candidate_id)
+                    .subquery()
+                )
+                
+                stmt = stmt.outerjoin(exp_subquery, Candidate.id == exp_subquery.c.candidate_id)
+                
+                if filters.min_experience is not None:
+                    min_months = filters.min_experience * 12
+                    filter_conditions.append(exp_subquery.c.total_months >= min_months)
+                    logger.info(f"Filtering by min experience: {filters.min_experience} years ({min_months} months)")
+                
+                if filters.max_experience is not None:
+                    max_months = filters.max_experience * 12
+                    filter_conditions.append(exp_subquery.c.total_months <= max_months)
+                    logger.info(f"Filtering by max experience: {filters.max_experience} years ({max_months} months)")
             
             # Apply all filter conditions
             if filter_conditions:
@@ -152,9 +190,13 @@ class FilterService:
             count_result = await db.execute(count_stmt)
             total_count = count_result.scalar() or 0
             
-            # Apply pagination
+            # Apply pagination and eager load relationships
             offset = (page - 1) * page_size
-            stmt = stmt.offset(offset).limit(page_size)
+            stmt = stmt.options(
+                selectinload(Candidate.skills).selectinload(CandidateSkill.skill),
+                selectinload(Candidate.education),
+                selectinload(Candidate.work_experience)
+            ).offset(offset).limit(page_size)
             result = await db.execute(stmt)
             candidates = result.scalars().unique().all()
             
@@ -196,6 +238,18 @@ class FilterService:
             Dict with available filter options
         """
         try:
+            # Get distinct skills from skills table
+            skills_stmt = select(Skill.name).distinct().order_by(Skill.name)
+            skills_result = await db.execute(skills_stmt)
+            skills_list = [skill[0] for skill in skills_result.all() if skill[0]]
+            
+            # Get distinct education levels from education table
+            edu_stmt = select(Education.degree).distinct().filter(
+                Education.degree.isnot(None)
+            ).order_by(Education.degree)
+            edu_result = await db.execute(edu_stmt)
+            education_list = [edu[0] for edu in edu_result.all() if edu[0]]
+            
             # Get distinct locations from candidates
             loc_stmt = select(Candidate.location).distinct().filter(
                 Candidate.location.isnot(None)
@@ -214,10 +268,18 @@ class FilterService:
             if not status_list:
                 status_list = ["new", "screened", "interviewed", "rejected", "hired"]
             
+            # If no skills in DB, use fallback
+            if not skills_list:
+                skills_list = ["Python", "Java", "JavaScript", "SQL", "React", "Node.js", "AWS", "Docker"]
+            
+            # If no education in DB, use fallback
+            if not education_list:
+                education_list = ["High School", "Bachelor's", "Master's", "PhD"]
+            
             return {
-                "skills": ["Python", "Java", "JavaScript", "SQL", "React", "Node.js", "AWS", "Docker"],  # Static for now
+                "skills": skills_list,
                 "locations": location_list if location_list else [],
-                "education_levels": ["High School", "Bachelor's", "Master's", "PhD"],  # Static for now
+                "education_levels": education_list,
                 "statuses": status_list
             }
             
@@ -290,15 +352,43 @@ class FilterService:
             if '@' not in candidate.email:
                 continue
             
+            # Get skills list (from candidate_skills relationship)
+            skills_list = []
+            try:
+                if hasattr(candidate, 'skills') and candidate.skills:
+                    skills_list = [cs.skill.name for cs in candidate.skills if cs.skill] 
+            except Exception as e:
+                logger.debug(f"Error loading skills for candidate {candidate.id}: {e}")
+            
+            # Calculate total experience years
+            experience_years = 0
+            try:
+                if hasattr(candidate, 'work_experience') and candidate.work_experience:
+                    total_months = sum(exp.duration_months or 0 for exp in candidate.work_experience)
+                    experience_years = round(total_months / 12, 1) if total_months > 0 else 0
+            except Exception as e:
+                logger.debug(f"Error calculating experience for candidate {candidate.id}: {e}")
+            
+            # Get highest education level
+            education = "N/A"
+            try:
+                if hasattr(candidate, 'education') and candidate.education:
+                    # Get the highest or most recent education
+                    edu_records = candidate.education
+                    if edu_records:
+                        education = edu_records[0].degree or "N/A"
+            except Exception as e:
+                logger.debug(f"Error loading education for candidate {candidate.id}: {e}")
+            
             results.append({
                 "id": candidate.id,
                 "name": candidate.full_name,
                 "email": candidate.email,
                 "phone": candidate.phone or "N/A",
                 "linkedin": candidate.linkedin_url or "",
-                "skills": [],  # Will be populated from extracted data if available
-                "experience_years": 0,  # Will be calculated from work experience if available
-                "education": "N/A",  # Will be populated from extracted data if available
+                "skills": skills_list,
+                "experience_years": experience_years,
+                "education": education,
                 "status": candidate.status or "new",
                 "location": candidate.location or "N/A",
                 "created_at": candidate.created_at.isoformat() if candidate.created_at else None
