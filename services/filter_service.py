@@ -91,29 +91,53 @@ class FilterService:
             Dict with results and pagination info
         """
         try:
-            # Build base query
+            # Build base query with resume join for additional data
             stmt = select(Candidate).outerjoin(Candidate.resumes)
             
             # Apply filters
             filter_conditions = []
             
-            # Filter by search query (name, email)
+            # Filter by search query (name, email, location)
             if filters.search_query:
                 search_term = f"%{filters.search_query}%"
                 filter_conditions.append(
                     or_(
                         Candidate.full_name.ilike(search_term),
-                        Candidate.email.ilike(search_term)
+                        Candidate.email.ilike(search_term),
+                        Candidate.location.ilike(search_term)
                     )
                 )
             
-            # Filter by location
+            # Filter by location (exact or partial match)
             if filters.location:
-                filter_conditions.append(Candidate.location.ilike(f"%{filters.location}%"))
+                # Handle both string and list
+                if isinstance(filters.location, list):
+                    location_conditions = []
+                    for loc in filters.location:
+                        if loc:
+                            location_conditions.append(Candidate.location.ilike(f"%{loc}%"))
+                    if location_conditions:
+                        filter_conditions.append(or_(*location_conditions))
+                else:
+                    filter_conditions.append(Candidate.location.ilike(f"%{filters.location}%"))
             
             # Filter by status
             if filters.status:
-                filter_conditions.append(Candidate.status.in_(filters.status))
+                # Handle both string and list
+                if isinstance(filters.status, list):
+                    filter_conditions.append(Candidate.status.in_(filters.status))
+                else:
+                    filter_conditions.append(Candidate.status == filters.status)
+            
+            # Filter by education (search in resume extracted data if available)
+            if filters.education:
+                # For now, just log it - will implement when education data is in resumes
+                logger.info(f"Education filter requested: {filters.education}")
+            
+            # Filter by skills (search in resume extracted data if available)
+            if filters.skills:
+                # For now, just log it - will implement when skills data is properly indexed
+                logger.info(f"Skills filter requested: {filters.skills}")
             
             # Apply all filter conditions
             if filter_conditions:
