@@ -167,8 +167,14 @@ async def get_active_jobs(db: AsyncSession, limit: int = 10) -> List[Dict[str, A
             
             # Calculate days open (timezone-aware)
             if job.created_at:
+                # Make job.created_at timezone-aware if it's naive
+                job_created_at = job.created_at
+                if job_created_at.tzinfo is None:
+                    # If naive, assume UTC
+                    job_created_at = job_created_at.replace(tzinfo=timezone.utc)
+                
                 now = datetime.now(timezone.utc)
-                days_open = (now - job.created_at).days
+                days_open = (now - job_created_at).days
             else:
                 days_open = 0
             

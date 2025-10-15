@@ -5,7 +5,7 @@ Provides real-time analytics data for the jobs management dashboard
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, desc
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List
 import logging
 
@@ -262,9 +262,13 @@ async def get_recent_activity(db: AsyncSession, limit: int = 10) -> List[Dict]:
     
     activities = []
     for job in jobs:
-        # Use timezone-aware datetime for comparison
-        from datetime import timezone
-        time_diff = datetime.now(timezone.utc) - job.created_at
+        # Make job.created_at timezone-aware if it's naive
+        job_created_at = job.created_at
+        if job_created_at.tzinfo is None:
+            # If naive, assume UTC
+            job_created_at = job_created_at.replace(tzinfo=timezone.utc)
+        
+        time_diff = datetime.now(timezone.utc) - job_created_at
         
         if time_diff.days > 0:
             time_ago = f"{time_diff.days} day{'s' if time_diff.days > 1 else ''} ago"
