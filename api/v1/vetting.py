@@ -797,7 +797,11 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                             db.add(language)
                         await db.commit()
                 
-                # Create resume record with extracted data
+                # Check if resume with same file_hash already exists (including soft-deleted)
+                stmt = select(Resume).filter(Resume.file_hash == file_hash)
+                result = await db.execute(stmt)
+                existing_resume = result.scalar_one_or_none()
+                
                 # Get file info
                 file_size = os.path.getsize(permanent_file_path)
                 file_ext = os.path.splitext(file_name)[1].lower().replace('.', '')
@@ -825,29 +829,58 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 import json
                 parsed_data_json = json.dumps(extracted_data) if extracted_data else None
                 
-                resume = Resume(
-                    file_name=file_name,
-                    original_file_name=file_name,
-                    file_path=permanent_file_path,
-                    file_size=file_size,
-                    file_type=file_ext,
-                    file_hash=file_hash,
-                    mime_type=f"application/{file_ext}",
-                    status="uploaded",
-                    processing_status="completed",  # Mark as completed since we have all data
-                    extracted_text=extracted_text,
-                    parsed_data=parsed_data_json,  # Store as JSON string
-                    authenticity_score=authenticity_score,
-                    jd_match_score=matching_score,
-                    uploaded_by=None,  # NULL for system uploads (no user context in vetting)
-                    candidate_id=candidate.id,  # Link to candidate
-                    candidate_name=candidate_name,
-                    candidate_email=candidate_email,
-                    candidate_phone=candidate_phone
-                )
-                db.add(resume)
-                await db.commit()
-                await db.refresh(resume)
+                if existing_resume:
+                    # Update existing resume with new data
+                    logger.info(f"Found existing resume with file_hash {file_hash}, updating it")
+                    existing_resume.file_name = file_name
+                    existing_resume.original_file_name = file_name
+                    existing_resume.file_path = permanent_file_path
+                    existing_resume.file_size = file_size
+                    existing_resume.file_type = file_ext
+                    existing_resume.mime_type = f"application/{file_ext}"
+                    existing_resume.status = "uploaded"
+                    existing_resume.processing_status = "completed"
+                    existing_resume.extracted_text = extracted_text
+                    existing_resume.parsed_data = parsed_data_json
+                    existing_resume.authenticity_score = authenticity_score
+                    existing_resume.jd_match_score = matching_score
+                    existing_resume.candidate_id = candidate.id
+                    existing_resume.candidate_name = candidate_name
+                    existing_resume.candidate_email = candidate_email
+                    existing_resume.candidate_phone = candidate_phone
+                    existing_resume.deleted_at = None
+                    existing_resume.deleted_by = None
+                    
+                    resume = existing_resume
+                    await db.commit()
+                    await db.refresh(resume)
+                    logger.info(f"Updated existing resume: {file_name} (ID: {resume.id})")
+                else:
+                    # Create new resume record
+                    resume = Resume(
+                        file_name=file_name,
+                        original_file_name=file_name,
+                        file_path=permanent_file_path,
+                        file_size=file_size,
+                        file_type=file_ext,
+                        file_hash=file_hash,
+                        mime_type=f"application/{file_ext}",
+                        status="uploaded",
+                        processing_status="completed",  # Mark as completed since we have all data
+                        extracted_text=extracted_text,
+                        parsed_data=parsed_data_json,  # Store as JSON string
+                        authenticity_score=authenticity_score,
+                        jd_match_score=matching_score,
+                        uploaded_by=None,  # NULL for system uploads (no user context in vetting)
+                        candidate_id=candidate.id,  # Link to candidate
+                        candidate_name=candidate_name,
+                        candidate_email=candidate_email,
+                        candidate_phone=candidate_phone
+                    )
+                    db.add(resume)
+                    await db.commit()
+                    await db.refresh(resume)
+                    logger.info(f"Created new resume: {file_name} (ID: {resume.id})")
                 
                 # Trigger background processing (optional - gracefully handle Redis connection errors)
                 try:
