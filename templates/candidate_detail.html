@@ -1261,7 +1261,12 @@
                                     ${exp.location ? ` • ${exp.location}` : ''}
                                     ${exp.duration_months ? ` • ${exp.duration_months} months` : ''}
                                 </div>
-                                ${exp.description ? `<div class="mt-2 small">${exp.description}</div>` : ''}
+                                ${exp.description ? `<div class="mt-2 small text-muted">${exp.description}</div>` : ''}
+                                ${exp.responsibilities && exp.responsibilities.length > 0 ? `
+                                    <ul class="mt-2 mb-0 small">
+                                        ${exp.responsibilities.map(resp => `<li>${resp}</li>`).join('')}
+                                    </ul>
+                                ` : ''}
                             </div>
                         </div>
                     `).join('');
@@ -1307,6 +1312,12 @@
                                     ${formatDate(edu.start_date)} - ${formatDate(edu.end_date)}
                                     ${edu.grade || edu.gpa ? ` • GPA: ${edu.grade || edu.gpa}` : ''}
                                 </div>
+                                ${edu.description ? `<div class="mt-2 small text-muted">${edu.description}</div>` : ''}
+                                ${edu.activities && edu.activities.length > 0 ? `
+                                    <ul class="mt-2 mb-0 small">
+                                        ${edu.activities.map(activity => `<li>${activity}</li>`).join('')}
+                                    </ul>
+                                ` : ''}
                             </div>
                         </div>
                     `).join('');

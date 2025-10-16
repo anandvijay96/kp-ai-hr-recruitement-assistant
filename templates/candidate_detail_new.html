@@ -530,9 +530,14 @@
                             <div class="timeline-subtitle">${exp.company || '-'}</div>
                             <div class="text-muted small">
                                 ${formatDate(exp.start_date)} - ${exp.is_current ? 'Present' : formatDate(exp.end_date)}
-                                ${exp.location ? ` ΓÇó ${exp.location}` : ''}
+                                ${exp.location ? ` • ${exp.location}` : ''}
                             </div>
-                            ${exp.description ? `<div class="mt-2">${exp.description}</div>` : ''}
+                            ${exp.description ? `<div class="mt-2 text-muted">${exp.description}</div>` : ''}
+                            ${exp.responsibilities && exp.responsibilities.length > 0 ? `
+                                <ul class="mt-2 mb-0" style="font-size: 0.9rem;">
+                                    ${exp.responsibilities.map(resp => `<li>${resp}</li>`).join('')}
+                                </ul>
+                            ` : ''}
                         </div>
                     </div>
                 `).join('');
@@ -552,10 +557,16 @@
                             <div class="timeline-title">${edu.degree || '-'}</div>
                             <div class="timeline-subtitle">${edu.institution || '-'}</div>
                             <div class="text-muted small">
-                                ${edu.field_of_study ? `${edu.field_of_study} ΓÇó ` : ''}
+                                ${edu.field_of_study ? `${edu.field_of_study} • ` : ''}
                                 ${formatDate(edu.start_date)} - ${formatDate(edu.end_date)}
-                                ${edu.grade ? ` ΓÇó GPA: ${edu.grade}` : ''}
+                                ${edu.grade ? ` • GPA: ${edu.grade}` : ''}
                             </div>
+                            ${edu.description ? `<div class="mt-2 text-muted" style="font-size: 0.9rem;">${edu.description}</div>` : ''}
+                            ${edu.activities && edu.activities.length > 0 ? `
+                                <ul class="mt-2 mb-0" style="font-size: 0.9rem;">
+                                    ${edu.activities.map(activity => `<li>${activity}</li>`).join('')}
+                                </ul>
+                            ` : ''}
                         </div>
                     </div>
                 `).join('');
