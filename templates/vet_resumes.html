@@ -332,8 +332,9 @@
 
             scannedResumes.forEach((resume, index) => {
                 const scan = resume.scan_result;
-                const authScore = scan.authenticity_score.overall_score || 0;
-                const scoreClass = authScore >= 80 ? 'high' : authScore >= 60 ? 'medium' : 'low';
+                const comp = scan.comprehensive_analysis || {};
+                const finalScore = comp.final_score || scan.authenticity_score?.overall_score || 0;
+                const scoreClass = finalScore >= 75 ? 'high' : finalScore >= 60 ? 'medium' : 'low';
 
                 const row = `
                     <tr class="resume-row" data-hash="${resume.file_hash}">
@@ -343,11 +344,14 @@
                             <small class="text-muted">${formatFileSize(scan.file_size)}</small>
                         </td>
                         <td>
-                            <div><span class="score-badge score-${scoreClass}">${Math.round(authScore)}%</span></div>
+                            <div><span class="score-badge score-${scoreClass}">${Math.round(finalScore)}%</span></div>
                             <div class="score-details">
-                                <small class="d-block">Font: ${Math.round(scan.authenticity_score.font_consistency || 0)}%</small>
-                                <small class="d-block">Grammar: ${Math.round(scan.authenticity_score.grammar_score || 0)}%</small>
-                                <small class="d-block">LinkedIn: ${Math.round(scan.authenticity_score.linkedin_profile_score || 0)}%</small>
+                                <small class="d-block">Base: ${Math.round(comp.base_authenticity_score || finalScore)}%</small>
+                                ${comp.job_hopping_impact ? `<small class="d-block text-danger">Job Hop: ${comp.job_hopping_impact} pts</small>` : ''}
+                                ${comp.job_hopping && comp.job_hopping.risk_level && comp.job_hopping.risk_level !== 'none' ? 
+                                    `<span class="badge bg-warning">⚠️ ${comp.job_hopping.risk_level} risk</span>` : ''}
+                                ${comp.education_verification && comp.education_verification.discrepancy_count > 0 ? 
+                                    `<span class="badge bg-danger">🎓 ${comp.education_verification.discrepancy_count} edu issue${comp.education_verification.discrepancy_count > 1 ? 's' : ''}</span>` : ''}
                             </div>
                             ${scan.authenticity_score.flags && scan.authenticity_score.flags.length > 0 ?
                                 `<span class="badge bg-danger flag-badge">🚩 ${scan.authenticity_score.flags.length} flags</span>` : ''}
