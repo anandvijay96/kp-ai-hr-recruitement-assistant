@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, func
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, func
 from sqlalchemy.orm import relationship
 from core.database import Base
 
@@ -18,6 +18,13 @@ class Candidate(Base):
     location = Column(String(255), nullable=True)
     professional_summary = Column(Text, nullable=True)
     search_vector = Column(Text, nullable=True)  # Full-text search vector (Text for SQLite compatibility)
+    
+    # Soft delete fields
+    is_deleted = Column(Boolean, default=False, nullable=False, index=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by = Column(String(255), nullable=True)  # Admin username who deleted
+    deletion_reason = Column(Text, nullable=True)  # Optional reason for deletion
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

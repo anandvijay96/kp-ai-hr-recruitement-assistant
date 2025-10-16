@@ -3,7 +3,9 @@ from fastapi.responses import StreamingResponse
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+from datetime import datetime
 import io
+import logging
 
 from core.database import get_db
 from services.filter_service import FilterService
@@ -13,6 +15,8 @@ from services.export_service import ExportService
 from services.jd_matcher import JDMatcher
 from models.filter_models import CandidateFilter, FilterPresetCreate, FilterPresetResponse
 from models.database import Candidate, Job, Resume
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -599,3 +603,105 @@ async def get_candidate_job_matches(
     except Exception as e:
         logger.error(f"Error in job matches endpoint: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error fetching job matches: {str(e)}")
+
+
+@router.delete("/{candidate_id}/soft-delete")
+async def soft_delete_candidate(
+    candidate_id: int,
+    reason: Optional[str] = None,
+    deleted_by: str = "admin",  # TODO: Get from auth session
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Soft delete a candidate (admin only)
+    
+    Args:
+        candidate_id: ID of candidate to delete
+        reason: Optional reason for deletion
+        deleted_by: Username of admin performing deletion
+    
+    Returns:
+        Success message with deletion details
+    """
+    try:
+        # Find candidate
+        candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+        
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        
+        if candidate.is_deleted:
+            raise HTTPException(status_code=400, detail="Candidate already deleted")
+        
+        # Soft delete
+        candidate.is_deleted = True
+        candidate.deleted_at = datetime.now()
+        candidate.deleted_by = deleted_by
+        candidate.deletion_reason = reason
+        
+        db.commit()
+        
+        logger.info(f"✅ Candidate {candidate_id} ({candidate.full_name}) soft deleted by {deleted_by}")
+        
+        return {
+            "success": True,
+            "message": f"Candidate '{candidate.full_name}' deleted successfully",
+            "candidate_id": candidate_id,
+            "deleted_at": candidate.deleted_at.isoformat(),
+            "deleted_by": deleted_by
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error soft deleting candidate: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{candidate_id}/restore")
+async def restore_candidate(
+    candidate_id: int,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Restore a soft-deleted candidate (admin only)
+    
+    Args:
+        candidate_id: ID of candidate to restore
+    
+    Returns:
+        Success message
+    """
+    try:
+        # Find candidate
+        candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+        
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        
+        if not candidate.is_deleted:
+            raise HTTPException(status_code=400, detail="Candidate is not deleted")
+        
+        # Restore
+        candidate.is_deleted = False
+        candidate.deleted_at = None
+        candidate.deleted_by = None
+        candidate.deletion_reason = None
+        
+        db.commit()
+        
+        logger.info(f"✅ Candidate {candidate_id} ({candidate.full_name}) restored")
+        
+        return {
+            "success": True,
+            "message": f"Candidate '{candidate.full_name}' restored successfully",
+            "candidate_id": candidate_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error restoring candidate: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

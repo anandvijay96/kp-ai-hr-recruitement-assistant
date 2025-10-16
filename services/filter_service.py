@@ -33,19 +33,25 @@ class FilterService:
             # Use basic LIKE search
             search_term = f"%{query}%"
             stmt = select(Candidate).filter(
-                or_(
-                    Candidate.full_name.ilike(search_term),
-                    Candidate.email.ilike(search_term),
-                    Candidate.location.ilike(search_term)
+                and_(
+                    Candidate.is_deleted == False,  # Exclude soft-deleted
+                    or_(
+                        Candidate.full_name.ilike(search_term),
+                        Candidate.email.ilike(search_term),
+                        Candidate.location.ilike(search_term)
+                    )
                 )
             ).distinct()
             
             # Get total count
             count_stmt = select(func.count(Candidate.id)).filter(
-                or_(
-                    Candidate.full_name.ilike(search_term),
-                    Candidate.email.ilike(search_term),
-                    Candidate.location.ilike(search_term)
+                and_(
+                    Candidate.is_deleted == False,  # Exclude soft-deleted
+                    or_(
+                        Candidate.full_name.ilike(search_term),
+                        Candidate.email.ilike(search_term),
+                        Candidate.location.ilike(search_term)
+                    )
                 )
             )
             count_result = await db.execute(count_stmt)
@@ -101,6 +107,9 @@ class FilterService:
             
             # Apply filters
             filter_conditions = []
+            
+            # ALWAYS exclude soft-deleted candidates
+            filter_conditions.append(Candidate.is_deleted == False)
             
             # Filter by search query (name, email, location)
             if filters.search_query:
