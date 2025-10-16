@@ -731,20 +731,23 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                                 logger.warning(f"Skipping experience with no company or title")
                                 continue
                             
-                            # Get description and limit length to avoid storing entire resume
-                            description = exp.get('description', '') or exp.get('responsibilities', '')
-                            if isinstance(description, list):
-                                # If responsibilities is a list, join them
-                                description = '\n• ' + '\n• '.join(str(item) for item in description[:5])  # Limit to first 5 items
-                            elif isinstance(description, str):
-                                # Check if it's suspiciously long (likely entire resume)
-                                if len(description) > 2000:
-                                    logger.warning(f"Description too long ({len(description)} chars), truncating")
-                                    description = description[:500] + '...'
-                                elif len(description) > 1000:
-                                    description = description[:1000] + '...'
+                            # Get description and responsibilities separately
+                            description = exp.get('description', '')
+                            if isinstance(description, str) and len(description) > 1000:
+                                # Truncate if too long
+                                description = description[:1000] + '...'
                             
-                            logger.info(f"Adding work exp: {exp.get('title')} at {exp.get('company')} ({exp.get('start_date')} - {exp.get('end_date')})")
+                            # Get responsibilities as array
+                            responsibilities = exp.get('responsibilities', [])
+                            if isinstance(responsibilities, list):
+                                # Store as JSON array (limit to 20 items to avoid bloat)
+                                responsibilities = responsibilities[:20]
+                            elif isinstance(responsibilities, str):
+                                # If it's a string, don't store it (likely extraction error)
+                                logger.warning(f"Responsibilities is a string, not storing: {responsibilities[:100]}")
+                                responsibilities = []
+                            
+                            logger.info(f"Adding work exp: {exp.get('title')} at {exp.get('company')} with {len(responsibilities)} responsibilities")
                             
                             work_exp = WorkExperience(
                                 candidate_id=candidate.id,
@@ -754,7 +757,8 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                                 start_date=exp.get('start_date'),
                                 end_date=exp.get('end_date'),
                                 is_current=exp.get('is_current', False),
-                                description=description
+                                description=description,
+                                responsibilities=responsibilities
                             )
                             db.add(work_exp)
                         await db.commit()

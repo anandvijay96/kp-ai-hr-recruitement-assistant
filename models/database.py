@@ -294,6 +294,7 @@ class WorkExperience(Base):
     is_current = Column(Boolean, default=False)
     duration_months = Column(Integer)
     description = Column(Text)
+    responsibilities = Column(JSON)  # Array of responsibility bullet points
     
     confidence_score = Column(String(10))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
