@@ -186,6 +186,9 @@ async def scan_resume(
             extracted_data=extracted_data
         )
         
+        # Debug: Log comprehensive analysis
+        logger.info(f"📊 Comprehensive Analysis: {comprehensive_analysis.get('job_hopping', {})}")
+        
         # Build scan result (INCLUDE extracted_data for later use)
         scan_result = {
             "filename": file.filename,

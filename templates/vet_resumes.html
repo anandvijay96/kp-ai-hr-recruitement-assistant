@@ -609,8 +609,8 @@
                 ` : '<div class="alert alert-success mb-3">✅ No authenticity issues detected</div>'}
                 
                 <!-- Job Hopping Analysis -->
-                ${jobHopping.risk_level && jobHopping.risk_level !== 'none' ? `
-                    <div class="alert alert-${jobHopping.risk_level === 'high' ? 'danger' : 'warning'} mb-3">
+                ${jobHopping && Object.keys(jobHopping).length > 0 ? `
+                    <div class="alert alert-${jobHopping.risk_level === 'high' ? 'danger' : jobHopping.risk_level === 'medium' ? 'warning' : jobHopping.risk_level === 'low' ? 'warning' : 'success'} mb-3">
                         <h6><i class="bi bi-briefcase"></i> Job Hopping Analysis</h6>
                         
                         ${jobHopping.current_company ? `
@@ -624,14 +624,14 @@
                         
                         <div class="row">
                             <div class="col-md-6">
-                                <strong>Risk Level:</strong> <span class="badge bg-${jobHopping.risk_level === 'high' ? 'danger' : 'warning'}">${jobHopping.risk_level.toUpperCase()}</span><br>
-                                <strong>Score Impact:</strong> ${jobHopping.score_impact} points<br>
-                                <strong>Short Stints:</strong> ${jobHopping.short_tenures} of ${jobHopping.total_jobs} companies<br>
+                                <strong>Risk Level:</strong> <span class="badge bg-${jobHopping.risk_level === 'high' ? 'danger' : jobHopping.risk_level === 'medium' ? 'warning' : jobHopping.risk_level === 'low' ? 'warning' : 'success'}">${(jobHopping.risk_level || 'none').toUpperCase()}</span><br>
+                                <strong>Score Impact:</strong> ${jobHopping.score_impact || 0} points<br>
+                                <strong>Short Stints:</strong> ${jobHopping.short_tenures || 0} of ${jobHopping.total_jobs || 0} companies<br>
                                 <strong>Average Tenure:</strong> ${Math.round(jobHopping.average_tenure_months || 0)} months<br>
                                 <strong>Career Level:</strong> ${jobHopping.career_level || 'unknown'}
                             </div>
                             <div class="col-md-6">
-                                <strong>Pattern:</strong> ${jobHopping.pattern}<br>
+                                <strong>Pattern:</strong> ${jobHopping.pattern || 'Stable career progression'}<br>
                                 ${jobHopping.recent_short_stints && jobHopping.recent_short_stints.length > 0 ? `
                                     <strong>Recent Short Stints:</strong><br>
                                     ${jobHopping.recent_short_stints.map(stint => 
@@ -640,9 +640,11 @@
                                 ` : ''}
                             </div>
                         </div>
-                        <div class="mt-2">
-                            <strong>💡 Recommendation:</strong> ${jobHopping.recommendation}
-                        </div>
+                        ${jobHopping.recommendation ? `
+                            <div class="mt-2">
+                                <strong>💡 Recommendation:</strong> ${jobHopping.recommendation}
+                            </div>
+                        ` : ''}
                     </div>
                 ` : ''}
                 
