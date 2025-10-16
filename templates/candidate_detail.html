@@ -364,6 +364,22 @@
 
         <!-- Candidate Details -->
         <div id="candidateContent" style="display: none;">
+            <!-- Page Header with Actions -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3 class="mb-1" id="pageTitle">Candidate Details</h3>
+                    <p class="text-muted mb-0">View and manage candidate information</p>
+                </div>
+                <div class="btn-group">
+                    <a href="/search" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Back to Search
+                    </a>
+                    <button class="btn btn-danger" onclick="deleteCandidateFromDetail()" id="deleteCandidateBtn">
+                        <i class="bi bi-trash me-1"></i> Delete Candidate
+                    </button>
+                </div>
+            </div>
+            
             <div class="row">
                 <!-- Main Content -->
                 <div class="col-lg-8">
@@ -2554,6 +2570,46 @@
                 $(this).prop('disabled', false).html('<i class="bi bi-check-circle me-1"></i>Save Rating');
             }
         });
+        
+        // Delete candidate from detail page
+        async function deleteCandidateFromDetail() {
+            const candidateName = document.getElementById('candidateName').textContent;
+            
+            // Confirm deletion
+            const confirmed = confirm(`⚠️ Delete Candidate?\n\nAre you sure you want to delete "${candidateName}"?\n\nThis will remove them from the candidates list (can be restored by admin if needed).`);
+            
+            if (!confirmed) return;
+            
+            // Optional: Ask for reason
+            const reason = prompt('Optional: Enter reason for deletion:');
+            
+            try {
+                const url = `/api/v1/candidates/${candidateId}/soft-delete?deleted_by=admin` + 
+                           (reason ? `&reason=${encodeURIComponent(reason)}` : '');
+                
+                const response = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Show success message
+                    alert(`✅ ${data.message}\n\nRedirecting to search page...`);
+                    
+                    // Redirect to search page
+                    window.location.href = '/search';
+                } else {
+                    alert('❌ Error: ' + (data.detail || 'Failed to delete candidate'));
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert('❌ Failed to delete candidate. Please try again.');
+            }
+        }
     </script>
 </body>
 </html>
