@@ -349,10 +349,20 @@
                 
                 if (!providers.openai.available) {
                     openaiButton.disabled = true;
+                    openaiButton.checked = false;
                     openaiLabel.classList.add('disabled');
                     openaiLabel.style.opacity = '0.5';
                     openaiLabel.style.cursor = 'not-allowed';
+                    openaiLabel.style.pointerEvents = 'none';
                     openaiLabel.title = 'OpenAI API key not configured';
+                    
+                    // Prevent clicking
+                    openaiLabel.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        alert('OpenAI API key is not configured. Please add OPENAI_API_KEY to your environment variables.');
+                        return false;
+                    });
                 }
             } catch (error) {
                 console.error('Error checking available providers:', error);
@@ -443,23 +453,23 @@
         document.addEventListener('DOMContentLoaded', () => {
             startUsageStatsAutoRefresh();
             checkAvailableProviders();
+            
+            // File upload handling (must be inside DOMContentLoaded)
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+
+            uploadZone.addEventListener('click', () => fileInput.click());
+            uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+            uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                fileInput.files = e.dataTransfer.files;
+                displayFileList();
+            });
+
+            fileInput.addEventListener('change', displayFileList);
         });
-
-        // File upload handling
-        const uploadZone = document.getElementById('uploadZone');
-        const fileInput = document.getElementById('fileInput');
-
-        uploadZone.addEventListener('click', () => fileInput.click());
-        uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-        uploadZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadZone.classList.remove('dragover');
-            fileInput.files = e.dataTransfer.files;
-            displayFileList();
-        });
-
-        fileInput.addEventListener('change', displayFileList);
 
         function displayFileList() {
             const files = fileInput.files;
@@ -698,11 +708,11 @@
                                 <strong>Risk Level:</strong> <span class="badge bg-${jobHopping.risk_level === 'high' ? 'danger' : jobHopping.risk_level === 'medium' ? 'warning' : jobHopping.risk_level === 'low' ? 'warning' : 'success'}">${(jobHopping.risk_level || 'none').toUpperCase()}</span><br>
                                 <strong>Score Impact:</strong> ${jobHopping.score_impact || 0} points<br>
                                 <strong>Short Stints:</strong> ${jobHopping.short_tenures || 0} of ${jobHopping.total_jobs || 0} companies<br>
-                                <strong>Average Tenure:</strong> ${Math.round(jobHopping.average_tenure_months || 0)} months<br>
+                                <strong>Average Tenure:</strong> ${Math.round(jobHopping.average_tenure_months || 0)} months<br/>
                                 <strong>Career Level:</strong> ${jobHopping.career_level || 'unknown'}
                             </div>
                             <div class="col-md-6">
-                                <strong>Pattern:</strong> ${jobHopping.pattern || 'Stable career progression'}<br>
+                                <strong>Pattern:</strong> ${jobHopping.pattern || 'Stable career progression'}<br />
                                 ${jobHopping.recent_short_stints && jobHopping.recent_short_stints.length > 0 ? `
                                     <strong>Recent Short Stints:</strong><br>
                                     ${jobHopping.recent_short_stints.map(stint => 

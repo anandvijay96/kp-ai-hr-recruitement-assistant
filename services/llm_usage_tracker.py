@@ -212,6 +212,9 @@ class LLMUsageTracker:
         with self.lock:
             self._check_daily_reset()
             
+            # Debug logging
+            logger.info(f"📊 Usage Summary - Gemini requests: {self.stats.gemini_requests}, Total: {self.stats.total_requests}")
+            
             # Calculate usage percentages
             gemini_daily_percent = (self.stats.gemini_requests / self.GEMINI_FREE_RPD) * 100
             
