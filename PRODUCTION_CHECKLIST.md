@@ -10,7 +10,7 @@
 
 ```
 GEMINI_API_KEY=AIzaSyC6XiQOL1AFhJqQDKH6uavllewDMDk4hsQ
-GEMINI_MODEL=gemini-1.5-flash-002
+GEMINI_MODEL=gemini-2.5-flash-lite
 DEFAULT_LLM_PROVIDER=gemini
 DEBUG=False
 ```
@@ -225,7 +225,7 @@ REDIS_CACHE_TTL=3600
 **Minimum Required:**
 ```
 GEMINI_API_KEY=AIzaSyC6XiQOL1AFhJqQDKH6uavllewDMDk4hsQ
-GEMINI_MODEL=gemini-1.5-flash-002
+GEMINI_MODEL=gemini-2.5-flash-lite
 DEFAULT_LLM_PROVIDER=gemini
 DATABASE_URL=postgresql+asyncpg://...
 REDIS_URL=redis://...
