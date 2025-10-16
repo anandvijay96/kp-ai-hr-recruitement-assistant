@@ -165,16 +165,32 @@ class FilterService:
                     .subquery()
                 )
                 
-                stmt = stmt.outerjoin(exp_subquery, Candidate.id == exp_subquery.c.candidate_id)
+                # FIXED: Properly join with explicit ON condition to avoid cartesian product
+                if needs_skill_join or needs_education_join:
+                    # Already have joins, use outerjoin
+                    stmt = stmt.outerjoin(exp_subquery, Candidate.id == exp_subquery.c.candidate_id)
+                else:
+                    # First join, use regular join
+                    stmt = stmt.join(exp_subquery, Candidate.id == exp_subquery.c.candidate_id, isouter=True)
                 
                 if filters.min_experience is not None:
                     min_months = filters.min_experience * 12
-                    filter_conditions.append(exp_subquery.c.total_months >= min_months)
+                    filter_conditions.append(
+                        or_(
+                            exp_subquery.c.total_months >= min_months,
+                            exp_subquery.c.total_months.is_(None)  # Include candidates with no experience data
+                        )
+                    )
                     logger.info(f"Filtering by min experience: {filters.min_experience} years ({min_months} months)")
                 
                 if filters.max_experience is not None:
                     max_months = filters.max_experience * 12
-                    filter_conditions.append(exp_subquery.c.total_months <= max_months)
+                    filter_conditions.append(
+                        or_(
+                            exp_subquery.c.total_months <= max_months,
+                            exp_subquery.c.total_months.is_(None)  # Include candidates with no experience data
+                        )
+                    )
                     logger.info(f"Filtering by max experience: {filters.max_experience} years ({max_months} months)")
             
             # Apply all filter conditions

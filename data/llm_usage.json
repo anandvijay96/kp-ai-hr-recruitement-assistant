@@ -1,12 +1,12 @@
 {
-  "total_requests": 14,
-  "successful_requests": 14,
+  "total_requests": 21,
+  "successful_requests": 21,
   "failed_requests": 0,
-  "total_tokens_used": 59177,
+  "total_tokens_used": 88263,
   "total_cost_usd": 0.0,
   "last_reset": "2025-10-16T13:54:13.049723",
-  "gemini_requests": 14,
-  "gemini_tokens": 59177,
+  "gemini_requests": 21,
+  "gemini_tokens": 88263,
   "openai_requests": 0,
   "openai_tokens": 0,
   "openai_cost": 0.0

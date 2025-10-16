@@ -201,10 +201,13 @@ Extract structured information from this resume and return ONLY valid JSON (no m
 IMPORTANT RULES:
 1. Extract ACTUAL names, not skills or technical terms (e.g., "Good SQL" is NOT a name)
 2. For work experience, extract company names carefully - ignore OCR artifacts
-3. Calculate duration_months accurately from start_date and end_date
+3. Calculate duration_months accurately from start_date and end_date (count months between dates)
 4. If a field is not found, use null (not empty string)
-5. For dates, use MM/YYYY format
-6. Return ONLY the JSON object, nothing else
+5. For dates, use MM/YYYY format (e.g., "04/2021" for April 2021)
+6. For "Present" or "Current" end dates, use "Present" and set is_current to true
+7. CRITICAL: Extract ALL work experience entries, including gaps and family responsibilities
+8. For gaps (e.g., "Family Responsibilities"), create an entry with company as the gap reason
+9. Return ONLY the JSON object, nothing else
 
 JSON Schema:
 {{
@@ -227,6 +230,17 @@ JSON Schema:
       "is_current": false,
       "responsibilities": ["responsibility 1", "responsibility 2"],
       "description": "Brief description"
+    }},
+    {{
+      "company": "Previous Company",
+      "title": "Previous Role",
+      "location": "City, State or null",
+      "start_date": "01/2020",
+      "end_date": "03/2021",
+      "duration_months": 15,
+      "is_current": false,
+      "responsibilities": ["task 1", "task 2"],
+      "description": "Description"
     }}
   ],
   "education": [

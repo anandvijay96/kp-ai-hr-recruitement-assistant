@@ -186,8 +186,12 @@ async def scan_resume(
             extracted_data=extracted_data
         )
         
-        # Debug: Log comprehensive analysis
-        logger.info(f"📊 Comprehensive Analysis: {comprehensive_analysis.get('job_hopping', {})}")
+        # Debug: Log work experience and job hopping analysis
+        work_exp = extracted_data.get('work_experience', []) if extracted_data else []
+        logger.info(f"📊 Work Experience Extracted: {len(work_exp)} entries")
+        if work_exp:
+            logger.info(f"📊 First entry: {work_exp[0]}")
+        logger.info(f"📊 Job Hopping Analysis: {comprehensive_analysis.get('job_hopping', {})}")
         
         # Build scan result (INCLUDE extracted_data for later use)
         scan_result = {
