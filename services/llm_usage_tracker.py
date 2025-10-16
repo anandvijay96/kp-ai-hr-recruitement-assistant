@@ -48,9 +48,10 @@ class LLMUsageTracker:
     
     # Gemini Free Tier Limits (Updated Oct 2025)
     # Source: https://ai.google.dev/gemini-api/docs/rate-limits
+    # Using Gemini 2.5 Flash-Lite (highest free tier quota!)
     GEMINI_FREE_RPM = 15  # Requests per minute
-    GEMINI_FREE_RPD = 50  # Requests per day (Gemini 2.0 Flash Experimental)
-    GEMINI_FREE_TPM = 1_000_000  # Tokens per minute (1M)
+    GEMINI_FREE_RPD = 1000  # Requests per day (Gemini 2.5 Flash-Lite)
+    GEMINI_FREE_TPM = 250_000  # Tokens per minute (250K)
     
     # Gemini Paid Tier 1 Limits (for reference)
     GEMINI_TIER1_RPM = 1000

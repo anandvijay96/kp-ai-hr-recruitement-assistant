@@ -87,14 +87,14 @@ async def get_available_providers() -> Dict[str, Any]:
         return {
             "gemini": {
                 "available": bool(gemini_key and gemini_key.strip()),
-                "name": "Gemini 2.0 Flash (Free)",
+                "name": "Gemini 2.5 Flash-Lite (Free)",
                 "icon": "google",
                 "limits": {
                     "rpm": 15,
-                    "rpd": 50,  # Updated: 50 requests/day for free tier
-                    "tpm": 1000000
+                    "rpd": 1000,  # Updated: 1000 requests/day - highest free tier!
+                    "tpm": 250000
                 },
-                "warning": "⚠️ Free tier: 50 requests/day limit"
+                "warning": "✅ Free tier: 1000 requests/day (best free model!)"
             },
             "openai": {
                 "available": bool(openai_key and openai_key.strip()),

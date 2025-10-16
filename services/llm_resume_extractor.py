@@ -46,9 +46,9 @@ class LLMResumeExtractor:
         # Configure provider
         if self.provider == "gemini" and GEMINI_AVAILABLE:
             genai.configure(api_key=user_token or api_key)
-            # Use Gemini 2.0 Flash (latest, fastest, free tier)
-            self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
-            logger.info(f"✅ Gemini 2.0 Flash initialized with {'user token' if user_token else 'system key'}")
+            # Use Gemini 2.5 Flash-Lite (1000 RPD free tier - highest quota!)
+            self.model = genai.GenerativeModel('gemini-2.5-flash-lite')
+            logger.info(f"✅ Gemini 2.5 Flash-Lite initialized with {'user token' if user_token else 'system key'}")
         elif self.provider == "openai" and OPENAI_AVAILABLE:
             openai.api_key = user_token or api_key
             self.model_name = "gpt-4o-mini"  # Fast and cheap
