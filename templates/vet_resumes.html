@@ -451,24 +451,52 @@
 
         // Start auto-refresh on page load
         document.addEventListener('DOMContentLoaded', () => {
-            startUsageStatsAutoRefresh();
-            checkAvailableProviders();
+            console.log('🚀 DOM Content Loaded - Initializing...');
+            
+            try {
+                startUsageStatsAutoRefresh();
+                console.log('✅ Usage stats auto-refresh started');
+            } catch (error) {
+                console.error('❌ Error starting usage stats:', error);
+            }
+            
+            try {
+                checkAvailableProviders();
+                console.log('✅ Checking available providers');
+            } catch (error) {
+                console.error('❌ Error checking providers:', error);
+            }
             
             // File upload handling (must be inside DOMContentLoaded)
-            const uploadZone = document.getElementById('uploadZone');
-            const fileInput = document.getElementById('fileInput');
+            try {
+                const uploadZone = document.getElementById('uploadZone');
+                const fileInput = document.getElementById('fileInput');
+                
+                if (!uploadZone || !fileInput) {
+                    console.error('❌ Upload zone or file input not found!');
+                    return;
+                }
+                
+                console.log('✅ Upload zone found, attaching events');
 
-            uploadZone.addEventListener('click', () => fileInput.click());
-            uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-            uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-            uploadZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadZone.classList.remove('dragover');
-                fileInput.files = e.dataTransfer.files;
-                displayFileList();
-            });
+                uploadZone.addEventListener('click', () => {
+                    console.log('📁 Upload zone clicked');
+                    fileInput.click();
+                });
+                uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+                uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+                uploadZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadZone.classList.remove('dragover');
+                    fileInput.files = e.dataTransfer.files;
+                    displayFileList();
+                });
 
-            fileInput.addEventListener('change', displayFileList);
+                fileInput.addEventListener('change', displayFileList);
+                console.log('✅ File upload events attached successfully');
+            } catch (error) {
+                console.error('❌ Error setting up file upload:', error);
+            }
         });
 
         function displayFileList() {
