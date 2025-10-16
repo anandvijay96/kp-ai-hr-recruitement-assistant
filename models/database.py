@@ -235,6 +235,12 @@ class Candidate(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"))
     
+    # Soft delete fields
+    is_deleted = Column(Boolean, default=False, nullable=False, index=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by = Column(String(255), nullable=True)
+    deletion_reason = Column(Text, nullable=True)
+    
     # Relationships
     resumes = relationship("Resume", back_populates="candidate", foreign_keys="Resume.candidate_id")
     skills = relationship("CandidateSkill")
