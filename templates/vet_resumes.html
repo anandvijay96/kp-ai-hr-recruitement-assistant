@@ -337,6 +337,27 @@
                 console.error('Error fetching usage stats:', error);
             }
         }
+        
+        async function checkAvailableProviders() {
+            try {
+                const response = await fetch('/api/v1/llm-usage/available-providers');
+                const providers = await response.json();
+                
+                // Disable OpenAI button if no API key
+                const openaiButton = document.getElementById('providerOpenAI');
+                const openaiLabel = document.querySelector('label[for="providerOpenAI"]');
+                
+                if (!providers.openai.available) {
+                    openaiButton.disabled = true;
+                    openaiLabel.classList.add('disabled');
+                    openaiLabel.style.opacity = '0.5';
+                    openaiLabel.style.cursor = 'not-allowed';
+                    openaiLabel.title = 'OpenAI API key not configured';
+                }
+            } catch (error) {
+                console.error('Error checking available providers:', error);
+            }
+        }
 
         function updateUsageDashboard(stats) {
             // Update Gemini usage
@@ -421,6 +442,7 @@
         // Start auto-refresh on page load
         document.addEventListener('DOMContentLoaded', () => {
             startUsageStatsAutoRefresh();
+            checkAvailableProviders();
         });
 
         // File upload handling
@@ -631,8 +653,8 @@
                 ` : '<div class="alert alert-success mb-3">✅ No authenticity issues detected</div>'}
                 
                 <!-- Manual Review Warning (if data extraction failed) -->
-                ${jobHopping && (jobHopping.total_jobs === 0 || jobHopping.career_level === 'unknown') && diagnostics.flags && diagnostics.flags.some(f => f.severity === 'HIGH' && f.issue.includes('template')) ? `
-                    <div class="alert alert-warning mb-3" style="border-left: 5px solid #ff9800;">
+                ${jobHopping && (jobHopping.total_jobs === 0 || jobHopping.career_level === 'unknown') ? `
+                    <div class="alert alert-danger mb-3" style="border-left: 5px solid #dc3545;">
                         <h6><i class="bi bi-exclamation-triangle-fill"></i> ⚠️ Manual Review Required</h6>
                         <p class="mb-2">
                             <strong>Data extraction failed due to unusual resume format or template usage.</strong>
@@ -642,15 +664,15 @@
                             education, or other critical information. Please review the original resume document.
                         </p>
                         <div class="d-flex gap-2">
-                            <button class="btn btn-primary btn-sm" onclick="viewResumeInNewTab('${scan.file_hash}', '${scan.filename}')">
+                            <button class="btn btn-light btn-sm" onclick="viewResumeInNewTab('${scan.file_hash}', '${scan.filename}')">
                                 <i class="bi bi-file-earmark-pdf"></i> View Resume in New Tab
                             </button>
-                            <button class="btn btn-outline-primary btn-sm" onclick="viewResumeInModal('${scan.file_hash}', '${scan.filename}')">
+                            <button class="btn btn-outline-light btn-sm" onclick="viewResumeInModal('${scan.file_hash}', '${scan.filename}')">
                                 <i class="bi bi-eye"></i> View Resume in Popup
                             </button>
                         </div>
                         <hr>
-                        <small class="text-muted">
+                        <small class="text-white">
                             <strong>Why this happened:</strong> The resume uses a complex template or unusual formatting that prevents 
                             automated data extraction. You should manually verify all information before approving.
                         </small>
@@ -659,7 +681,7 @@
                 
                 <!-- Job Hopping Analysis -->
                 ${jobHopping && Object.keys(jobHopping).length > 0 ? `
-                    <div class="alert alert-${jobHopping.risk_level === 'high' ? 'danger' : jobHopping.risk_level === 'medium' ? 'warning' : jobHopping.risk_level === 'low' ? 'warning' : 'success'} mb-3">
+                    <div class="alert alert-${jobHopping.risk_level === 'high' ? 'danger' : jobHopping.risk_level === 'medium' ? 'warning' : jobHopping.risk_level === 'low' ? 'warning' : (jobHopping.total_jobs === 0 || jobHopping.career_level === 'unknown') ? 'secondary' : 'success'} mb-3">`
                         <h6><i class="bi bi-briefcase"></i> Job Hopping Analysis</h6>
                         
                         ${jobHopping.current_company ? `

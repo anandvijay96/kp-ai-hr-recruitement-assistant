@@ -5,6 +5,7 @@ LLM Usage API - Monitor and manage LLM API usage
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 import logging
+import os
 from services.llm_usage_tracker import get_tracker
 
 logger = logging.getLogger(__name__)
@@ -68,4 +69,33 @@ async def check_quota(provider: str) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error checking quota: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/available-providers")
+async def get_available_providers() -> Dict[str, Any]:
+    """
+    Check which LLM providers are available based on API keys
+    
+    Returns:
+        Dictionary with provider availability
+    """
+    try:
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        openai_key = os.getenv("OPENAI_API_KEY")
+        
+        return {
+            "gemini": {
+                "available": bool(gemini_key and gemini_key.strip()),
+                "name": "Gemini (Free)",
+                "icon": "google"
+            },
+            "openai": {
+                "available": bool(openai_key and openai_key.strip()),
+                "name": "OpenAI (Paid)",
+                "icon": "stars"
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error checking available providers: {e}")
         raise HTTPException(status_code=500, detail=str(e))
