@@ -498,13 +498,36 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 
                 # Extract LinkedIn suggestions from vetting data (for HR to select)
                 linkedin_suggestions = []
-                if 'authenticity_analysis' in resume_data:
+                
+                # Try multiple paths for LinkedIn profiles (data structure changed over time)
+                if 'scan_result' in resume_data:
+                    # New structure: scan_result.authenticity_score.diagnostics.linkedin
+                    diagnostics = resume_data.get('scan_result', {}).get('authenticity_score', {}).get('diagnostics', {})
+                    linkedin_info = diagnostics.get('linkedin', {})
+                    
+                    # Try google_verified_profiles first
+                    profiles = linkedin_info.get('google_verified_profiles', [])
+                    if not profiles:
+                        # Try google_verification.profiles
+                        profiles = linkedin_info.get('google_verification', {}).get('profiles', [])
+                    
+                    if profiles:
+                        # Add https:// prefix if missing
+                        linkedin_suggestions = [
+                            f"https://{p}" if not p.startswith('http') else p 
+                            for p in profiles
+                        ]
+                
+                # Fallback: Try old structure
+                if not linkedin_suggestions and 'authenticity_analysis' in resume_data:
                     linkedin_check = resume_data['authenticity_analysis'].get('linkedin_profile_check', {})
                     google_verification = linkedin_check.get('google_verification', {})
                     linkedin_profiles = google_verification.get('linkedin_profiles', [])
                     if linkedin_profiles:
                         linkedin_suggestions = linkedin_profiles
-                        logger.info(f"Found {len(linkedin_suggestions)} LinkedIn profile suggestions for {candidate_name}")
+                
+                if linkedin_suggestions:
+                    logger.info(f"Found {len(linkedin_suggestions)} LinkedIn profile suggestions for {candidate_name}")
                 
                 # If still no name, try to extract from filename
                 if not candidate_name:
