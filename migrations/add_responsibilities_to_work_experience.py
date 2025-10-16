@@ -5,11 +5,13 @@ Date: 2025-10-16
 
 import sys
 import os
+import asyncio
 
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from sqlalchemy import create_engine, text, JSON, Text
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import text
 from core.config import settings
 import logging
 
@@ -17,63 +19,57 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def upgrade():
+async def upgrade():
     """Add responsibilities column to work_experience table"""
     
-    engine = create_engine(settings.database_url)
+    engine = create_async_engine(settings.database_url)
     
-    with engine.connect() as conn:
+    async with engine.begin() as conn:
         try:
-            # Check if column already exists
-            result = conn.execute(text("""
-                SELECT COUNT(*) 
-                FROM information_schema.columns 
-                WHERE table_name = 'work_experience' 
-                AND column_name = 'responsibilities'
-            """))
+            # For SQLite, check if column exists using pragma
+            result = await conn.execute(text("PRAGMA table_info(work_experience)"))
+            columns = await result.fetchall()
+            column_names = [col[1] for col in columns]
             
-            exists = result.scalar() > 0
-            
-            if exists:
+            if 'responsibilities' in column_names:
                 logger.info("✅ Column 'responsibilities' already exists in work_experience table")
                 return
             
-            # Add responsibilities column as JSON
+            # Add responsibilities column as JSON (SQLite stores as TEXT)
             logger.info("Adding 'responsibilities' column to work_experience table...")
-            conn.execute(text("""
+            await conn.execute(text("""
                 ALTER TABLE work_experience 
-                ADD COLUMN responsibilities JSON NULL
+                ADD COLUMN responsibilities TEXT
             """))
-            conn.commit()
             
             logger.info("✅ Successfully added 'responsibilities' column to work_experience table")
             
         except Exception as e:
             logger.error(f"❌ Migration failed: {e}")
-            conn.rollback()
             raise
+    
+    await engine.dispose()
 
 
-def downgrade():
+async def downgrade():
     """Remove responsibilities column from work_experience table"""
     
-    engine = create_engine(settings.database_url)
+    engine = create_async_engine(settings.database_url)
     
-    with engine.connect() as conn:
+    async with engine.begin() as conn:
         try:
             logger.info("Removing 'responsibilities' column from work_experience table...")
-            conn.execute(text("""
-                ALTER TABLE work_experience 
-                DROP COLUMN responsibilities
-            """))
-            conn.commit()
             
-            logger.info("✅ Successfully removed 'responsibilities' column from work_experience table")
+            # SQLite doesn't support DROP COLUMN directly, need to recreate table
+            # For simplicity, we'll just log a warning
+            logger.warning("⚠️ SQLite doesn't support DROP COLUMN. Manual intervention required.")
+            logger.warning("To downgrade, you need to recreate the table without the column.")
             
         except Exception as e:
             logger.error(f"❌ Downgrade failed: {e}")
-            conn.rollback()
             raise
+    
+    await engine.dispose()
 
 
 if __name__ == "__main__":
@@ -84,6 +80,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if args.downgrade:
-        downgrade()
+        asyncio.run(downgrade())
     else:
-        upgrade()
+        asyncio.run(upgrade())
