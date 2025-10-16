@@ -116,6 +116,8 @@ async def list_feedback():
                 if os.path.exists(feedback_path):
                     with open(feedback_path, "r") as f:
                         feedback = json.load(f)
+                        # Add folder name to feedback data for easy screenshot access
+                        feedback['folder_name'] = folder
                         feedbacks.append(feedback)
         
         # Sort by timestamp (newest first)

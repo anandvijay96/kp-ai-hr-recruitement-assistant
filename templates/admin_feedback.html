@@ -381,10 +381,10 @@
                     ${feedback.screenshots && feedback.screenshots.length > 0 ? `
                         <div class="d-flex flex-wrap gap-2 mt-3">
                             ${feedback.screenshots.map((screenshot, idx) => `
-                                <img src="/feedback_submissions/${getFolderName(feedback)}/${screenshot}" 
+                                <img src="/feedback_submissions/${feedback.folder_name}/${screenshot}" 
                                      class="screenshot-preview" 
                                      alt="Screenshot ${idx + 1}"
-                                     onclick="showScreenshot('/feedback_submissions/${getFolderName(feedback)}/${screenshot}')">
+                                     onclick="showScreenshot('/feedback_submissions/${feedback.folder_name}/${screenshot}')">
                             `).join('')}
                         </div>
                     ` : ''}
@@ -397,13 +397,6 @@
                     </div>
                 </div>
             `).join('');
-        }
-        
-        function getFolderName(feedback) {
-            // Extract folder name from timestamp and ID
-            const timestamp = new Date(feedback.timestamp);
-            const dateStr = timestamp.toISOString().replace(/[-:]/g, '').split('.')[0].replace('T', '_').substring(0, 15);
-            return `${dateStr}_${feedback.id}`;
         }
         
         function formatDate(timestamp) {
