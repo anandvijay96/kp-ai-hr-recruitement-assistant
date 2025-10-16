@@ -1883,6 +1883,11 @@
                                 <input type="text" class="form-control" value="${exp.title || ''}" 
                                        placeholder="Job title" data-field="title">
                             </div>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label">Location</label>
+                                <input type="text" class="form-control" value="${exp.location || ''}" 
+                                       placeholder="City, State" data-field="location">
+                            </div>
                             <div class="col-md-4 mb-2">
                                 <label class="form-label">Start Date</label>
                                 <input type="month" class="form-control" value="${exp.start_date || ''}" 
@@ -1906,6 +1911,11 @@
                             <div class="col-md-12 mb-2">
                                 <label class="form-label">Description</label>
                                 <textarea class="form-control" rows="2" data-field="description">${exp.description || ''}</textarea>
+                            </div>
+                            <div class="col-md-12 mb-2">
+                                <label class="form-label">Responsibilities (one per line)</label>
+                                <textarea class="form-control" rows="4" data-field="responsibilities" placeholder="• Responsibility 1\n• Responsibility 2\n• Responsibility 3">${exp.responsibilities ? exp.responsibilities.join('\n') : ''}</textarea>
+                                <small class="text-muted">Enter each responsibility on a new line. Bullet points will be added automatically.</small>
                             </div>
                             <div class="col-md-12">
                                 <button class="btn btn-danger btn-sm" onclick="removeExperience(${index})">
@@ -2100,13 +2110,42 @@
             $('.experience-edit-item').each(function() {
                 const company = $(this).find('[data-field="company"]').val();
                 const title = $(this).find('[data-field="title"]').val();
+                const location = $(this).find('[data-field="location"]').val();
                 const start_date = $(this).find('[data-field="start_date"]').val();
                 const end_date = $(this).find('[data-field="end_date"]').val();
                 const is_current = $(this).find('[data-field="is_current"]').is(':checked');
                 const description = $(this).find('[data-field="description"]').val();
+                const responsibilitiesText = $(this).find('[data-field="responsibilities"]').val();
+                
+                // Parse responsibilities from textarea (one per line)
+                const responsibilities = responsibilitiesText 
+                    ? responsibilitiesText.split('\n')
+                        .map(r => r.trim().replace(/^[•\-\*]\s*/, ''))  // Remove bullet points
+                        .filter(r => r.length > 0)  // Remove empty lines
+                    : [];
+                
+                // Calculate duration_months if dates provided
+                let duration_months = null;
+                if (start_date) {
+                    const start = new Date(start_date + '-01');
+                    const end = is_current ? new Date() : (end_date ? new Date(end_date + '-01') : null);
+                    if (end) {
+                        duration_months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+                    }
+                }
                 
                 if (company || title) {
-                    experience.push({ company, title, start_date, end_date, is_current, description });
+                    experience.push({ 
+                        company, 
+                        title, 
+                        location,
+                        start_date, 
+                        end_date, 
+                        is_current, 
+                        duration_months,
+                        description,
+                        responsibilities
+                    });
                 }
             });
             

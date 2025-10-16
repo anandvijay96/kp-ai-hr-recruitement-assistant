@@ -164,7 +164,9 @@ async def update_candidate(candidate_id: str, updates: dict, db: Session = Depen
                     start_date=start_date,
                     end_date=end_date if not exp_data.get('is_current') else None,
                     is_current=exp_data.get('is_current', False),
-                    description=exp_data.get('description')
+                    duration_months=exp_data.get('duration_months'),
+                    description=exp_data.get('description'),
+                    responsibilities=exp_data.get('responsibilities', [])
                 )
                 db.add(work_exp)
         
