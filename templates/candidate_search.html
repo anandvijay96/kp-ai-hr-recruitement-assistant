@@ -490,6 +490,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="/static/js/custom-modals.js"></script>
     
     <script>
         // Global state
@@ -888,13 +889,30 @@
         
         // Delete candidate (soft delete)
         async function deleteCandidate(candidateId, candidateName) {
-            // Confirm deletion
-            const confirmed = confirm(`⚠️ Delete Candidate?\n\nAre you sure you want to delete "${candidateName}"?\n\nThis will remove them from the candidates list (can be restored by admin if needed).`);
+            // Confirm deletion with custom modal
+            const confirmed = await customModal.confirm(
+                `Are you sure you want to delete "${candidateName}"?\n\nThis will remove them from the candidates list (can be restored by admin if needed).`,
+                'Delete Candidate?',
+                {
+                    confirmText: 'Delete',
+                    cancelText: 'Cancel',
+                    confirmClass: 'btn-danger',
+                    type: 'warning'
+                }
+            );
             
             if (!confirmed) return;
             
-            // Optional: Ask for reason
-            const reason = prompt('Optional: Enter reason for deletion:');
+            // Optional: Ask for reason with custom prompt
+            const reason = await customModal.prompt(
+                'Optional: Enter reason for deletion:',
+                'Deletion Reason',
+                '',
+                {
+                    placeholder: 'e.g., Want to re-upload with new extraction process',
+                    required: false
+                }
+            );
             
             try {
                 const url = `/api/v1/candidates/${candidateId}/soft-delete?deleted_by=admin` + 
@@ -910,17 +928,17 @@
                 const data = await response.json();
                 
                 if (response.ok && data.success) {
-                    // Show success message
-                    alert(`✅ ${data.message}`);
+                    // Show success toast
+                    customModal.success(data.message);
                     
                     // Reload search results
                     performSearch();
                 } else {
-                    alert('❌ Error: ' + (data.detail || 'Failed to delete candidate'));
+                    customModal.error(data.detail || 'Failed to delete candidate');
                 }
             } catch (error) {
                 console.error('Delete error:', error);
-                alert('❌ Failed to delete candidate. Please try again.');
+                customModal.error('Failed to delete candidate. Please try again.');
             }
         }
         

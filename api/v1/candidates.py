@@ -607,7 +607,7 @@ async def get_candidate_job_matches(
 
 @router.delete("/{candidate_id}/soft-delete")
 async def soft_delete_candidate(
-    candidate_id: int,
+    candidate_id: str,  # UUID string
     reason: Optional[str] = None,
     deleted_by: str = "admin",  # TODO: Get from auth session
     db: Session = Depends(get_db)
@@ -616,7 +616,7 @@ async def soft_delete_candidate(
     Soft delete a candidate (admin only)
     
     Args:
-        candidate_id: ID of candidate to delete
+        candidate_id: UUID of candidate to delete
         reason: Optional reason for deletion
         deleted_by: Username of admin performing deletion
     
@@ -661,14 +661,14 @@ async def soft_delete_candidate(
 
 @router.post("/{candidate_id}/restore")
 async def restore_candidate(
-    candidate_id: int,
+    candidate_id: str,  # UUID string
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
     Restore a soft-deleted candidate (admin only)
     
     Args:
-        candidate_id: ID of candidate to restore
+        candidate_id: UUID of candidate to restore
     
     Returns:
         Success message
