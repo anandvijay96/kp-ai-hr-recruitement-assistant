@@ -890,7 +890,7 @@ def _generate_comprehensive_analysis(authenticity_result: Dict[str, Any], extrac
 
 
 def _analyze_job_hopping(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """Analyze job hopping patterns"""
+    """Analyze job hopping patterns with detailed breakdown"""
     try:
         if not extracted_data or 'work_experience' not in extracted_data:
             return {'risk_level': 'none', 'score_impact': 0, 'short_tenures': 0}
@@ -899,30 +899,69 @@ def _analyze_job_hopping(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, 
         if not work_experience:
             return {'risk_level': 'none', 'score_impact': 0, 'short_tenures': 0}
         
-        # Count short tenures (<12 months)
-        short_tenures = sum(1 for exp in work_experience if exp.get('duration_months', 0) < 12)
+        # Analyze each job
+        short_stints = []
         total_jobs = len(work_experience)
+        total_months = 0
         
-        # Calculate risk
-        if short_tenures == 0:
+        for exp in work_experience:
+            duration = exp.get('duration_months', 0)
+            total_months += duration
+            
+            if duration < 12:  # Short tenure
+                short_stints.append({
+                    'title': exp.get('title', 'Unknown Position'),
+                    'company': exp.get('company', 'Unknown Company'),
+                    'duration_months': duration,
+                    'duration_display': f"{duration} month{'s' if duration != 1 else ''}"
+                })
+        
+        short_tenure_count = len(short_stints)
+        avg_tenure_months = total_months / total_jobs if total_jobs > 0 else 0
+        
+        # Determine career level based on total experience
+        total_years = total_months / 12
+        if total_years < 2:
+            career_level = 'junior'
+        elif total_years < 5:
+            career_level = 'mid-level'
+        else:
+            career_level = 'senior'
+        
+        # Calculate risk based on career level
+        if short_tenure_count == 0:
             risk_level = 'none'
             score_impact = 0
-        elif short_tenures == 1:
+        elif short_tenure_count == 1:
             risk_level = 'low'
             score_impact = -3
-        elif short_tenures == 2:
+        elif short_tenure_count == 2:
             risk_level = 'medium'
             score_impact = -7
         else:  # 3+ short tenures
             risk_level = 'high'
             score_impact = -12
         
+        # Generate recommendation
+        if risk_level == 'high':
+            recommendation = f"High concern. Pattern of frequent job changes detected. Strongly recommend discussing career stability and long-term commitment."
+        elif risk_level == 'medium':
+            recommendation = f"Moderate concern. {short_tenure_count} short stints detected. Discuss reasons for job changes during interview."
+        elif risk_level == 'low':
+            recommendation = f"Low concern. One short stint may be acceptable. Verify reason during interview."
+        else:
+            recommendation = "No job hopping concerns detected. Candidate shows stable career progression."
+        
         return {
             'risk_level': risk_level,
             'score_impact': score_impact,
-            'short_tenures': short_tenures,
+            'short_tenures': short_tenure_count,
             'total_jobs': total_jobs,
-            'pattern': f"{short_tenures}/{total_jobs} jobs < 12 months"
+            'pattern': f"frequent job changes" if short_tenure_count > 2 else f"{short_tenure_count} of {total_jobs} jobs < 12 months",
+            'recent_short_stints': short_stints[:3],  # Show up to 3 most recent
+            'average_tenure_months': round(avg_tenure_months, 1),
+            'career_level': career_level,
+            'recommendation': recommendation
         }
         
     except Exception as e:

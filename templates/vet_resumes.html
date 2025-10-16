@@ -447,22 +447,22 @@
                 
                 <!-- Job Hopping Analysis -->
                 ${jobHopping.risk_level && jobHopping.risk_level !== 'none' ? `
-                    <div class="alert alert-${jobHopping.risk_level === 'critical' || jobHopping.risk_level === 'high' ? 'danger' : 'warning'} mb-3">
+                    <div class="alert alert-${jobHopping.risk_level === 'high' ? 'danger' : 'warning'} mb-3">
                         <h6><i class="bi bi-briefcase"></i> Job Hopping Analysis</h6>
                         <div class="row">
                             <div class="col-md-6">
-                                <strong>Risk Level:</strong> <span class="badge bg-${jobHopping.risk_level === 'critical' ? 'danger' : jobHopping.risk_level === 'high' ? 'danger' : 'warning'}">${jobHopping.risk_level.toUpperCase()}</span><br>
+                                <strong>Risk Level:</strong> <span class="badge bg-${jobHopping.risk_level === 'high' ? 'danger' : 'warning'}">${jobHopping.risk_level.toUpperCase()}</span><br>
                                 <strong>Score Impact:</strong> ${jobHopping.score_impact} points<br>
-                                <strong>Short Stints:</strong> ${jobHopping.short_stints_count} of ${jobHopping.total_jobs} jobs<br>
+                                <strong>Short Stints:</strong> ${jobHopping.short_tenures} of ${jobHopping.total_jobs} jobs<br>
                                 <strong>Average Tenure:</strong> ${Math.round(jobHopping.average_tenure_months || 0)} months<br>
                                 <strong>Career Level:</strong> ${jobHopping.career_level || 'unknown'}
                             </div>
                             <div class="col-md-6">
-                                <strong>Pattern:</strong> ${(jobHopping.pattern || '').replace(/_/g, ' ')}<br>
-                                ${jobHopping.short_stints && jobHopping.short_stints.length > 0 ? `
+                                <strong>Pattern:</strong> ${jobHopping.pattern}<br>
+                                ${jobHopping.recent_short_stints && jobHopping.recent_short_stints.length > 0 ? `
                                     <strong>Recent Short Stints:</strong><br>
-                                    ${jobHopping.short_stints.slice(0, 3).map(stint => 
-                                        `<small>• ${stint.company}: ${stint.duration_months} months</small><br>`
+                                    ${jobHopping.recent_short_stints.map(stint => 
+                                        `<small>• ${stint.title}: ${stint.company}, ${stint.duration_display}</small><br>`
                                     ).join('')}
                                 ` : ''}
                             </div>
