@@ -87,13 +87,25 @@ async def get_available_providers() -> Dict[str, Any]:
         return {
             "gemini": {
                 "available": bool(gemini_key and gemini_key.strip()),
-                "name": "Gemini (Free)",
-                "icon": "google"
+                "name": "Gemini 2.0 Flash (Free)",
+                "icon": "google",
+                "limits": {
+                    "rpm": 15,
+                    "rpd": 50,  # Updated: 50 requests/day for free tier
+                    "tpm": 1000000
+                },
+                "warning": "⚠️ Free tier: 50 requests/day limit"
             },
             "openai": {
                 "available": bool(openai_key and openai_key.strip()),
-                "name": "OpenAI (Paid)",
-                "icon": "stars"
+                "name": "OpenAI GPT-4o-mini (Paid)",
+                "icon": "stars",
+                "limits": {
+                    "rpm": 500,
+                    "rpd": 10000,
+                    "tpm": 200000
+                },
+                "warning": None
             }
         }
     except Exception as e:

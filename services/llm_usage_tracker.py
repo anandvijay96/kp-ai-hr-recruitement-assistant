@@ -46,10 +46,15 @@ class LLMUsageTracker:
     - Multi-provider support (Gemini, OpenAI)
     """
     
-    # Gemini Free Tier Limits (as of 2024)
+    # Gemini Free Tier Limits (Updated Oct 2025)
+    # Source: https://ai.google.dev/gemini-api/docs/rate-limits
     GEMINI_FREE_RPM = 15  # Requests per minute
-    GEMINI_FREE_RPD = 1500  # Requests per day
+    GEMINI_FREE_RPD = 50  # Requests per day (Gemini 2.0 Flash Experimental)
     GEMINI_FREE_TPM = 1_000_000  # Tokens per minute (1M)
+    
+    # Gemini Paid Tier 1 Limits (for reference)
+    GEMINI_TIER1_RPM = 1000
+    GEMINI_TIER1_RPD = 10000  # Much higher for paid tier
     
     # OpenAI Pricing (GPT-4o-mini)
     OPENAI_INPUT_COST_PER_1M = 0.15  # $0.15 per 1M input tokens
