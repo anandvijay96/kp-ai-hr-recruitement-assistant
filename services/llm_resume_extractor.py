@@ -202,12 +202,15 @@ IMPORTANT RULES:
 1. Extract ACTUAL names, not skills or technical terms (e.g., "Good SQL" is NOT a name)
 2. For work experience, extract company names carefully - ignore OCR artifacts
 3. Calculate duration_months accurately from start_date and end_date (count months between dates)
-4. If a field is not found, use null (not empty string)
+4. If a field is not found, use null (not empty string, not placeholder text like "Company Description")
 5. For dates, use MM/YYYY format (e.g., "04/2021" for April 2021)
 6. For "Present" or "Current" end dates, use "Present" and set is_current to true
 7. CRITICAL: Extract ALL work experience entries, including gaps and family responsibilities
 8. For gaps (e.g., "Family Responsibilities"), create an entry with company as the gap reason
-9. Return ONLY the JSON object, nothing else
+9. For responsibilities: Extract ACTUAL bullet points from resume, NOT placeholder text
+10. For description: Extract ACTUAL overview text from resume, NOT placeholder like "Company Description"
+11. INDIAN EDUCATION: Include Intermediate (+2/12th grade) and Secondary School (10th grade) as education entries
+12. Return ONLY the JSON object, nothing else
 
 JSON Schema:
 {{
@@ -228,8 +231,8 @@ JSON Schema:
       "end_date": "MM/YYYY or Present",
       "duration_months": 12,
       "is_current": false,
-      "responsibilities": ["responsibility 1", "responsibility 2"],
-      "description": "Brief description"
+      "responsibilities": ["ACTUAL bullet point 1 from resume", "ACTUAL bullet point 2 from resume", "ACTUAL bullet point 3 from resume"],
+      "description": "ACTUAL overview text from resume or null (NOT placeholder text)"
     }},
     {{
       "company": "Previous Company",
@@ -239,19 +242,43 @@ JSON Schema:
       "end_date": "03/2021",
       "duration_months": 15,
       "is_current": false,
-      "responsibilities": ["task 1", "task 2"],
-      "description": "Description"
+      "responsibilities": ["ACTUAL task 1 from resume", "ACTUAL task 2 from resume"],
+      "description": "ACTUAL description from resume or null"
     }}
   ],
   "education": [
     {{
       "institution": "University/College Name",
-      "degree": "Degree Name",
-      "field_of_study": "Major/Field",
-      "start_date": "YYYY or null",
-      "end_date": "YYYY or null",
-      "grade": "GPA/Grade or null",
-      "location": "City, State or null"
+      "degree": "Bachelor of Technology (or Master's, PhD, etc.)",
+      "field_of_study": "Computer Science (or other major)",
+      "start_date": "2018",
+      "end_date": "2022",
+      "grade": "8.5 CGPA or 85% or null",
+      "location": "City, State or null",
+      "description": "ACTUAL description from resume or null",
+      "activities": ["ACTUAL activity 1 from resume", "ACTUAL activity 2 from resume"]
+    }},
+    {{
+      "institution": "School/College Name",
+      "degree": "Intermediate (+2/12th Grade/Higher Secondary)",
+      "field_of_study": "Science/Commerce/Arts or null",
+      "start_date": "2016",
+      "end_date": "2018",
+      "grade": "95% or null",
+      "location": "City, State or null",
+      "description": null,
+      "activities": []
+    }},
+    {{
+      "institution": "School Name",
+      "degree": "Secondary School (10th Grade/SSC/CBSE)",
+      "field_of_study": null,
+      "start_date": null,
+      "end_date": "2016",
+      "grade": "9.5 GPA or 90% or null",
+      "location": "City, State or null",
+      "description": null,
+      "activities": []
     }}
   ],
   "skills": [
