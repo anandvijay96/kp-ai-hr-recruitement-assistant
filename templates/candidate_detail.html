@@ -1258,6 +1258,16 @@
                     `;
                 });
                 
+                // Add "None of these" option
+                suggestionsHtml += `
+                    <div class="form-check mb-2 mt-3" style="border-top: 1px solid #dee2e6; padding-top: 12px;">
+                        <input class="form-check-input" type="radio" name="linkedinSuggestion" id="linkedin_none" value="NONE">
+                        <label class="form-check-label text-muted" for="linkedin_none">
+                            <i class="bi bi-x-circle"></i> None of these are correct (I'll add manually later)
+                        </label>
+                    </div>
+                `;
+                
                 $('#linkedinSuggestionsList').html(suggestionsHtml);
                 $('#linkedinSuggestionsSection').show();
             } else {
@@ -2708,12 +2718,22 @@
             const selectedLinkedIn = document.querySelector('input[name="linkedinSuggestion"]:checked');
             
             if (!selectedLinkedIn) {
-                customModal.error('Please select a LinkedIn profile');
+                customModal.error('Please select an option');
                 return;
             }
             
             const linkedinUrl = selectedLinkedIn.value;
             const candidateId = '{{ candidate_id }}';
+            
+            // Handle "None of these" selection
+            if (linkedinUrl === 'NONE') {
+                // Hide the suggestions section and show message
+                $('#linkedinSuggestionsSection').fadeOut(300, function() {
+                    $('#candidateLinkedIn').html('<span class="text-muted">No match found - Add manually via Edit</span>');
+                });
+                customModal.success('Noted! You can add the correct LinkedIn URL using the Edit feature.');
+                return;
+            }
             
             try {
                 const response = await fetch(`/api/v1/candidates/${candidateId}/linkedin`, {
