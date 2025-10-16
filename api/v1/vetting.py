@@ -496,6 +496,16 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 candidate_email = extracted_data.get('email')
                 candidate_phone = extracted_data.get('phone') or extracted_data.get('phone_number')
                 
+                # Extract LinkedIn suggestions from vetting data (for HR to select)
+                linkedin_suggestions = []
+                if 'authenticity_analysis' in resume_data:
+                    linkedin_check = resume_data['authenticity_analysis'].get('linkedin_profile_check', {})
+                    google_verification = linkedin_check.get('google_verification', {})
+                    linkedin_profiles = google_verification.get('linkedin_profiles', [])
+                    if linkedin_profiles:
+                        linkedin_suggestions = linkedin_profiles
+                        logger.info(f"Found {len(linkedin_suggestions)} LinkedIn profile suggestions for {candidate_name}")
+                
                 # If still no name, try to extract from filename
                 if not candidate_name:
                     # Try to get name from filename (remove extension and underscores)
@@ -581,6 +591,7 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                                 soft_deleted_candidate.full_name = candidate_name
                                 soft_deleted_candidate.phone = candidate_phone
                                 soft_deleted_candidate.linkedin_url = extracted_data.get('linkedin_url')
+                                soft_deleted_candidate.linkedin_suggestions = linkedin_suggestions if linkedin_suggestions else None
                                 soft_deleted_candidate.location = extracted_data.get('location')
                                 soft_deleted_candidate.status = "new"
                                 soft_deleted_candidate.source = "vetting"
@@ -627,6 +638,7 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                         "email": candidate_email,
                         "phone": candidate_phone,
                         "linkedin_url": extracted_data.get('linkedin_url'),
+                        "linkedin_suggestions": linkedin_suggestions if linkedin_suggestions else None,
                         "location": extracted_data.get('location'),
                         "source": "vetting",
                         "status": "new",

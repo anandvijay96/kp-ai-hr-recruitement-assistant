@@ -472,7 +472,6 @@
                         <h5 class="section-title">
                             <i class="bi bi-briefcase me-2"></i>
                             Work Experience
-                            <span class="badge bg-warning text-dark ms-2" style="font-size: 0.65rem; vertical-align: middle;" title="Auto-extraction in development">BETA</span>
                         </h5>
                         <div id="candidateExperience">
                             <!-- Populated dynamically -->
@@ -484,7 +483,6 @@
                         <h5 class="section-title">
                             <i class="bi bi-mortarboard me-2"></i>
                             Education
-                            <span class="badge bg-warning text-dark ms-2" style="font-size: 0.65rem; vertical-align: middle;" title="Auto-extraction in development">BETA</span>
                         </h5>
                         <div id="candidateEducation">
                             <!-- Populated dynamically -->
@@ -1194,7 +1192,7 @@
             // Personal Information
             $('#candidateName').text(candidate.full_name || '-');
             $('#candidateEmail').text(candidate.email || '-');
-            $('#candidatePhone').text(candidate.phone_number || '-');
+            $('#candidatePhone').text(candidate.phone || '-');
             
             // TEMP FIX: Hide location if it looks wrong (single word, job-related terms)
             const location = candidate.location || '';
@@ -1216,6 +1214,22 @@
             // LinkedIn
             if (candidate.linkedin_url) {
                 $('#linkedinLink').attr('href', candidate.linkedin_url).text('View Profile');
+                $('#candidateLinkedIn').html(`<a href="${candidate.linkedin_url}" target="_blank" id="linkedinLink">View Profile</a>`);
+            } else if (candidate.linkedin_suggestions && candidate.linkedin_suggestions.length > 0) {
+                // Show LinkedIn suggestions for HR to select
+                let suggestionsHtml = '<div class="linkedin-suggestions"><small class="text-muted d-block mb-2">Select LinkedIn profile:</small>';
+                candidate.linkedin_suggestions.forEach((profile, index) => {
+                    suggestionsHtml += `
+                        <div class="form-check mb-1">
+                            <input class="form-check-input" type="radio" name="linkedinSuggestion" id="linkedin_${index}" value="${profile}">
+                            <label class="form-check-label" for="linkedin_${index}" style="font-size: 0.9rem;">
+                                <a href="${profile}" target="_blank">${profile}</a>
+                            </label>
+                        </div>
+                    `;
+                });
+                suggestionsHtml += `<button class="btn btn-sm btn-primary mt-2" onclick="saveLinkedInSelection()">Save Selection</button></div>`;
+                $('#candidateLinkedIn').html(suggestionsHtml);
             } else {
                 $('#candidateLinkedIn').text('-');
             }
@@ -2654,6 +2668,44 @@
             } catch (error) {
                 console.error('Delete error:', error);
                 customModal.error('Failed to delete candidate. Please try again.');
+            }
+        }
+        
+        // Save LinkedIn selection
+        async function saveLinkedInSelection() {
+            const selectedLinkedIn = document.querySelector('input[name="linkedinSuggestion"]:checked');
+            
+            if (!selectedLinkedIn) {
+                customModal.error('Please select a LinkedIn profile');
+                return;
+            }
+            
+            const linkedinUrl = selectedLinkedIn.value;
+            const candidateId = '{{ candidate_id }}';
+            
+            try {
+                const response = await fetch(`/api/v1/candidates/${candidateId}/linkedin`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ linkedin_url: linkedinUrl })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    customModal.success('LinkedIn profile updated successfully!');
+                    // Reload candidate data to show the updated LinkedIn
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    customModal.error(data.detail || 'Failed to update LinkedIn profile');
+                }
+            } catch (error) {
+                console.error('LinkedIn update error:', error);
+                customModal.error('Failed to update LinkedIn profile. Please try again.');
             }
         }
     </script>

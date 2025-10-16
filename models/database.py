@@ -225,6 +225,7 @@ class Candidate(Base):
     email = Column(String(255), unique=True, index=True)
     phone = Column(String(50), index=True)
     linkedin_url = Column(String(500))
+    linkedin_suggestions = Column(JSON)  # Array of LinkedIn profiles found during vetting for HR to select
     location = Column(String(255))
     professional_summary = Column(Text)  # Professional summary/objective
     

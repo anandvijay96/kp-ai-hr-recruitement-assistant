@@ -253,9 +253,50 @@ async def update_candidate(candidate_id: str, updates: dict, db: Session = Depen
     except HTTPException:
         raise
     except Exception as e:
-        await db.rollback()
         logger.error(f"Error updating candidate: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update candidate: {str(e)}")
+
+@router.patch("/{candidate_id}/linkedin")
+async def update_linkedin_url(
+    candidate_id: str,
+    linkedin_url: str = Body(..., embed=True),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Update candidate's LinkedIn URL (selected from suggestions by HR)
+    
+    Args:
+        candidate_id: UUID of candidate
+        linkedin_url: Selected LinkedIn URL
+    
+    Returns:
+        Success message
+    """
+    try:
+        # Find candidate
+        result = await db.execute(select(Candidate).filter(Candidate.id == candidate_id))
+        candidate = result.scalar_one_or_none()
+        
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        
+        # Update LinkedIn URL
+        candidate.linkedin_url = linkedin_url
+        await db.commit()
+        
+        logger.info(f"✅ Updated LinkedIn URL for candidate {candidate_id}: {linkedin_url}")
+        
+        return {
+            "success": True,
+            "message": "LinkedIn URL updated successfully",
+            "linkedin_url": linkedin_url
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating LinkedIn URL: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update LinkedIn URL: {str(e)}")
 
 @router.get("/{candidate_id}")
 async def get_candidate(candidate_id: str, db: Session = Depends(get_db)):
@@ -289,6 +330,7 @@ async def get_candidate(candidate_id: str, db: Session = Depends(get_db)):
         "email": candidate.email,
         "phone": candidate.phone,
         "linkedin_url": candidate.linkedin_url,
+        "linkedin_suggestions": candidate.linkedin_suggestions if hasattr(candidate, 'linkedin_suggestions') else [],
         "location": candidate.location,
         "professional_summary": candidate.professional_summary,
         "source": candidate.source,
