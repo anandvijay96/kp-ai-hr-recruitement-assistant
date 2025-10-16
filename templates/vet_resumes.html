@@ -1331,42 +1331,9 @@
         
         // View Resume Functions
         function viewResumeInNewTab(fileHash, filename) {
-            // Find the resume in scanned resumes
-            const scan = scannedResumes.find(s => s.file_hash === fileHash);
-            if (!scan) {
-                alert('Resume not found');
-                return;
-            }
-            
-            // Create a blob from the extracted text and open in new tab
-            // For now, we'll create a simple HTML view
-            const resumeWindow = window.open('', '_blank');
-            resumeWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>${filename}</title>
-                    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-                    <style>
-                        body { padding: 20px; font-family: Arial, sans-serif; }
-                        .resume-header { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-                        .resume-content { white-space: pre-wrap; line-height: 1.6; }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="resume-header">
-                            <h3>${filename}</h3>
-                            <p class="text-muted mb-0">File Hash: ${fileHash}</p>
-                        </div>
-                        <div class="resume-content">
-${scan.extracted_text || 'No text extracted'}
-                        </div>
-                    </div>
-                </body>
-                </html>
-            `);
-            resumeWindow.document.close();
+            // Open the actual PDF/DOC file in new tab
+            const url = `/api/v1/vetting/session/${sessionId}/resume/${fileHash}`;
+            window.open(url, '_blank');
         }
         
         function viewResumeInModal(fileHash, filename) {
@@ -1376,18 +1343,34 @@ ${scan.extracted_text || 'No text extracted'}
                 return;
             }
             
-            // Set modal content
+            // Set modal content with PDF viewer
             document.getElementById('resumeModalLabel').textContent = filename;
-            document.getElementById('resumeModalContent').innerHTML = `
-                <div class="alert alert-info mb-3">
-                    <strong>File:</strong> ${filename}<br>
-                    <strong>Size:</strong> ${formatFileSize(scan.file_size)}<br>
-                    <strong>Hash:</strong> <code>${fileHash}</code>
-                </div>
-                <div style="white-space: pre-wrap; line-height: 1.6; max-height: 500px; overflow-y: auto; border: 1px solid #dee2e6; padding: 15px; border-radius: 4px; background: #f8f9fa;">
+            const url = `/api/v1/vetting/session/${sessionId}/resume/${fileHash}`;
+            
+            // Check if it's a PDF
+            const isPDF = filename.toLowerCase().endsWith('.pdf');
+            
+            if (isPDF) {
+                document.getElementById('resumeModalContent').innerHTML = `
+                    <div class="alert alert-info mb-3">
+                        <strong>File:</strong> ${filename}<br>
+                        <strong>Size:</strong> ${formatFileSize(scan.file_size)}
+                    </div>
+                    <iframe src="${url}" style="width: 100%; height: 600px; border: 1px solid #dee2e6; border-radius: 4px;"></iframe>
+                `;
+            } else {
+                // For non-PDF files, show extracted text
+                document.getElementById('resumeModalContent').innerHTML = `
+                    <div class="alert alert-info mb-3">
+                        <strong>File:</strong> ${filename}<br>
+                        <strong>Size:</strong> ${formatFileSize(scan.file_size)}<br>
+                        <small class="text-muted">Note: Preview not available for this file type. Showing extracted text.</small>
+                    </div>
+                    <div style="white-space: pre-wrap; line-height: 1.6; max-height: 500px; overflow-y: auto; border: 1px solid #dee2e6; padding: 15px; border-radius: 4px; background: #f8f9fa;">
 ${scan.extracted_text || 'No text extracted'}
-                </div>
-            `;
+                    </div>
+                `;
+            }
             
             // Show modal
             const modal = new bootstrap.Modal(document.getElementById('resumeViewModal'));

@@ -4,6 +4,7 @@ Endpoints for scanning resumes without saving to database
 """
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 import logging
@@ -203,7 +204,8 @@ async def scan_resume(
             "matching_score": matching_result,
             "extracted_text_length": len(extracted_text),
             "extracted_text": extracted_text,  # Store for database upload
-            "extracted_data": extracted_data   # Store candidate info for database upload
+            "extracted_data": extracted_data,   # Store candidate info for database upload
+            "file_content": content.hex()  # Store file content as hex string for later retrieval
         }
         
         # Store in vetting session
@@ -1060,3 +1062,64 @@ def _analyze_education(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, An
     except Exception as e:
         logger.error(f"Education analysis error: {e}")
         return {'discrepancy_count': 0, 'requires_manual_review': False}
+
+
+@router.get("/session/{session_id}/resume/{file_hash}")
+async def get_resume_file(session_id: str, file_hash: str):
+    """
+    Get the original resume file for viewing
+    
+    Args:
+        session_id: Vetting session ID
+        file_hash: File hash of the resume
+    
+    Returns:
+        The original file content with appropriate content type
+    """
+    try:
+        # Get session data
+        session_data = vetting_session.get_session(session_id)
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        # Find the resume in scanned resumes
+        scanned_resumes = session_data.get('scanned_resumes', {})
+        resume_data = scanned_resumes.get(file_hash)
+        
+        if not resume_data:
+            raise HTTPException(status_code=404, detail="Resume not found")
+        
+        # Get file content from scan result
+        scan_result = resume_data.get('scan_result', {})
+        file_content_hex = scan_result.get('file_content')
+        
+        if not file_content_hex:
+            raise HTTPException(status_code=404, detail="File content not available")
+        
+        # Convert hex string back to bytes
+        file_content = bytes.fromhex(file_content_hex)
+        
+        # Determine content type based on filename
+        filename = scan_result.get('filename', '')
+        if filename.lower().endswith('.pdf'):
+            content_type = 'application/pdf'
+        elif filename.lower().endswith(('.doc', '.docx')):
+            content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        else:
+            content_type = 'application/octet-stream'
+        
+        # Return file with appropriate headers
+        return Response(
+            content=file_content,
+            media_type=content_type,
+            headers={
+                'Content-Disposition': f'inline; filename="{filename}"',
+                'Cache-Control': 'no-cache'
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving resume file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
