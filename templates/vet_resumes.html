@@ -295,6 +295,28 @@
         </div>
     </div>
 
+    <!-- Resume View Modal -->
+    <div class="modal fade" id="resumeViewModal" tabindex="-1" aria-labelledby="resumeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="resumeModalLabel">
+                        <i class="bi bi-file-earmark-text me-2"></i>Resume Preview
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="resumeModalContent">
+                        <!-- Content will be populated by JavaScript -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Feedback Widget -->
     {% include 'components/feedback_widget.html' %}
 
@@ -608,6 +630,33 @@
                     </div>
                 ` : '<div class="alert alert-success mb-3">✅ No authenticity issues detected</div>'}
                 
+                <!-- Manual Review Warning (if data extraction failed) -->
+                ${jobHopping && (jobHopping.total_jobs === 0 || jobHopping.career_level === 'unknown') && diagnostics.flags && diagnostics.flags.some(f => f.severity === 'HIGH' && f.issue.includes('template')) ? `
+                    <div class="alert alert-warning mb-3" style="border-left: 5px solid #ff9800;">
+                        <h6><i class="bi bi-exclamation-triangle-fill"></i> ⚠️ Manual Review Required</h6>
+                        <p class="mb-2">
+                            <strong>Data extraction failed due to unusual resume format or template usage.</strong>
+                        </p>
+                        <p class="mb-3">
+                            This resume requires manual verification as automated analysis could not extract work experience, 
+                            education, or other critical information. Please review the original resume document.
+                        </p>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary btn-sm" onclick="viewResumeInNewTab('${scan.file_hash}', '${scan.filename}')">
+                                <i class="bi bi-file-earmark-pdf"></i> View Resume in New Tab
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm" onclick="viewResumeInModal('${scan.file_hash}', '${scan.filename}')">
+                                <i class="bi bi-eye"></i> View Resume in Popup
+                            </button>
+                        </div>
+                        <hr>
+                        <small class="text-muted">
+                            <strong>Why this happened:</strong> The resume uses a complex template or unusual formatting that prevents 
+                            automated data extraction. You should manually verify all information before approving.
+                        </small>
+                    </div>
+                ` : ''}
+                
                 <!-- Job Hopping Analysis -->
                 ${jobHopping && Object.keys(jobHopping).length > 0 ? `
                     <div class="alert alert-${jobHopping.risk_level === 'high' ? 'danger' : jobHopping.risk_level === 'medium' ? 'warning' : jobHopping.risk_level === 'low' ? 'warning' : 'success'} mb-3">
@@ -645,6 +694,13 @@
                                 <strong>💡 Recommendation:</strong> ${jobHopping.recommendation}
                             </div>
                         ` : ''}
+                        
+                        <!-- View Resume Button (always show for job hopping section) -->
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="viewResumeInNewTab('${scan.file_hash}', '${scan.filename}')">
+                                <i class="bi bi-file-earmark-text"></i> View Original Resume
+                            </button>
+                        </div>
                     </div>
                 ` : ''}
                 
@@ -1212,6 +1268,71 @@
         function generateSessionId() { return 'vet_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); }
         function formatFileSize(bytes) { const sizes = ['Bytes', 'KB', 'MB']; if (bytes === 0) return '0 Bytes'; const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024))); return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i]; }
         function toggleSelectAll() { const checked = document.getElementById('selectAllCheck').checked; if (checked) selectAll(); else deselectAll(); }
+        
+        // View Resume Functions
+        function viewResumeInNewTab(fileHash, filename) {
+            // Find the resume in scanned resumes
+            const scan = scannedResumes.find(s => s.file_hash === fileHash);
+            if (!scan) {
+                alert('Resume not found');
+                return;
+            }
+            
+            // Create a blob from the extracted text and open in new tab
+            // For now, we'll create a simple HTML view
+            const resumeWindow = window.open('', '_blank');
+            resumeWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>${filename}</title>
+                    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                    <style>
+                        body { padding: 20px; font-family: Arial, sans-serif; }
+                        .resume-header { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+                        .resume-content { white-space: pre-wrap; line-height: 1.6; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="resume-header">
+                            <h3>${filename}</h3>
+                            <p class="text-muted mb-0">File Hash: ${fileHash}</p>
+                        </div>
+                        <div class="resume-content">
+${scan.extracted_text || 'No text extracted'}
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `);
+            resumeWindow.document.close();
+        }
+        
+        function viewResumeInModal(fileHash, filename) {
+            const scan = scannedResumes.find(s => s.file_hash === fileHash);
+            if (!scan) {
+                alert('Resume not found');
+                return;
+            }
+            
+            // Set modal content
+            document.getElementById('resumeModalLabel').textContent = filename;
+            document.getElementById('resumeModalContent').innerHTML = `
+                <div class="alert alert-info mb-3">
+                    <strong>File:</strong> ${filename}<br>
+                    <strong>Size:</strong> ${formatFileSize(scan.file_size)}<br>
+                    <strong>Hash:</strong> <code>${fileHash}</code>
+                </div>
+                <div style="white-space: pre-wrap; line-height: 1.6; max-height: 500px; overflow-y: auto; border: 1px solid #dee2e6; padding: 15px; border-radius: 4px; background: #f8f9fa;">
+${scan.extracted_text || 'No text extracted'}
+                </div>
+            `;
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('resumeViewModal'));
+            modal.show();
+        }
     </script>
 </body>
 </html>
