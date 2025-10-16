@@ -28,7 +28,7 @@ async def upgrade():
         try:
             # For SQLite, check if column exists using pragma
             result = await conn.execute(text("PRAGMA table_info(work_experience)"))
-            columns = await result.fetchall()
+            columns = result.fetchall()  # fetchall() is not async in SQLAlchemy
             column_names = [col[1] for col in columns]
             
             if 'responsibilities' in column_names:
