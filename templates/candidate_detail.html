@@ -1495,7 +1495,22 @@
         // Format date
         function formatDate(dateString) {
             if (!dateString) return '-';
+            
+            // Handle MM/YYYY format (work experience)
+            if (typeof dateString === 'string' && dateString.match(/^\d{2}\/\d{4}$/)) {
+                const [month, year] = dateString.split('/');
+                const date = new Date(year, parseInt(month) - 1);
+                return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+            }
+            
+            // Handle YYYY format (education)
+            if (typeof dateString === 'string' && dateString.match(/^\d{4}$/)) {
+                return dateString;
+            }
+            
+            // Handle standard date formats
             const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '-';
             return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
         }
         
