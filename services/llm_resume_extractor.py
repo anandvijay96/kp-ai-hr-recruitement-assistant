@@ -277,10 +277,15 @@ Return ONLY the JSON object:
                 logger.warning(f"⚠️ Rejecting skill-like name: {data['name']}")
                 data["name"] = None
         
-        # Calculate total experience
-        total_months = sum(exp.get("duration_months", 0) for exp in data.get("work_experience", []))
+        # Calculate total experience (handle None values safely)
+        total_months = 0
+        for exp in data.get("work_experience", []):
+            duration = exp.get("duration_months")
+            if duration is not None and isinstance(duration, (int, float)):
+                total_months += int(duration)
+        
         data["total_experience_months"] = total_months
-        data["total_experience_years"] = round(total_months / 12, 1)
+        data["total_experience_years"] = round(total_months / 12, 1) if total_months > 0 else 0
         
         return data
 
