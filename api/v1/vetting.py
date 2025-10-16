@@ -933,6 +933,23 @@ def _analyze_job_hopping(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, 
         total_companies = len(company_tenures)
         total_months = sum(c['total_duration'] for c in company_tenures.values())
         
+        # Identify current company (most recent with longest tenure or first in list)
+        current_company = None
+        if work_experience:
+            # Assume first entry is most recent (LLM usually returns in reverse chronological order)
+            most_recent = work_experience[0]
+            current_company_name = most_recent.get('company', 'Unknown Company')
+            current_company_key = current_company_name.strip().lower()
+            
+            if current_company_key in company_tenures:
+                company_info = company_tenures[current_company_key]
+                current_company = {
+                    'company': current_company_name,
+                    'total_duration': company_info['total_duration'],
+                    'roles': [r['title'] for r in company_info['roles']],
+                    'current_role': most_recent.get('title', 'Unknown Position')
+                }
+        
         for company_data in company_tenures.values():
             total_duration = company_data['total_duration']
             
@@ -989,6 +1006,7 @@ def _analyze_job_hopping(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, 
             'total_jobs': total_companies,  # Total unique companies, not roles
             'pattern': f"frequent job changes" if short_tenure_count > 2 else f"{short_tenure_count} of {total_companies} companies < 12 months",
             'recent_short_stints': short_stints[:3],  # Show up to 3 most recent
+            'current_company': current_company,  # Current employer details
             'average_tenure_months': round(avg_tenure_months, 1),
             'career_level': career_level,
             'recommendation': recommendation

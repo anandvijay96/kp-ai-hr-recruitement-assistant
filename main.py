@@ -36,6 +36,12 @@ try:
     VETTING_ENABLED = True
 except ImportError:
     VETTING_ENABLED = False
+
+try:
+    from api.v1 import llm_usage
+    LLM_USAGE_ENABLED = True
+except ImportError:
+    LLM_USAGE_ENABLED = False
     logger.warning("Vetting module not available")
 
 # Import new API modules from feature/job-creation branch
@@ -155,6 +161,9 @@ app.include_router(matching_v1.router, prefix="/api/v1", tags=["matching"])
 app.include_router(ratings_v1.router, prefix="/api/v1", tags=["ratings"])
 if VETTING_ENABLED:
     app.include_router(vetting_v1.router, prefix="/api/v1/vetting", tags=["vetting"])
+
+if LLM_USAGE_ENABLED:
+    app.include_router(llm_usage.router, prefix="/api/v1", tags=["llm-usage"])
 
 # Include jobs analytics router
 try:

@@ -7,6 +7,7 @@ import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import re
+from services.llm_usage_tracker import get_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +94,17 @@ class LLMResumeExtractor:
     def _extract_with_gemini(self, resume_text: str) -> Dict[str, Any]:
         """Extract using Google Gemini"""
         
+        # Check quota before making request
+        tracker = get_tracker()
+        can_proceed, warning = tracker.can_make_request("gemini")
+        
+        if not can_proceed:
+            logger.error(f"❌ Gemini quota exceeded: {warning}")
+            raise Exception(f"Gemini quota exceeded: {warning}")
+        
+        if warning:
+            logger.warning(warning)
+        
         prompt = self._build_extraction_prompt(resume_text)
         
         try:
@@ -105,6 +117,10 @@ class LLMResumeExtractor:
                     "max_output_tokens": 4096,
                 }
             )
+            
+            # Track usage
+            tokens_used = response.usage_metadata.total_token_count if hasattr(response, 'usage_metadata') else 0
+            tracker.track_request("gemini", success=True, tokens_used=tokens_used)
             
             # Extract JSON from response
             result_text = response.text.strip()
@@ -126,10 +142,12 @@ class LLMResumeExtractor:
             return extracted_data
             
         except json.JSONDecodeError as e:
+            tracker.track_request("gemini", success=False)
             logger.error(f"❌ Failed to parse Gemini response as JSON: {e}")
             logger.error(f"Response text: {response.text[:500]}")
             raise
         except Exception as e:
+            tracker.track_request("gemini", success=False)
             logger.error(f"❌ Gemini API error: {e}")
             raise
     
