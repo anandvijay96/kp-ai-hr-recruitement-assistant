@@ -3,9 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
     <title>Resume Vetting - AI Powered HR Assistant</title>
     
     <!-- Bootstrap 5.3 -->
@@ -70,38 +67,6 @@
                         <label class="form-label">Job Description (Optional - for matching analysis)</label>
                         <textarea class="form-control" id="jobDescription" rows="3" placeholder="Paste job description here..."></textarea>
                     </div>
-                    
-                    <!-- LLM Extraction Toggle -->
-                    <div class="mt-3 p-3 border rounded bg-light">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="useLLMExtraction" checked>
-                            <label class="form-check-label" for="useLLMExtraction">
-                                <strong>🤖 Use AI-Powered Extraction (Recommended)</strong>
-                            </label>
-                        </div>
-                        <small class="text-muted d-block mt-2">
-                            <i class="bi bi-info-circle"></i> 
-                            <strong>AI Mode:</strong> Uses advanced language models (Gemini/OpenAI) for 95%+ accuracy across all resume formats.
-                            <br>
-                            <strong>Standard Mode:</strong> Uses traditional OCR + pattern matching (faster but less accurate).
-                        </small>
-                        <div class="mt-2" id="llmProviderSelection">
-                            <label class="form-label small"><strong>AI Provider:</strong></label>
-                            <div class="btn-group btn-group-sm" role="group">
-                                <input type="radio" class="btn-check" name="llmProvider" id="providerGemini" value="gemini" checked>
-                                <label class="btn btn-outline-primary" for="providerGemini">
-                                    <i class="bi bi-google"></i> Gemini (Free)
-                                </label>
-                                
-                                <input type="radio" class="btn-check" name="llmProvider" id="providerOpenAI" value="openai">
-                                <label class="btn btn-outline-success" for="providerOpenAI">
-                                    <i class="bi bi-stars"></i> OpenAI (Paid)
-                                </label>
-                            </div>
-                        </small>
-                        </div>
-                    </div>
-                    
                     <button type="submit" class="btn btn-primary btn-lg mt-3" id="scanBtn">
                         <i class="bi bi-search me-2"></i>Scan Resumes for Authenticity
                     </button>
@@ -294,8 +259,6 @@
             document.getElementById('scanningSection').classList.remove('hidden');
 
             const jobDesc = document.getElementById('jobDescription').value;
-            const useLLM = document.getElementById('useLLMExtraction').checked;
-            const llmProvider = document.querySelector('input[name="llmProvider"]:checked')?.value || 'gemini';
             let scanned = 0;
 
             for (let i = 0; i < files.length; i++) {
@@ -304,8 +267,6 @@
                 formData.append('file', file);
                 formData.append('session_id', sessionId);
                 if (jobDesc) formData.append('job_description', jobDesc);
-                formData.append('use_llm', useLLM);
-                formData.append('llm_provider', llmProvider);
 
                 try {
                     document.getElementById('scanStatus').textContent = `Scanning ${file.name} (${i + 1} of ${files.length})...`;
@@ -338,6 +299,8 @@
                 const comp = scan.comprehensive_analysis || {};
                 const finalScore = comp.final_score || scan.authenticity_score?.overall_score || 0;
                 const scoreClass = finalScore >= 75 ? 'high' : finalScore >= 60 ? 'medium' : 'low';
+                const jobHopping = comp.job_hopping || {};
+                const eduVerif = comp.education_verification || {};
 
                 const row = `
                     <tr class="resume-row" data-hash="${resume.file_hash}">
@@ -350,13 +313,18 @@
                             <div><span class="score-badge score-${scoreClass}">${Math.round(finalScore)}%</span></div>
                             <div class="score-details">
                                 <small class="d-block">Base: ${Math.round(comp.base_authenticity_score || finalScore)}%</small>
-                                ${comp.job_hopping_impact ? `<small class="d-block text-danger">Job Hop: ${comp.job_hopping_impact} pts</small>` : ''}
-                                ${comp.job_hopping && comp.job_hopping.risk_level && comp.job_hopping.risk_level !== 'none' ? 
-                                    `<span class="badge bg-warning">⚠️ ${comp.job_hopping.risk_level} risk</span>` : ''}
-                                ${comp.education_verification && comp.education_verification.discrepancy_count > 0 ? 
-                                    `<span class="badge bg-danger">🎓 ${comp.education_verification.discrepancy_count} edu issue${comp.education_verification.discrepancy_count > 1 ? 's' : ''}</span>` : ''}
+                                ${jobHopping.score_impact ? `<small class="d-block text-danger">Job Hop: ${jobHopping.score_impact} pts</small>` : ''}
+                                ${finalScore >= 75 ? 
+                                    `<small class="d-block text-success"><strong>✅ Auto-Qualified:</strong> High authenticity (${Math.round(finalScore)}% ≥ 75%)</small>` : 
+                                    finalScore >= 60 ? 
+                                    `<small class="d-block text-warning"><strong>⚠️ Manual Review:</strong> Moderate score (60-74%)</small>` :
+                                    `<small class="d-block text-danger"><strong>❌ Likely Reject:</strong> Low score (<60%)</small>`}
+                                ${jobHopping.risk_level && jobHopping.risk_level !== 'none' ? 
+                                    `<span class="badge bg-warning">⚠️ ${jobHopping.risk_level} risk</span>` : ''}
+                                ${eduVerif.discrepancy_count > 0 ? 
+                                    `<span class="badge bg-danger">🎓 ${eduVerif.discrepancy_count} edu issue${eduVerif.discrepancy_count > 1 ? 's' : ''}</span>` : ''}
                             </div>
-                            ${scan.authenticity_score.flags && scan.authenticity_score.flags.length > 0 ?
+                            ${scan.authenticity_score?.flags && scan.authenticity_score.flags.length > 0 ?
                                 `<span class="badge bg-danger flag-badge">🚩 ${scan.authenticity_score.flags.length} flags</span>` : ''}
                         </td>
                         <td id="status-${resume.file_hash}"><span class="badge bg-secondary">Pending</span></td>
@@ -379,11 +347,22 @@
         }
 
         function generateDetailsHTML(scan) {
-            const auth = scan.authenticity_score;
+            const comp = scan.comprehensive_analysis || {};
+            const auth = comp.authenticity || scan.authenticity_score;
+            const jobHopping = comp.job_hopping || {};
+            const eduVerif = comp.education_verification || {};
             const match = scan.matching_score;
             const diagnostics = auth.diagnostics || {};
             
             return `
+                <!-- Comprehensive Summary -->
+                ${comp.summary ? `
+                    <div class="alert alert-${comp.badge === 'success' ? 'success' : comp.badge === 'warning' ? 'warning' : 'danger'} mb-3">
+                        <h6><i class="bi bi-clipboard-check"></i> Overall Assessment</h6>
+                        <pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">${comp.summary}</pre>
+                    </div>
+                ` : ''}
+                
                 <!-- Quick Summary -->
                 <div class="row mb-3">
                     <div class="col-md-6">
@@ -430,6 +409,64 @@
                         `).join('')}
                     </div>
                 ` : '<div class="alert alert-success mb-3">✅ No authenticity issues detected</div>'}
+                
+                <!-- Job Hopping Analysis -->
+                ${jobHopping.risk_level && jobHopping.risk_level !== 'none' ? `
+                    <div class="alert alert-${jobHopping.risk_level === 'critical' || jobHopping.risk_level === 'high' ? 'danger' : 'warning'} mb-3">
+                        <h6><i class="bi bi-briefcase"></i> Job Hopping Analysis</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Risk Level:</strong> <span class="badge bg-${jobHopping.risk_level === 'critical' ? 'danger' : jobHopping.risk_level === 'high' ? 'danger' : 'warning'}">${jobHopping.risk_level.toUpperCase()}</span><br>
+                                <strong>Score Impact:</strong> ${jobHopping.score_impact} points<br>
+                                <strong>Short Stints:</strong> ${jobHopping.short_stints_count} of ${jobHopping.total_jobs} jobs<br>
+                                <strong>Average Tenure:</strong> ${Math.round(jobHopping.average_tenure_months || 0)} months<br>
+                                <strong>Career Level:</strong> ${jobHopping.career_level || 'unknown'}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Pattern:</strong> ${(jobHopping.pattern || '').replace(/_/g, ' ')}<br>
+                                ${jobHopping.short_stints && jobHopping.short_stints.length > 0 ? `
+                                    <strong>Recent Short Stints:</strong><br>
+                                    ${jobHopping.short_stints.slice(0, 3).map(stint => 
+                                        `<small>• ${stint.company}: ${stint.duration_months} months</small><br>`
+                                    ).join('')}
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <strong>💡 Recommendation:</strong> ${jobHopping.recommendation}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <!-- Education Verification -->
+                ${eduVerif.overall_status && eduVerif.overall_status !== 'no_education' ? `
+                    <div class="alert alert-${eduVerif.discrepancy_count > 0 ? 'warning' : 'info'} mb-3">
+                        <h6><i class="bi bi-mortarboard"></i> Education Verification</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Status:</strong> ${eduVerif.overall_status.replace(/_/g, ' ')}<br>
+                                <strong>Total Entries:</strong> ${eduVerif.total_count}<br>
+                                <strong>Verified:</strong> ${eduVerif.verified_count}<br>
+                                <strong>Pending:</strong> ${eduVerif.pending_count}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Discrepancies:</strong> ${eduVerif.discrepancy_count}<br>
+                                <strong>Manual Review:</strong> ${eduVerif.requires_manual_review ? 'Required' : 'Not Required'}
+                            </div>
+                        </div>
+                        ${eduVerif.discrepancies && eduVerif.discrepancies.length > 0 ? `
+                            <div class="mt-2">
+                                <strong>⚠️ Discrepancies Found:</strong><br>
+                                ${eduVerif.discrepancies.map(disc => 
+                                    `<small>• ${disc.institution} - ${disc.degree}: Resume year ${disc.resume_year}, Document year ${disc.document_year} (${disc.discrepancy_years} years difference)</small><br>`
+                                ).join('')}
+                            </div>
+                        ` : ''}
+                        <div class="mt-2">
+                            <strong>💡 Recommendation:</strong> ${eduVerif.recommendation}
+                        </div>
+                    </div>
+                ` : ''}
                 
                 ${match ? `
                     <div class="card mb-3" style="background: #fff3cd;">
@@ -483,14 +520,78 @@
                 
                 <div class="collapse mt-3" id="detailedDiagnostics-${scan.file_hash || Math.random()}">
                     <div class="card card-body">
-                        ${generateFullDiagnosticsHTML(diagnostics, match)}
+                        ${generateFullDiagnosticsHTML(diagnostics, match, comp)}
                     </div>
                 </div>
             `;
         }
         
-        function generateFullDiagnosticsHTML(diagnostics, matchingScore = null) {
+        function generateFullDiagnosticsHTML(diagnostics, matchingScore = null, comprehensiveAnalysis = null) {
             let html = '<h6 class="mb-3">📋 Detailed Analysis Report</h6>';
+            
+            // Comprehensive Analysis Summary (NEW)
+            if (comprehensiveAnalysis) {
+                const getScoreColor = (score) => score >= 75 ? 'success' : score >= 60 ? 'warning' : 'danger';
+                const finalScore = comprehensiveAnalysis.final_score || 0;
+                const baseScore = comprehensiveAnalysis.base_authenticity_score || 0;
+                const jobHopImpact = comprehensiveAnalysis.job_hopping_impact || 0;
+                
+                html += `
+                    <div class="mb-4">
+                        <h6 class="text-primary">🎯 Overall Qualification Metrics</h6>
+                        <div class="alert alert-${getScoreColor(finalScore)}">
+                            <h5 class="alert-heading">Final Score: ${Math.round(finalScore)}% - ${comprehensiveAnalysis.recommendation?.toUpperCase() || 'UNKNOWN'}</h5>
+                            <hr>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <p class="mb-2"><strong>Base Authenticity:</strong></p>
+                                    <div class="progress" style="height: 25px;">
+                                        <div class="progress-bar bg-${getScoreColor(baseScore)}" 
+                                             style="width: ${baseScore}%">
+                                            ${Math.round(baseScore)}%
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Resume quality & authenticity</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <p class="mb-2"><strong>Job Hopping Impact:</strong></p>
+                                    <div class="progress" style="height: 25px;">
+                                        <div class="progress-bar ${jobHopImpact < 0 ? 'bg-danger' : 'bg-success'}" 
+                                             style="width: ${Math.abs(jobHopImpact)}%">
+                                            ${jobHopImpact} pts
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Career stability assessment</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <p class="mb-2"><strong>Final Verdict:</strong></p>
+                                    <h4>
+                                        <span class="badge bg-${comprehensiveAnalysis.badge || 'secondary'}">
+                                            ${comprehensiveAnalysis.recommendation === 'qualified' ? '✅ AUTO-QUALIFIED' : 
+                                              comprehensiveAnalysis.recommendation === 'review' ? '⚠️ MANUAL REVIEW' : 
+                                              '❌ LIKELY REJECT'}
+                                        </span>
+                                    </h4>
+                                    <small class="text-muted">
+                                        ${comprehensiveAnalysis.recommendation === 'qualified' ? 'Strong candidate profile' : 
+                                          comprehensiveAnalysis.recommendation === 'review' ? 'Some concerns detected' : 
+                                          'Multiple red flags'}
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-3 p-3 bg-light rounded">
+                                <strong>📊 Scoring Breakdown:</strong>
+                                <ul class="mb-0 mt-2">
+                                    <li><strong>Base Score (${Math.round(baseScore)}%):</strong> Font consistency, grammar, formatting, LinkedIn profile, capitalization</li>
+                                    <li><strong>Job Hopping (${jobHopImpact} pts):</strong> Career stability, tenure analysis, pattern detection</li>
+                                    <li><strong>Thresholds:</strong> ≥75% = Auto-Qualified, 60-74% = Manual Review, <60% = Likely Reject</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
             
             // JD Matching Diagnostics (if available)
             if (matchingScore) {

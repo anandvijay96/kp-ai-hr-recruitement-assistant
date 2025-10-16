@@ -180,12 +180,19 @@ async def scan_resume(
         if job_description:
             matching_result = jd_matcher.match_resume_with_jd(extracted_text, job_description)
         
+        # Generate comprehensive analysis with job hopping and education verification
+        comprehensive_analysis = _generate_comprehensive_analysis(
+            authenticity_result=authenticity_result,
+            extracted_data=extracted_data
+        )
+        
         # Build scan result (INCLUDE extracted_data for later use)
         scan_result = {
             "filename": file.filename,
             "file_hash": file_hash,
             "file_size": len(content),
             "authenticity_score": authenticity_result,
+            "comprehensive_analysis": comprehensive_analysis,
             "matching_score": matching_result,
             "extracted_text_length": len(extracted_text),
             "extracted_text": extracted_text,  # Store for database upload
@@ -820,3 +827,128 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
     except Exception as e:
         logger.error(f"Error uploading approved resumes: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _generate_comprehensive_analysis(authenticity_result: Dict[str, Any], extracted_data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Generate comprehensive analysis including job hopping and education verification
+    
+    Args:
+        authenticity_result: Result from resume_analyzer.analyze_authenticity()
+        extracted_data: Extracted resume data (from LLM or traditional extraction)
+    
+    Returns:
+        Comprehensive analysis with final score, job hopping, education verification
+    """
+    try:
+        base_score = authenticity_result.get('overall_score', 0)
+        
+        # Job Hopping Analysis
+        job_hopping = _analyze_job_hopping(extracted_data)
+        job_hop_impact = job_hopping.get('score_impact', 0)
+        
+        # Education Verification
+        education_verification = _analyze_education(extracted_data)
+        
+        # Calculate final score
+        final_score = base_score + job_hop_impact
+        final_score = max(0, min(100, final_score))  # Clamp between 0-100
+        
+        # Determine recommendation
+        if final_score >= 75:
+            recommendation = 'qualified'
+            badge = 'success'
+        elif final_score >= 60:
+            recommendation = 'review'
+            badge = 'warning'
+        else:
+            recommendation = 'reject'
+            badge = 'danger'
+        
+        return {
+            'base_authenticity_score': base_score,
+            'job_hopping': job_hopping,
+            'job_hopping_impact': job_hop_impact,
+            'education_verification': education_verification,
+            'final_score': final_score,
+            'recommendation': recommendation,
+            'badge': badge
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating comprehensive analysis: {e}")
+        # Return safe defaults
+        return {
+            'base_authenticity_score': authenticity_result.get('overall_score', 0),
+            'job_hopping': {'risk_level': 'none', 'score_impact': 0},
+            'job_hopping_impact': 0,
+            'education_verification': {'discrepancy_count': 0},
+            'final_score': authenticity_result.get('overall_score', 0),
+            'recommendation': 'review',
+            'badge': 'warning'
+        }
+
+
+def _analyze_job_hopping(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Analyze job hopping patterns"""
+    try:
+        if not extracted_data or 'work_experience' not in extracted_data:
+            return {'risk_level': 'none', 'score_impact': 0, 'short_tenures': 0}
+        
+        work_experience = extracted_data.get('work_experience', [])
+        if not work_experience:
+            return {'risk_level': 'none', 'score_impact': 0, 'short_tenures': 0}
+        
+        # Count short tenures (<12 months)
+        short_tenures = sum(1 for exp in work_experience if exp.get('duration_months', 0) < 12)
+        total_jobs = len(work_experience)
+        
+        # Calculate risk
+        if short_tenures == 0:
+            risk_level = 'none'
+            score_impact = 0
+        elif short_tenures == 1:
+            risk_level = 'low'
+            score_impact = -3
+        elif short_tenures == 2:
+            risk_level = 'medium'
+            score_impact = -7
+        else:  # 3+ short tenures
+            risk_level = 'high'
+            score_impact = -12
+        
+        return {
+            'risk_level': risk_level,
+            'score_impact': score_impact,
+            'short_tenures': short_tenures,
+            'total_jobs': total_jobs,
+            'pattern': f"{short_tenures}/{total_jobs} jobs < 12 months"
+        }
+        
+    except Exception as e:
+        logger.error(f"Job hopping analysis error: {e}")
+        return {'risk_level': 'none', 'score_impact': 0}
+
+
+def _analyze_education(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Analyze education verification"""
+    try:
+        if not extracted_data or 'education' not in extracted_data:
+            return {'discrepancy_count': 0, 'requires_manual_review': False}
+        
+        education = extracted_data.get('education', [])
+        if not education:
+            return {'discrepancy_count': 0, 'requires_manual_review': False, 'recommendation': 'No education data found'}
+        
+        # For now, just return basic info
+        # In future, can add cross-verification with uploaded documents
+        return {
+            'discrepancy_count': 0,
+            'requires_manual_review': False,
+            'total_entries': len(education),
+            'recommendation': f'Found {len(education)} education entries - manual verification recommended'
+        }
+        
+    except Exception as e:
+        logger.error(f"Education analysis error: {e}")
+        return {'discrepancy_count': 0, 'requires_manual_review': False}
