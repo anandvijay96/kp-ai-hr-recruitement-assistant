@@ -322,12 +322,14 @@ async def get_candidate(candidate_id: str, db: Session = Depends(get_db)):
         "work_experience": [{
             "company": w.company,
             "title": w.title,
+            "job_title": w.title,  # Alias for frontend compatibility
             "location": w.location,
             "start_date": w.start_date,
             "end_date": w.end_date,
             "is_current": w.is_current,
             "duration_months": w.duration_months,
-            "description": w.description
+            "description": w.description,
+            "responsibilities": w.responsibilities if hasattr(w, 'responsibilities') else []
         } for w in candidate.work_experience] if candidate.work_experience else [],
         "certifications": [{
             "name": c.name,
