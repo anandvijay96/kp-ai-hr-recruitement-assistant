@@ -627,12 +627,7 @@
                 <div class="candidate-card" onclick="viewCandidate('${candidate.id}')">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <div class="candidate-name">${candidate.name}</div>
-                        <div class="d-flex gap-2 align-items-center">
-                            <span class="status-badge status-${candidate.status.toLowerCase()}">${candidate.status}</span>
-                            <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteCandidate(${candidate.id}, '${candidate.name.replace(/'/g, "\\'")}');" title="Delete Candidate">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
+                        <span class="status-badge status-${candidate.status.toLowerCase()}">${candidate.status}</span>
                     </div>
                     
                     <div class="candidate-info">
@@ -885,61 +880,6 @@
         // View candidate details
         function viewCandidate(candidateId) {
             window.location.href = `/candidates/${candidateId}`;
-        }
-        
-        // Delete candidate (soft delete)
-        async function deleteCandidate(candidateId, candidateName) {
-            // Confirm deletion with custom modal
-            const confirmed = await customModal.confirm(
-                `Are you sure you want to delete "${candidateName}"?\n\nThis will remove them from the candidates list (can be restored by admin if needed).`,
-                'Delete Candidate?',
-                {
-                    confirmText: 'Delete',
-                    cancelText: 'Cancel',
-                    confirmClass: 'btn-danger',
-                    type: 'warning'
-                }
-            );
-            
-            if (!confirmed) return;
-            
-            // Optional: Ask for reason with custom prompt
-            const reason = await customModal.prompt(
-                'Optional: Enter reason for deletion:',
-                'Deletion Reason',
-                '',
-                {
-                    placeholder: 'e.g., Want to re-upload with new extraction process',
-                    required: false
-                }
-            );
-            
-            try {
-                const url = `/api/v1/candidates/${candidateId}/soft-delete?deleted_by=admin` + 
-                           (reason ? `&reason=${encodeURIComponent(reason)}` : '');
-                
-                const response = await fetch(url, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.success) {
-                    // Show success toast
-                    customModal.success(data.message);
-                    
-                    // Reload search results
-                    performSearch();
-                } else {
-                    customModal.error(data.detail || 'Failed to delete candidate');
-                }
-            } catch (error) {
-                console.error('Delete error:', error);
-                customModal.error('Failed to delete candidate. Please try again.');
-            }
         }
         
         // Event listeners

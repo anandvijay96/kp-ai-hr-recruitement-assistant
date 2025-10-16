@@ -624,8 +624,9 @@ async def soft_delete_candidate(
         Success message with deletion details
     """
     try:
-        # Find candidate
-        candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+        # Find candidate using async query
+        result = await db.execute(select(Candidate).filter(Candidate.id == candidate_id))
+        candidate = result.scalar_one_or_none()
         
         if not candidate:
             raise HTTPException(status_code=404, detail="Candidate not found")
@@ -639,7 +640,7 @@ async def soft_delete_candidate(
         candidate.deleted_by = deleted_by
         candidate.deletion_reason = reason
         
-        db.commit()
+        await db.commit()
         
         logger.info(f"✅ Candidate {candidate_id} ({candidate.full_name}) soft deleted by {deleted_by}")
         
@@ -654,7 +655,7 @@ async def soft_delete_candidate(
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         logger.error(f"Error soft deleting candidate: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -674,8 +675,9 @@ async def restore_candidate(
         Success message
     """
     try:
-        # Find candidate
-        candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+        # Find candidate using async query
+        result = await db.execute(select(Candidate).filter(Candidate.id == candidate_id))
+        candidate = result.scalar_one_or_none()
         
         if not candidate:
             raise HTTPException(status_code=404, detail="Candidate not found")
@@ -689,7 +691,7 @@ async def restore_candidate(
         candidate.deleted_by = None
         candidate.deletion_reason = None
         
-        db.commit()
+        await db.commit()
         
         logger.info(f"✅ Candidate {candidate_id} ({candidate.full_name}) restored")
         
@@ -702,6 +704,6 @@ async def restore_candidate(
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         logger.error(f"Error restoring candidate: {e}")
         raise HTTPException(status_code=500, detail=str(e))
