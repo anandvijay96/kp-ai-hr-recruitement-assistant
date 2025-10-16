@@ -523,17 +523,50 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     # Use file hash to create unique email
                     candidate_email = f"candidate_{file_hash[:12]}@placeholder.com"
                 
-                # Check if candidate already exists by email (exclude soft-deleted)
+                # Check if candidate already exists by email (including soft-deleted)
                 candidate = None
+                soft_deleted_candidate = None
                 if candidate_email:
                     from sqlalchemy import select
                     try:
+                        # Check for active candidate
                         stmt = select(Candidate).filter(
                             Candidate.email == candidate_email,
-                            Candidate.is_deleted == False  # Exclude soft-deleted candidates
+                            Candidate.is_deleted == False
                         )
                         result = await db.execute(stmt)
                         candidate = result.scalar_one_or_none()
+                        
+                        # If no active candidate, check for soft-deleted one
+                        if not candidate:
+                            stmt = select(Candidate).filter(
+                                Candidate.email == candidate_email,
+                                Candidate.is_deleted == True
+                            )
+                            result = await db.execute(stmt)
+                            soft_deleted_candidate = result.scalar_one_or_none()
+                            
+                            if soft_deleted_candidate:
+                                logger.info(f"Found soft-deleted candidate with email {candidate_email}, will restore and update")
+                                # Restore the soft-deleted candidate
+                                soft_deleted_candidate.is_deleted = False
+                                soft_deleted_candidate.deleted_at = None
+                                soft_deleted_candidate.deleted_by = None
+                                soft_deleted_candidate.deletion_reason = None
+                                # Update with new data
+                                soft_deleted_candidate.full_name = candidate_name
+                                soft_deleted_candidate.phone = candidate_phone
+                                soft_deleted_candidate.linkedin_url = extracted_data.get('linkedin_url')
+                                soft_deleted_candidate.location = extracted_data.get('location')
+                                soft_deleted_candidate.status = "new"
+                                soft_deleted_candidate.source = "vetting"
+                                if hasattr(soft_deleted_candidate, 'professional_summary'):
+                                    soft_deleted_candidate.professional_summary = extracted_data.get('summary')
+                                
+                                candidate = soft_deleted_candidate
+                                await db.commit()
+                                await db.refresh(candidate)
+                                logger.info(f"Restored and updated candidate: {candidate_name} (ID: {candidate.id})")
                     except Exception as e:
                         # Handle case where professional_summary column might not exist in DB
                         if "professional_summary" in str(e):
