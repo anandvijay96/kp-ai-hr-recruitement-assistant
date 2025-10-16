@@ -899,31 +899,55 @@ def _analyze_job_hopping(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, 
         if not work_experience:
             return {'risk_level': 'none', 'score_impact': 0, 'short_tenures': 0}
         
-        # Analyze each job
-        short_stints = []
-        total_jobs = len(work_experience)
-        total_months = 0
-        
+        # Group jobs by company to detect actual job changes (not internal promotions)
+        company_tenures = {}
         for exp in work_experience:
+            company = exp.get('company', 'Unknown Company').strip().lower()
             duration = exp.get('duration_months')
+            
             # Handle None values safely
             if duration is None or not isinstance(duration, (int, float)):
                 duration = 0
             else:
                 duration = int(duration)
             
-            total_months += duration
-            
-            if duration > 0 and duration < 12:  # Short tenure
-                short_stints.append({
+            # Aggregate duration by company (handles internal promotions)
+            if company in company_tenures:
+                company_tenures[company]['total_duration'] += duration
+                company_tenures[company]['roles'].append({
                     'title': exp.get('title', 'Unknown Position'),
-                    'company': exp.get('company', 'Unknown Company'),
-                    'duration_months': duration,
-                    'duration_display': f"{duration} month{'s' if duration != 1 else ''}"
+                    'duration': duration
+                })
+            else:
+                company_tenures[company] = {
+                    'company_name': exp.get('company', 'Unknown Company'),
+                    'total_duration': duration,
+                    'roles': [{
+                        'title': exp.get('title', 'Unknown Position'),
+                        'duration': duration
+                    }]
+                }
+        
+        # Analyze company-level job hopping (not role changes within same company)
+        short_stints = []
+        total_companies = len(company_tenures)
+        total_months = sum(c['total_duration'] for c in company_tenures.values())
+        
+        for company_data in company_tenures.values():
+            total_duration = company_data['total_duration']
+            
+            if total_duration > 0 and total_duration < 12:  # Short tenure at company level
+                # Show all roles at this company
+                roles_display = ', '.join([r['title'] for r in company_data['roles']])
+                short_stints.append({
+                    'title': roles_display,
+                    'company': company_data['company_name'],
+                    'duration_months': total_duration,
+                    'duration_display': f"{total_duration} month{'s' if total_duration != 1 else ''}"
                 })
         
         short_tenure_count = len(short_stints)
-        avg_tenure_months = total_months / total_jobs if total_jobs > 0 else 0
+        avg_tenure_months = total_months / total_companies if total_companies > 0 else 0
         
         # Determine career level based on total experience
         total_years = total_months / 12
@@ -962,8 +986,8 @@ def _analyze_job_hopping(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, 
             'risk_level': risk_level,
             'score_impact': score_impact,
             'short_tenures': short_tenure_count,
-            'total_jobs': total_jobs,
-            'pattern': f"frequent job changes" if short_tenure_count > 2 else f"{short_tenure_count} of {total_jobs} jobs < 12 months",
+            'total_jobs': total_companies,  # Total unique companies, not roles
+            'pattern': f"frequent job changes" if short_tenure_count > 2 else f"{short_tenure_count} of {total_companies} companies < 12 months",
             'recent_short_stints': short_stints[:3],  # Show up to 3 most recent
             'average_tenure_months': round(avg_tenure_months, 1),
             'career_level': career_level,
