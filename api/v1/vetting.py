@@ -439,15 +439,18 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 file_hash = resume_data['file_hash']
                 file_name = resume_data['file_name']
                 
-                # Check if already in database
+                # Check if already in database (exclude soft-deleted)
                 from sqlalchemy import select
-                stmt = select(Resume).filter(Resume.file_hash == file_hash)
+                stmt = select(Resume).join(Candidate).filter(
+                    Resume.file_hash == file_hash,
+                    Candidate.is_deleted == False  # Exclude soft-deleted candidates
+                )
                 result = await db.execute(stmt)
                 existing = result.scalar_one_or_none()
                 if existing:
                     failed.append({
                         "file_name": file_name,
-                        "reason": "Already in database",
+                        "reason": "Already in database (active candidate)",
                         "status": "duplicate"
                     })
                     continue
@@ -520,12 +523,15 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     # Use file hash to create unique email
                     candidate_email = f"candidate_{file_hash[:12]}@placeholder.com"
                 
-                # Check if candidate already exists by email
+                # Check if candidate already exists by email (exclude soft-deleted)
                 candidate = None
                 if candidate_email:
                     from sqlalchemy import select
                     try:
-                        stmt = select(Candidate).filter(Candidate.email == candidate_email)
+                        stmt = select(Candidate).filter(
+                            Candidate.email == candidate_email,
+                            Candidate.is_deleted == False  # Exclude soft-deleted candidates
+                        )
                         result = await db.execute(stmt)
                         candidate = result.scalar_one_or_none()
                     except Exception as e:
