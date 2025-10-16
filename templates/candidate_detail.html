@@ -428,6 +428,17 @@
                             </div>
                             <div class="info-item">
                                 <div class="info-icon">
+                                    <i class="bi bi-github"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">GitHub</div>
+                                    <div class="info-value" id="candidateGithub">
+                                        <a href="#" target="_blank" id="githubLink">View Profile</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-icon">
                                     <i class="bi bi-linkedin"></i>
                                 </div>
                                 <div class="info-content">
@@ -437,16 +448,19 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="info-item">
-                                <div class="info-icon">
-                                    <i class="bi bi-github"></i>
-                                </div>
-                                <div class="info-content">
-                                    <div class="info-label">GitHub</div>
-                                    <div class="info-value" id="candidateGithub">
-                                        <a href="#" target="_blank" id="githubLink">View Profile</a>
-                                    </div>
-                                </div>
+                        </div>
+                        
+                        <!-- LinkedIn Suggestions Section (shown only when suggestions exist) -->
+                        <div id="linkedinSuggestionsSection" class="mt-4" style="display: none;">
+                            <div class="alert alert-info" style="background-color: #e7f3ff; border-color: #b3d9ff;">
+                                <h6 class="mb-3">
+                                    <i class="bi bi-search"></i> LinkedIn Profile Suggestions
+                                </h6>
+                                <p class="small mb-3">Multiple LinkedIn profiles were found during verification. Please select the correct one:</p>
+                                <div id="linkedinSuggestionsList"></div>
+                                <button class="btn btn-sm btn-primary mt-3" onclick="saveLinkedInSelection()">
+                                    <i class="bi bi-check-circle"></i> Save Selected Profile
+                                </button>
                             </div>
                         </div>
                         
@@ -1223,25 +1237,33 @@
             if (candidate.linkedin_url) {
                 $('#linkedinLink').attr('href', candidate.linkedin_url).text('View Profile');
                 $('#candidateLinkedIn').html(`<a href="${candidate.linkedin_url}" target="_blank" id="linkedinLink">View Profile</a>`);
+                $('#linkedinSuggestionsSection').hide();
             } else if (candidate.linkedin_suggestions && Array.isArray(candidate.linkedin_suggestions) && candidate.linkedin_suggestions.length > 0) {
-                // Show LinkedIn suggestions for HR to select
+                // Show LinkedIn suggestions in separate section
                 console.log('Showing LinkedIn suggestions:', candidate.linkedin_suggestions);
-                let suggestionsHtml = '<div class="linkedin-suggestions"><small class="text-muted d-block mb-2">🔍 Found LinkedIn profiles - Select the correct one:</small>';
+                $('#candidateLinkedIn').html('<span class="text-muted">Not selected yet</span>');
+                
+                // Build suggestions list
+                let suggestionsHtml = '';
                 candidate.linkedin_suggestions.forEach((profile, index) => {
                     suggestionsHtml += `
-                        <div class="form-check mb-1">
+                        <div class="form-check mb-2">
                             <input class="form-check-input" type="radio" name="linkedinSuggestion" id="linkedin_${index}" value="${profile}">
-                            <label class="form-check-label" for="linkedin_${index}" style="font-size: 0.9rem;">
-                                <a href="${profile}" target="_blank">${profile}</a>
+                            <label class="form-check-label" for="linkedin_${index}">
+                                <a href="${profile}" target="_blank" class="text-decoration-none">
+                                    <i class="bi bi-linkedin"></i> ${profile.replace('https://www.linkedin.com/in/', '').replace('https://linkedin.com/in/', '')}
+                                </a>
                             </label>
                         </div>
                     `;
                 });
-                suggestionsHtml += `<button class="btn btn-sm btn-primary mt-2" onclick="saveLinkedInSelection()">Save Selection</button></div>`;
-                $('#candidateLinkedIn').html(suggestionsHtml);
+                
+                $('#linkedinSuggestionsList').html(suggestionsHtml);
+                $('#linkedinSuggestionsSection').show();
             } else {
                 console.log('No LinkedIn suggestions found');
                 $('#candidateLinkedIn').text('-');
+                $('#linkedinSuggestionsSection').hide();
             }
             
             // GitHub
