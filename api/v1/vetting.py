@@ -916,11 +916,29 @@ def _analyze_job_hopping(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, 
     """Analyze job hopping patterns with detailed breakdown"""
     try:
         if not extracted_data or 'work_experience' not in extracted_data:
-            return {'risk_level': 'none', 'score_impact': 0, 'short_tenures': 0}
+            return {
+                'risk_level': 'unknown',
+                'score_impact': 0,
+                'short_tenures': 0,
+                'total_jobs': 0,
+                'pattern': 'Unknown - no work experience data extracted',
+                'average_tenure_months': 0,
+                'career_level': 'unknown',
+                'recommendation': 'Unable to analyze - work experience data not extracted. Manual review required.'
+            }
         
         work_experience = extracted_data.get('work_experience', [])
         if not work_experience:
-            return {'risk_level': 'none', 'score_impact': 0, 'short_tenures': 0}
+            return {
+                'risk_level': 'unknown',
+                'score_impact': 0,
+                'short_tenures': 0,
+                'total_jobs': 0,
+                'pattern': 'Unknown - no work experience data extracted',
+                'average_tenure_months': 0,
+                'career_level': 'unknown',
+                'recommendation': 'Unable to analyze - work experience data not extracted. Manual review required.'
+            }
         
         # Group jobs by company to detect actual job changes (not internal promotions)
         company_tenures = {}
@@ -1020,7 +1038,7 @@ def _analyze_job_hopping(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, 
         elif risk_level == 'low':
             recommendation = f"Low concern. One short stint may be acceptable. Verify reason during interview."
         else:
-            recommendation = "No job hopping concerns detected. Candidate shows stable career progression."
+            recommendation = "No job hopping concerns detected. Stable career progression."
         
         return {
             'risk_level': risk_level,
@@ -1037,7 +1055,16 @@ def _analyze_job_hopping(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, 
         
     except Exception as e:
         logger.error(f"Job hopping analysis error: {e}")
-        return {'risk_level': 'none', 'score_impact': 0}
+        return {
+            'risk_level': 'unknown',
+            'score_impact': 0,
+            'short_tenures': 0,
+            'total_jobs': 0,
+            'pattern': 'Unknown - analysis error',
+            'average_tenure_months': 0,
+            'career_level': 'unknown',
+            'recommendation': 'Unable to analyze - error occurred. Manual review required.'
+        }
 
 
 def _analyze_education(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
