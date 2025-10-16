@@ -11,6 +11,8 @@ class CandidateFilter(BaseModel):
     rating_min: Optional[float] = None
     status: Optional[List[str]] = None
     search_query: Optional[str] = None
+    sort_by: Optional[str] = 'created_at'  # created_at, updated_at, full_name, status
+    sort_order: Optional[str] = 'desc'  # asc or desc
 
 class FilterPresetCreate(BaseModel):
     name: str

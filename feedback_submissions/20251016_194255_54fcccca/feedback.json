@@ -1,0 +1,15 @@
+{
+  "id": "54fcccca",
+  "timestamp": "2025-10-16T19:42:55.093967",
+  "type": "bug",
+  "priority": "medium",
+  "title": "Test",
+  "description": "TEst",
+  "page": "/candidates",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+  "screenResolution": "1280x720",
+  "screenshots": [
+    "screenshot_1.png"
+  ],
+  "status": "new"
+}

@@ -208,6 +208,28 @@ class FilterService:
             
             stmt = stmt.distinct()
             
+            # Apply sorting
+            sort_by = filters.sort_by or 'created_at'
+            sort_order = filters.sort_order or 'desc'
+            
+            # Map sort_by to actual column
+            sort_column_map = {
+                'created_at': Candidate.created_at,
+                'updated_at': Candidate.updated_at,
+                'full_name': Candidate.full_name,
+                'status': Candidate.status,
+                'email': Candidate.email
+            }
+            
+            sort_column = sort_column_map.get(sort_by, Candidate.created_at)
+            
+            if sort_order == 'asc':
+                stmt = stmt.order_by(sort_column.asc())
+            else:
+                stmt = stmt.order_by(sort_column.desc())
+            
+            logger.info(f"Sorting by {sort_by} {sort_order}")
+            
             # Get total count before pagination
             count_stmt = select(func.count(Candidate.id)).select_from(Candidate)
             if filter_conditions:

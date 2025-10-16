@@ -400,6 +400,22 @@
                         </select>
                     </div>
                     
+                    <!-- Sort By -->
+                    <div class="filter-section">
+                        <label class="filter-label" for="sortBy">
+                            <i class="bi bi-sort-down me-1"></i>
+                            Sort By
+                        </label>
+                        <select class="form-select" id="sortBy">
+                            <option value="created_at">Date Added (Newest First)</option>
+                            <option value="created_at_asc">Date Added (Oldest First)</option>
+                            <option value="updated_at">Recently Updated</option>
+                            <option value="full_name">Name (A-Z)</option>
+                            <option value="full_name_desc">Name (Z-A)</option>
+                            <option value="status">Status</option>
+                        </select>
+                    </div>
+                    
                     <!-- Action Buttons -->
                     <div class="d-grid gap-2 mt-4">
                         <button class="btn btn-filter" id="applyFiltersBtn">
@@ -563,6 +579,22 @@
             $('#paginationWrapper').hide();
             
             // Build filter object
+            const sortValue = $('#sortBy').val() || 'created_at';
+            let sortBy = sortValue;
+            let sortOrder = 'desc';
+            
+            // Handle special sort values
+            if (sortValue === 'created_at_asc') {
+                sortBy = 'created_at';
+                sortOrder = 'asc';
+            } else if (sortValue === 'full_name_desc') {
+                sortBy = 'full_name';
+                sortOrder = 'desc';
+            } else if (sortValue === 'full_name') {
+                sortBy = 'full_name';
+                sortOrder = 'asc';
+            }
+            
             const filters = {
                 search_query: $('#searchQuery').val() || null,
                 skills: $('#skillsFilter').val() || null,
@@ -570,7 +602,9 @@
                 max_experience: parseInt($('#maxExperience').val()) || null,
                 education: $('#educationFilter').val() || null,
                 location: $('#locationFilter').val() || null,
-                status: $('#statusFilter').val() || null
+                status: $('#statusFilter').val() || null,
+                sort_by: sortBy,
+                sort_order: sortOrder
             };
             
             currentFilters = filters;
