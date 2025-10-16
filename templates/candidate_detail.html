@@ -1192,7 +1192,12 @@
             // Personal Information
             $('#candidateName').text(candidate.full_name || '-');
             $('#candidateEmail').text(candidate.email || '-');
-            $('#candidatePhone').text(candidate.phone || '-');
+            // Format phone with +91 prefix if not already present
+            let phone = candidate.phone || '-';
+            if (phone !== '-' && !phone.startsWith('+')) {
+                phone = '+91 ' + phone;
+            }
+            $('#candidatePhone').text(phone);
             
             // TEMP FIX: Hide location if it looks wrong (single word, job-related terms)
             const location = candidate.location || '';
@@ -1212,12 +1217,16 @@
             $('#candidateSummary').text(candidate.professional_summary || 'No professional summary available.');
             
             // LinkedIn
+            console.log('LinkedIn URL:', candidate.linkedin_url);
+            console.log('LinkedIn Suggestions:', candidate.linkedin_suggestions);
+            
             if (candidate.linkedin_url) {
                 $('#linkedinLink').attr('href', candidate.linkedin_url).text('View Profile');
                 $('#candidateLinkedIn').html(`<a href="${candidate.linkedin_url}" target="_blank" id="linkedinLink">View Profile</a>`);
-            } else if (candidate.linkedin_suggestions && candidate.linkedin_suggestions.length > 0) {
+            } else if (candidate.linkedin_suggestions && Array.isArray(candidate.linkedin_suggestions) && candidate.linkedin_suggestions.length > 0) {
                 // Show LinkedIn suggestions for HR to select
-                let suggestionsHtml = '<div class="linkedin-suggestions"><small class="text-muted d-block mb-2">Select LinkedIn profile:</small>';
+                console.log('Showing LinkedIn suggestions:', candidate.linkedin_suggestions);
+                let suggestionsHtml = '<div class="linkedin-suggestions"><small class="text-muted d-block mb-2">🔍 Found LinkedIn profiles - Select the correct one:</small>';
                 candidate.linkedin_suggestions.forEach((profile, index) => {
                     suggestionsHtml += `
                         <div class="form-check mb-1">
@@ -1231,6 +1240,7 @@
                 suggestionsHtml += `<button class="btn btn-sm btn-primary mt-2" onclick="saveLinkedInSelection()">Save Selection</button></div>`;
                 $('#candidateLinkedIn').html(suggestionsHtml);
             } else {
+                console.log('No LinkedIn suggestions found');
                 $('#candidateLinkedIn').text('-');
             }
             
