@@ -584,16 +584,30 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     skills_data = extracted_data.get('skills', [])
                     if skills_data:
                         from models.database import Skill, CandidateSkill
-                        for skill_name in skills_data:
+                        for skill_item in skills_data:
+                            if not skill_item:
+                                continue
+                            
+                            # Handle both string and dict formats
+                            if isinstance(skill_item, dict):
+                                skill_name = skill_item.get('name')
+                                skill_category = skill_item.get('category', 'Technical')
+                                skill_proficiency = skill_item.get('proficiency', 'intermediate')
+                            else:
+                                skill_name = str(skill_item)
+                                skill_category = 'Technical'
+                                skill_proficiency = 'intermediate'
+                            
                             if not skill_name:
                                 continue
+                            
                             # Get or create skill
                             stmt = select(Skill).filter(Skill.name == skill_name)
                             result = await db.execute(stmt)
                             skill = result.scalar_one_or_none()
                             
                             if not skill:
-                                skill = Skill(name=skill_name, category="technical")
+                                skill = Skill(name=skill_name, category=skill_category)
                                 db.add(skill)
                                 await db.commit()
                                 await db.refresh(skill)
@@ -602,7 +616,7 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                             candidate_skill = CandidateSkill(
                                 candidate_id=candidate.id,
                                 skill_id=skill.id,
-                                proficiency="intermediate"  # Default, can be enhanced later
+                                proficiency=skill_proficiency
                             )
                             db.add(candidate_skill)
                         

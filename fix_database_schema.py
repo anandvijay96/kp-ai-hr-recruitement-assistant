@@ -1,12 +1,12 @@
 """
-Fix database schema - Add missing columns to ALL database files
+Fix database schema - Add missing columns and fix constraints
 """
 import sqlite3
 import os
 from pathlib import Path
 
 def fix_database(db_path):
-    """Add missing columns to a database file"""
+    """Add missing columns and fix constraints in a database file"""
     if not os.path.exists(db_path):
         print(f"  Database not found: {db_path}")
         return False
@@ -17,44 +17,54 @@ def fix_database(db_path):
         
         print(f"\n📁 Processing: {db_path}")
         
-        # Check if jobs table exists
+        fixed_something = False
+        
+        # Fix jobs table
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='jobs'")
-        if not cursor.fetchone():
-            print("  ⚠️  Jobs table doesn't exist - skipping")
-            conn.close()
-            return False
-        
-        # Check existing columns
-        cursor.execute("PRAGMA table_info(jobs)")
-        columns = [row[1] for row in cursor.fetchall()]
-        
-        # Add missing columns
-        columns_to_add = []
-        
-        if 'archived_at' not in columns:
-            columns_to_add.append(('archived_at', 'TIMESTAMP'))
-        
-        if 'view_count' not in columns:
-            columns_to_add.append(('view_count', 'INTEGER DEFAULT 0'))
-        
-        if 'application_deadline' not in columns:
-            columns_to_add.append(('application_deadline', 'TIMESTAMP'))
-        
-        if not columns_to_add:
-            print("  ✅ All columns already present")
-        else:
+        if cursor.fetchone():
+            cursor.execute("PRAGMA table_info(jobs)")
+            columns = [row[1] for row in cursor.fetchall()]
+            
+            columns_to_add = []
+            if 'archived_at' not in columns:
+                columns_to_add.append(('archived_at', 'TIMESTAMP'))
+            if 'view_count' not in columns:
+                columns_to_add.append(('view_count', 'INTEGER DEFAULT 0'))
+            if 'application_deadline' not in columns:
+                columns_to_add.append(('application_deadline', 'TIMESTAMP'))
+            
             for col_name, col_type in columns_to_add:
                 try:
                     cursor.execute(f"ALTER TABLE jobs ADD COLUMN {col_name} {col_type}")
-                    print(f"  ✓ Added column: {col_name}")
+                    print(f"  ✓ Added jobs.{col_name}")
+                    fixed_something = True
                 except sqlite3.OperationalError as e:
-                    if "duplicate column name" in str(e).lower():
-                        print(f"  ⚠️  Column {col_name} already exists")
-                    else:
+                    if "duplicate column name" not in str(e).lower():
                         raise
+        
+        # Fix resumes table - Make uploaded_by nullable
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='resumes'")
+        if cursor.fetchone():
+            print("  🔧 Checking resumes.uploaded_by constraint...")
             
+            # SQLite doesn't support ALTER COLUMN, so we need to check the schema
+            cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='resumes'")
+            create_sql = cursor.fetchone()[0]
+            
+            # Check if uploaded_by has NOT NULL constraint
+            if 'uploaded_by' in create_sql and 'NOT NULL' in create_sql:
+                # Need to recreate table without NOT NULL on uploaded_by
+                print("  ⚠️  uploaded_by has NOT NULL constraint - needs manual fix")
+                print("  💡 Solution: Delete hr_recruitment.db and restart app to recreate with correct schema")
+                print("  💡 Or run: python -c \"import os; os.remove('hr_recruitment.db')\" then restart")
+            else:
+                print("  ✅ uploaded_by is already nullable")
+        
+        if fixed_something:
             conn.commit()
             print("  ✅ Schema updated successfully")
+        else:
+            print("  ✅ All columns already present")
         
         conn.close()
         return True
