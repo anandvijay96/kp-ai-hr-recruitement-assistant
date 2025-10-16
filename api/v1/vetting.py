@@ -905,10 +905,16 @@ def _analyze_job_hopping(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, 
         total_months = 0
         
         for exp in work_experience:
-            duration = exp.get('duration_months', 0)
+            duration = exp.get('duration_months')
+            # Handle None values safely
+            if duration is None or not isinstance(duration, (int, float)):
+                duration = 0
+            else:
+                duration = int(duration)
+            
             total_months += duration
             
-            if duration < 12:  # Short tenure
+            if duration > 0 and duration < 12:  # Short tenure
                 short_stints.append({
                     'title': exp.get('title', 'Unknown Position'),
                     'company': exp.get('company', 'Unknown Company'),
