@@ -50,7 +50,9 @@ resume_data_extractor = EnhancedResumeExtractor()
 async def scan_resume(
     file: UploadFile = File(...),
     job_description: Optional[str] = Form(None),
-    session_id: Optional[str] = Form(None)
+    session_id: Optional[str] = Form(None),
+    use_llm: bool = Form(False),
+    llm_provider: str = Form("gemini")
 ):
     """
     Scan a single resume for authenticity without saving to database
@@ -86,20 +88,54 @@ async def scan_resume(
         # Analyze document structure (CRITICAL: same as upload page)
         structure_info = document_processor.analyze_document_structure(temp_file_path)
         
-        # Extract candidate information for Google verification (CRITICAL: same as upload page)
+        # Extract candidate information using LLM or traditional method
         candidate_name = None
         candidate_email = None
         candidate_phone = None
         extracted_data = None
+        
         try:
-            extracted_data = resume_data_extractor.extract_all(extracted_text)
-            if extracted_data:
-                candidate_name = extracted_data.get('name')
-                candidate_email = extracted_data.get('email')
-                candidate_phone = extracted_data.get('phone')
-                logger.info(f"📝 Extracted candidate data: Name={candidate_name}, Email={candidate_email}, Phone={candidate_phone}")
-            else:
-                logger.warning(f"⚠️ No candidate data extracted from resume")
+            if use_llm:
+                # Use LLM-based extraction
+                logger.info(f"🤖 Using LLM extraction with provider: {llm_provider}")
+                from services.llm_resume_extractor import create_llm_extractor
+                from core.config import settings
+                
+                # Get API key from settings
+                api_key = None
+                if llm_provider == "gemini":
+                    api_key = getattr(settings, 'gemini_api_key', None) or os.getenv('GEMINI_API_KEY')
+                elif llm_provider == "openai":
+                    api_key = getattr(settings, 'openai_api_key', None) or os.getenv('OPENAI_API_KEY')
+                
+                if not api_key:
+                    logger.warning(f"⚠️ {llm_provider.upper()} API key not configured, falling back to traditional extraction")
+                    use_llm = False
+                else:
+                    try:
+                        llm_extractor = create_llm_extractor(provider=llm_provider, api_key=api_key)
+                        extracted_data = llm_extractor.extract(extracted_text)
+                        extracted_data = llm_extractor.validate_extraction(extracted_data)
+                        
+                        candidate_name = extracted_data.get('name')
+                        candidate_email = extracted_data.get('email')
+                        candidate_phone = extracted_data.get('phone')
+                        logger.info(f"✅ LLM extraction successful: Name={candidate_name}, Email={candidate_email}, Phone={candidate_phone}")
+                    except Exception as llm_error:
+                        logger.error(f"❌ LLM extraction failed: {llm_error}, falling back to traditional")
+                        use_llm = False
+            
+            if not use_llm:
+                # Use traditional extraction
+                logger.info(f"📋 Using traditional extraction (OCR + Regex)")
+                extracted_data = resume_data_extractor.extract_all(extracted_text)
+                if extracted_data:
+                    candidate_name = extracted_data.get('name')
+                    candidate_email = extracted_data.get('email')
+                    candidate_phone = extracted_data.get('phone')
+                    logger.info(f"📝 Extracted candidate data: Name={candidate_name}, Email={candidate_email}, Phone={candidate_phone}")
+                else:
+                    logger.warning(f"⚠️ No candidate data extracted from resume")
         except Exception as e:
             logger.warning(f"Failed to extract candidate data: {str(e)}")
         
