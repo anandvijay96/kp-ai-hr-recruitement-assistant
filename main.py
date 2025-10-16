@@ -272,9 +272,10 @@ async def candidates_list_page(request: Request):
     return templates.TemplateResponse("candidate_search.html", {"request": request, "user": user})
 
 @app.get("/search")
-def search_page(request: Request):
+async def search_page(request: Request):
     """Candidate search and filtering page."""
-    return templates.TemplateResponse("candidate_search.html", {"request": request})
+    user = await get_current_user(request)
+    return templates.TemplateResponse("candidate_search.html", {"request": request, "user": user})
 
 @app.get("/candidates/{candidate_id}")
 @require_auth

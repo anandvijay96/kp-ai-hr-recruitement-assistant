@@ -583,6 +583,7 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                                 soft_deleted_candidate.location = extracted_data.get('location')
                                 soft_deleted_candidate.status = "new"
                                 soft_deleted_candidate.source = "vetting"
+                                soft_deleted_candidate.updated_at = datetime.now()  # Update timestamp for recent candidates list
                                 if hasattr(soft_deleted_candidate, 'professional_summary'):
                                     soft_deleted_candidate.professional_summary = extracted_data.get('summary')
                                 

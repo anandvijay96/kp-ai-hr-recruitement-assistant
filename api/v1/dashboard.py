@@ -62,8 +62,10 @@ async def get_hr_dashboard_data(
 async def get_hr_stats(db: AsyncSession) -> Dict[str, int]:
     """Get quick stats for HR dashboard"""
     
-    # Total candidates
-    total_candidates_query = select(func.count(Candidate.id))
+    # Total candidates (exclude soft-deleted)
+    total_candidates_query = select(func.count(Candidate.id)).where(
+        Candidate.is_deleted == False
+    )
     total_candidates_result = await db.execute(total_candidates_query)
     total_candidates = total_candidates_result.scalar() or 0
     
@@ -74,9 +76,10 @@ async def get_hr_stats(db: AsyncSession) -> Dict[str, int]:
     pending_vetting_result = await db.execute(pending_vetting_query)
     pending_vetting = pending_vetting_result.scalar() or 0
     
-    # Shortlisted candidates (using 'screened' status from Candidate model)
+    # Shortlisted candidates (using 'screened' status from Candidate model, exclude soft-deleted)
     shortlisted_query = select(func.count(Candidate.id)).where(
-        Candidate.status == "screened"  # Changed from "shortlisted" to match model constraint
+        Candidate.status == "screened",  # Changed from "shortlisted" to match model constraint
+        Candidate.is_deleted == False
     )
     shortlisted_result = await db.execute(shortlisted_query)
     shortlisted = shortlisted_result.scalar() or 0
@@ -118,9 +121,11 @@ async def get_pending_vetting(db: AsyncSession, limit: int = 10) -> List[Dict[st
 
 
 async def get_recent_candidates(db: AsyncSession, limit: int = 10) -> List[Dict[str, Any]]:
-    """Get recently added candidates"""
+    """Get recently added/updated candidates (exclude soft-deleted)"""
     
-    query = select(Candidate).order_by(desc(Candidate.created_at)).limit(limit)
+    query = select(Candidate).where(
+        Candidate.is_deleted == False
+    ).order_by(desc(Candidate.updated_at)).limit(limit)
     
     result = await db.execute(query)
     candidates = result.scalars().all()
