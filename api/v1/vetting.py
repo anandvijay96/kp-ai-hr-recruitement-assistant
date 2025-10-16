@@ -526,6 +526,7 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 # Check if candidate already exists by email (including soft-deleted)
                 candidate = None
                 soft_deleted_candidate = None
+                is_restored_candidate = False
                 if candidate_email:
                     from sqlalchemy import select
                     try:
@@ -548,6 +549,28 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                             
                             if soft_deleted_candidate:
                                 logger.info(f"Found soft-deleted candidate with email {candidate_email}, will restore and update")
+                                
+                                # Delete old related data before updating
+                                from models.database import WorkExperience, Education, CandidateSkill, Certification
+                                from sqlalchemy import delete
+                                
+                                logger.info(f"Deleting old data for candidate {soft_deleted_candidate.id}")
+                                
+                                # Delete old work experience
+                                await db.execute(delete(WorkExperience).where(WorkExperience.candidate_id == soft_deleted_candidate.id))
+                                
+                                # Delete old education
+                                await db.execute(delete(Education).where(Education.candidate_id == soft_deleted_candidate.id))
+                                
+                                # Delete old skills
+                                await db.execute(delete(CandidateSkill).where(CandidateSkill.candidate_id == soft_deleted_candidate.id))
+                                
+                                # Delete old certifications
+                                await db.execute(delete(Certification).where(Certification.candidate_id == soft_deleted_candidate.id))
+                                
+                                await db.commit()
+                                logger.info(f"Deleted old data for candidate {soft_deleted_candidate.id}")
+                                
                                 # Restore the soft-deleted candidate
                                 soft_deleted_candidate.is_deleted = False
                                 soft_deleted_candidate.deleted_at = None
@@ -564,6 +587,7 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                                     soft_deleted_candidate.professional_summary = extracted_data.get('summary')
                                 
                                 candidate = soft_deleted_candidate
+                                is_restored_candidate = True
                                 await db.commit()
                                 await db.refresh(candidate)
                                 logger.info(f"Restored and updated candidate: {candidate_name} (ID: {candidate.id})")
@@ -624,7 +648,9 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     await db.commit()
                     await db.refresh(candidate)
                     logger.info(f"Created new candidate: {candidate_name} (ID: {candidate.id})")
-                    
+                
+                # Store skills, education, work experience (for both new and restored candidates)
+                if candidate:
                     # Store skills
                     skills_data = extracted_data.get('skills', [])
                     if skills_data:
