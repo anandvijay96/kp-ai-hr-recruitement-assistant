@@ -121,6 +121,10 @@ async def on_startup():
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Mount feedback submissions directory for admin access
+if os.path.exists("feedback_submissions"):
+    app.mount("/feedback_submissions", StaticFiles(directory="feedback_submissions"), name="feedback_submissions")
+
 # Setup templates
 templates = Jinja2Templates(directory="templates")
 
@@ -236,6 +240,11 @@ async def dashboard(request: Request):
     
     # Default to HR dashboard if no role or role not recognized
     return templates.TemplateResponse("dashboards/hr_dashboard.html", {"request": request, "user": user})
+
+@app.get("/admin/feedback", response_class=HTMLResponse)
+async def admin_feedback(request: Request):
+    """Admin page to view feedback and bug reports"""
+    return templates.TemplateResponse("admin_feedback.html", {"request": request})
 
 @app.get("/upload", response_class=HTMLResponse)
 async def upload_form(request: Request):
