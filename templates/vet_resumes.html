@@ -51,6 +51,62 @@
             </div>
         </div>
 
+        <!-- LLM Usage Dashboard -->
+        <div class="card mb-4" id="llmUsageDashboard" style="border-left: 4px solid var(--primary);">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-robot me-2"></i>AI Usage Monitor
+                    </h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary" onclick="refreshUsageStats()" title="Refresh">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Gemini Usage -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong><i class="bi bi-google me-1"></i> Gemini (Free Tier)</strong>
+                        <span id="geminiStatusBadge" class="badge bg-success">✅ Healthy</span>
+                    </div>
+                    <div class="progress" style="height: 25px;">
+                        <div id="geminiProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%">
+                            <span id="geminiProgressText">0%</span>
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        <span id="geminiUsageText">0 / 1,500 requests today</span>
+                        <span id="geminiRemainingText" class="ms-2">• 1,500 remaining</span>
+                    </small>
+                </div>
+                
+                <!-- OpenAI Usage -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong><i class="bi bi-stars me-1"></i> OpenAI (Paid)</strong>
+                        <span class="badge bg-info">Unlimited</span>
+                    </div>
+                    <small class="text-muted">
+                        <span id="openaiUsageText">0 requests</span>
+                        <span id="openaiCostText" class="ms-2">• $0.00 spent today</span>
+                    </small>
+                </div>
+                
+                <!-- Warning/Error Messages -->
+                <div id="usageWarningAlert" class="alert alert-warning d-none mb-0" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <span id="usageWarningText"></span>
+                </div>
+                <div id="usageErrorAlert" class="alert alert-danger d-none mb-0" role="alert">
+                    <i class="bi bi-x-circle me-2"></i>
+                    <span id="usageErrorText"></span>
+                </div>
+            </div>
+        </div>
+
         <!-- Upload Section -->
         <div class="card" id="uploadSection">
             <div class="card-body">
@@ -247,6 +303,103 @@
         let sessionId = null;
         let scannedResumes = [];
         let selectedHashes = new Set();
+        let usageStatsInterval = null;
+
+        // LLM Usage Tracking Functions
+        async function fetchUsageStats() {
+            try {
+                const response = await fetch('/api/v1/llm-usage/stats');
+                const stats = await response.json();
+                updateUsageDashboard(stats);
+            } catch (error) {
+                console.error('Error fetching usage stats:', error);
+            }
+        }
+
+        function updateUsageDashboard(stats) {
+            // Update Gemini usage
+            const gemini = stats.gemini;
+            const usagePercent = gemini.usage_percent;
+            
+            // Update progress bar
+            const progressBar = document.getElementById('geminiProgressBar');
+            progressBar.style.width = usagePercent + '%';
+            document.getElementById('geminiProgressText').textContent = usagePercent.toFixed(1) + '%';
+            
+            // Update text
+            document.getElementById('geminiUsageText').textContent = 
+                `${gemini.requests_today} / ${gemini.daily_limit} requests today`;
+            document.getElementById('geminiRemainingText').textContent = 
+                `• ${gemini.remaining} remaining`;
+            
+            // Update status badge and color
+            const statusBadge = document.getElementById('geminiStatusBadge');
+            if (stats.status === 'critical') {
+                statusBadge.className = 'badge bg-danger';
+                statusBadge.textContent = '🔴 Critical';
+                progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-danger';
+            } else if (stats.status === 'warning') {
+                statusBadge.className = 'badge bg-warning';
+                statusBadge.textContent = '🟡 Warning';
+                progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-warning';
+            } else if (stats.status === 'moderate') {
+                statusBadge.className = 'badge bg-info';
+                statusBadge.textContent = '🟢 Moderate';
+                progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-info';
+            } else {
+                statusBadge.className = 'badge bg-success';
+                statusBadge.textContent = '✅ Healthy';
+                progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-success';
+            }
+            
+            // Update OpenAI usage
+            const openai = stats.openai;
+            document.getElementById('openaiUsageText').textContent = 
+                `${openai.requests_total} requests`;
+            document.getElementById('openaiCostText').textContent = 
+                `• $${openai.cost_usd.toFixed(4)} spent today`;
+            
+            // Show warnings/errors
+            const warningAlert = document.getElementById('usageWarningAlert');
+            const errorAlert = document.getElementById('usageErrorAlert');
+            
+            if (stats.status === 'critical') {
+                errorAlert.classList.remove('d-none');
+                document.getElementById('usageErrorText').textContent = 
+                    `Critical: ${usagePercent.toFixed(0)}% of daily quota used. Consider switching to OpenAI or connecting another Google account.`;
+                warningAlert.classList.add('d-none');
+            } else if (stats.status === 'warning') {
+                warningAlert.classList.remove('d-none');
+                document.getElementById('usageWarningText').textContent = 
+                    `Warning: ${usagePercent.toFixed(0)}% of daily quota used. Plan ahead for bulk uploads.`;
+                errorAlert.classList.add('d-none');
+            } else {
+                warningAlert.classList.add('d-none');
+                errorAlert.classList.add('d-none');
+            }
+        }
+
+        function refreshUsageStats() {
+            fetchUsageStats();
+        }
+
+        // Auto-refresh usage stats every 30 seconds
+        function startUsageStatsAutoRefresh() {
+            fetchUsageStats(); // Initial fetch
+            usageStatsInterval = setInterval(fetchUsageStats, 30000); // Every 30 seconds
+        }
+
+        function stopUsageStatsAutoRefresh() {
+            if (usageStatsInterval) {
+                clearInterval(usageStatsInterval);
+                usageStatsInterval = null;
+            }
+        }
+
+        // Start auto-refresh on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            startUsageStatsAutoRefresh();
+        });
 
         // File upload handling
         const uploadZone = document.getElementById('uploadZone');
@@ -309,6 +462,11 @@
                     const result = await response.json();
                     scannedResumes.push(result);
                     scanned++;
+                    
+                    // Refresh usage stats after each scan (if using LLM)
+                    if (useLLM) {
+                        fetchUsageStats();
+                    }
                 } catch (error) {
                     console.error(`Error scanning ${file.name}:`, error);
                 }
@@ -319,6 +477,11 @@
 
             document.getElementById('scanningSection').classList.add('hidden');
             displayResults();
+            
+            // Final refresh of usage stats
+            if (useLLM) {
+                fetchUsageStats();
+            }
         }
 
         function displayResults() {
@@ -449,11 +612,21 @@
                 ${jobHopping.risk_level && jobHopping.risk_level !== 'none' ? `
                     <div class="alert alert-${jobHopping.risk_level === 'high' ? 'danger' : 'warning'} mb-3">
                         <h6><i class="bi bi-briefcase"></i> Job Hopping Analysis</h6>
+                        
+                        ${jobHopping.current_company ? `
+                            <div class="alert alert-info mb-3">
+                                <strong>📍 Current Company:</strong> ${jobHopping.current_company.company}<br>
+                                <strong>Current Role:</strong> ${jobHopping.current_company.current_role}<br>
+                                <strong>Tenure:</strong> ${jobHopping.current_company.total_duration} months
+                                ${jobHopping.current_company.roles.length > 1 ? `<br><small class="text-muted">(${jobHopping.current_company.roles.length} roles: ${jobHopping.current_company.roles.join(', ')})</small>` : ''}
+                            </div>
+                        ` : ''}
+                        
                         <div class="row">
                             <div class="col-md-6">
                                 <strong>Risk Level:</strong> <span class="badge bg-${jobHopping.risk_level === 'high' ? 'danger' : 'warning'}">${jobHopping.risk_level.toUpperCase()}</span><br>
                                 <strong>Score Impact:</strong> ${jobHopping.score_impact} points<br>
-                                <strong>Short Stints:</strong> ${jobHopping.short_tenures} of ${jobHopping.total_jobs} jobs<br>
+                                <strong>Short Stints:</strong> ${jobHopping.short_tenures} of ${jobHopping.total_jobs} companies<br>
                                 <strong>Average Tenure:</strong> ${Math.round(jobHopping.average_tenure_months || 0)} months<br>
                                 <strong>Career Level:</strong> ${jobHopping.career_level || 'unknown'}
                             </div>
