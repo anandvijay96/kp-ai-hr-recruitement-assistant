@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Dashboard - Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/navbar.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+        }
+        
+        body {
+            background: #f8fafc;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #7c3aed 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0.5rem 0;
+        }
+        
+        .stat-label {
+            color: #64748b;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        
+        .activity-feed {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .activity-item {
+            padding: 1rem;
+            border-left: 3px solid #e2e8f0;
+            margin-bottom: 1rem;
+            transition: all 0.2s;
+        }
+        
+        .activity-item:hover {
+            background: #f8fafc;
+            border-left-color: var(--primary-color);
+        }
+        
+        .activity-time {
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+        
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .rank-badge {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-right: 1rem;
+        }
+        
+        .rank-1 { background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); color: #92400e; }
+        .rank-2 { background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%); color: #374151; }
+        .rank-3 { background: linear-gradient(135deg, #cd7f32 0%, #e8a87c 100%); color: #78350f; }
+        .rank-other { background: #e2e8f0; color: #475569; }
+        
+        .progress-thin {
+            height: 6px;
+            border-radius: 3px;
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+        }
+        
+        .refresh-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .refresh-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .refresh-btn.spinning {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Include Navbar -->
+    {% include 'components/unified_navbar.html' %}
+    
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2"><i class="bi bi-speedometer2"></i> Activity Dashboard</h1>
+                    <p class="mb-0 opacity-75">Real-time team performance and activity monitoring</p>
+                </div>
+                <div>
+                    <span class="badge bg-light text-dark fs-6">
+                        <i class="bi bi-clock"></i> Last updated: <span id="lastUpdate">Just now</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Statistics Cards -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label">Total Actions Today</div>
+                            <div class="stat-value" id="totalActions">0</div>
+                            <small class="text-success"><i class="bi bi-arrow-up"></i> +12% from yesterday</small>
+                        </div>
+                        <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                            <i class="bi bi-activity"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="stat-card" style="border-left-color: var(--success-color);">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label">Resumes Vetted</div>
+                            <div class="stat-value" id="resumesVetted">0</div>
+                            <small class="text-success"><i class="bi bi-arrow-up"></i> +8% from yesterday</small>
+                        </div>
+                        <div class="stat-icon bg-success bg-opacity-10 text-success">
+                            <i class="bi bi-file-earmark-check"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="stat-card" style="border-left-color: var(--warning-color);">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label">Interviews Scheduled</div>
+                            <div class="stat-value" id="interviewsScheduled">0</div>
+                            <small class="text-warning"><i class="bi bi-dash"></i> Same as yesterday</small>
+                        </div>
+                        <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                            <i class="bi bi-calendar-check"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="stat-card" style="border-left-color: var(--danger-color);">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label">Active Users</div>
+                            <div class="stat-value" id="activeUsers">0</div>
+                            <small class="text-muted">Currently online</small>
+                        </div>
+                        <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+                            <i class="bi bi-people"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-8">
+                <div class="chart-container">
+                    <h5 class="mb-3"><i class="bi bi-graph-up"></i> Activity Trend (Last 7 Days)</h5>
+                    <canvas id="activityChart" height="80"></canvas>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="chart-container">
+                    <h5 class="mb-3"><i class="bi bi-pie-chart"></i> Activity Distribution</h5>
+                    <canvas id="distributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leaderboard and Activity Feed -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5 class="mb-3"><i class="bi bi-trophy"></i> Top Performers This Month</h5>
+                    <div id="leaderboard">
+                        <!-- Leaderboard items will be inserted here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="activity-feed">
+                    <h5 class="mb-3"><i class="bi bi-clock-history"></i> Recent Activity</h5>
+                    <div id="activityFeed">
+                        <!-- Activity items will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Refresh Button -->
+    <button class="refresh-btn" id="refreshBtn" title="Refresh data">
+        <i class="bi bi-arrow-clockwise fs-4"></i>
+    </button>
+
+    <script>
+        // Initialize charts
+        let activityChart, distributionChart;
+        
+        // Activity Trend Chart
+        const activityCtx = document.getElementById('activityChart').getContext('2d');
+        activityChart = new Chart(activityCtx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Total Actions',
+                    data: [120, 150, 180, 140, 200, 90, 110],
+                    borderColor: '#4f46e5',
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+        
+        // Distribution Chart
+        const distributionCtx = document.getElementById('distributionChart').getContext('2d');
+        distributionChart = new Chart(distributionCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Vetting', 'Viewing', 'Creating', 'Searching', 'Other'],
+                datasets: [{
+                    data: [35, 25, 20, 15, 5],
+                    backgroundColor: [
+                        '#4f46e5',
+                        '#10b981',
+                        '#f59e0b',
+                        '#ef4444',
+                        '#8b5cf6'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+        
+        // Load dashboard data
+        async function loadDashboardData() {
+            try {
+                // Fetch activity summary
+                const response = await fetch('/api/v1/activity/summary?days=1', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    updateStatistics(data.data);
+                }
+                
+                // Fetch leaderboard
+                const leaderboardResponse = await fetch('/api/v1/admin/team-leaderboard?period=month&limit=5', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                if (leaderboardResponse.ok) {
+                    const leaderboardData = await leaderboardResponse.json();
+                    updateLeaderboard(leaderboardData.data.leaderboard);
+                }
+                
+                // Update timestamp
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+        
+        function updateStatistics(data) {
+            document.getElementById('totalActions').textContent = data.total_resumes_vetted + data.total_candidates_viewed + data.total_searches || 0;
+            document.getElementById('resumesVetted').textContent = data.total_resumes_vetted || 0;
+            document.getElementById('interviewsScheduled').textContent = data.total_interviews_scheduled || 0;
+            document.getElementById('activeUsers').textContent = data.active_days || 0;
+        }
+        
+        function updateLeaderboard(leaderboard) {
+            const container = document.getElementById('leaderboard');
+            container.innerHTML = '';
+            
+            leaderboard.forEach((user, index) => {
+                const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : 'rank-other';
+                
+                const item = document.createElement('div');
+                item.className = 'leaderboard-item';
+                item.innerHTML = `
+                    <div class="rank-badge ${rankClass}">${user.rank}</div>
+                    <div class="flex-grow-1">
+                        <div class="fw-bold">${user.user_name}</div>
+                        <div class="small text-muted">${user.resumes_vetted} resumes • ${user.candidates_created} candidates</div>
+                        <div class="progress progress-thin mt-2">
+                            <div class="progress-bar bg-primary" style="width: ${user.productivity_score}%"></div>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold text-primary">${user.productivity_score}</div>
+                        <div class="small text-muted">Score</div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+        
+        // Refresh button
+        document.getElementById('refreshBtn').addEventListener('click', function() {
+            this.classList.add('spinning');
+            loadDashboardData();
+            setTimeout(() => this.classList.remove('spinning'), 1000);
+        });
+        
+        // Auto-refresh every 30 seconds
+        setInterval(loadDashboardData, 30000);
+        
+        // Initial load
+        loadDashboardData();
+    </script>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Logout Script -->
+    <script>
+        async function logout(event) {
+            event.preventDefault();
+            try {
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    alert('Logout failed. Please try again.');
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('An error occurred during logout.');
+            }
+        }
+    </script>
+</body>
+</html>

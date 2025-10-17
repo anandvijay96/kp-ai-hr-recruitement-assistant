@@ -127,4 +127,12 @@ LLM_*.md
 
 !Business Requirements Document 1.pdf
 !README.md
-!DEPLOY_GUIDE.md
+!README_LOCAL_SETUP.md
+!MIGRATION_GUIDE_MVP1_TO_MVP2.md
+!CONTRIBUTING.md
+!AI_DEVELOPMENT_GUIDE.md
+
+# Ignore session/archive docs
+*_SESSION_*.md
+organize_docs.ps1
+docs/archive/

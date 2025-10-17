@@ -31,6 +31,13 @@ from api.v1 import simple_auth
 from api.v1 import dashboard as dashboard_v1
 from api.v1 import matching as matching_v1
 from api.v1 import ratings as ratings_v1
+
+# Phase 3: Activity tracking and workflow
+from api.v1 import activity as activity_v1
+from api.v1 import workflow as workflow_v1
+from api.v1 import interviews as interviews_v1
+from api.v1 import reports as reports_v1
+from middleware.activity_logger import setup_activity_logging
 try:
     from api.v1 import vetting as vetting_v1
     VETTING_ENABLED = True
@@ -103,6 +110,9 @@ app.add_middleware(
     https_only=False  # Set to True in production with HTTPS
 )
 
+# Phase 3: Add activity logging middleware
+setup_activity_logging(app)
+
 # Initialize database on startup
 @app.on_event("startup")
 async def on_startup():
@@ -165,6 +175,12 @@ app.include_router(matching_v1.router, prefix="/api/v1", tags=["matching"])
 app.include_router(ratings_v1.router, prefix="/api/v1", tags=["ratings"])
 if VETTING_ENABLED:
     app.include_router(vetting_v1.router, prefix="/api/v1/vetting", tags=["vetting"])
+
+# Phase 3: Activity tracking and workflow routers
+app.include_router(activity_v1.router, prefix="/api/v1", tags=["activity"])
+app.include_router(workflow_v1.router, prefix="/api/v1", tags=["workflow"])
+app.include_router(interviews_v1.router, prefix="/api/v1", tags=["interviews"])
+app.include_router(reports_v1.router, prefix="/api/v1", tags=["reports"])
 
 if LLM_USAGE_ENABLED:
     app.include_router(llm_usage.router, prefix="/api/v1", tags=["llm-usage"])
@@ -245,6 +261,19 @@ async def dashboard(request: Request):
 async def admin_feedback(request: Request):
     """Admin page to view feedback and bug reports"""
     return templates.TemplateResponse("admin_feedback.html", {"request": request})
+
+@app.get("/admin/activity-dashboard", response_class=HTMLResponse)
+@require_auth
+async def activity_dashboard(request: Request):
+    """Phase 3: Admin activity dashboard - requires admin authentication"""
+    user = await get_current_user(request)
+    
+    # Check if user is admin (handle both dict and object)
+    user_role = user.get("role") if isinstance(user, dict) else getattr(user, "role", None)
+    if not user or user_role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    return templates.TemplateResponse("admin/activity_dashboard.html", {"request": request, "user": user})
 
 @app.get("/upload", response_class=HTMLResponse)
 async def upload_form(request: Request):

@@ -34,6 +34,10 @@ The AI HR Assistant is a comprehensive recruitment platform that automates resum
 - ✅ **Real-time Usage Monitoring** (LLM quota tracking)
 - ✅ **Admin Dashboard** (Team analytics, reporting)
 - ✅ **Multi-format Support** (PDF, DOCX, TXT files)
+- ✅ **Activity Tracking** (Automatic logging of all user actions) - Phase 3
+- ✅ **Interview Scheduling** (Conflict detection, rescheduling) - Phase 3
+- ✅ **Candidate Workflow** (Status management, history tracking) - Phase 3
+- ✅ **Report Generation** (PDF/Excel exports) - Phase 3
 
 ### **Tech Stack:**
 - **Backend:** FastAPI (Python), SQLAlchemy, PostgreSQL
@@ -57,6 +61,9 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # 2. Install dependencies
 pip install -r requirements.txt
+
+# 2a. Install Phase 3 optional dependencies (for PDF/Excel reports)
+pip install reportlab openpyxl
 
 # 3. Setup database
 python -m alembic upgrade head

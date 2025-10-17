@@ -93,14 +93,26 @@ class UserSession(Base):
 
 
 class UserActivityLog(Base):
-    """User activity log model"""
+    """User activity log model - Enhanced for Phase 3"""
     __tablename__ = "user_activity_log"
     
     id = Column(String(36), primary_key=True, default=generate_uuid)
     user_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), index=True)
-    action_type = Column(String(50), nullable=False, index=True)
+    action_type = Column(String(50), nullable=False, index=True)  # 'login', 'view_candidate', 'vet_resume', 'search', etc.
+    
+    # Phase 3 Enhancement: Entity tracking
+    entity_type = Column(String(50), index=True)  # 'candidate', 'job', 'report', 'resume', etc.
+    entity_id = Column(String(36), index=True)  # ID of the affected entity
+    request_metadata = Column(JSON)  # Additional context (filters, search terms, request params)
+    
+    # Request metadata
     ip_address = Column(String(45))
     user_agent = Column(Text)
+    request_method = Column(String(10))  # GET, POST, PUT, DELETE
+    request_path = Column(String(500))
+    duration_ms = Column(Integer)  # Request duration in milliseconds
+    
+    # Status and error handling
     status = Column(String(20), nullable=False, index=True)
     error_message = Column(Text)
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
@@ -756,6 +768,226 @@ class ResumeJobMatch(Base):
         CheckConstraint("skill_score >= 0 AND skill_score <= 100", name="check_skill_score_range"),
         CheckConstraint("experience_score >= 0 AND experience_score <= 100", name="check_experience_score_range"),
         CheckConstraint("education_score >= 0 AND education_score <= 100", name="check_education_score_range"),
+    )
+
+
+# ============================================================================
+# PHASE 3: INTERNAL HR FEATURES - ACTIVITY TRACKING & WORKFLOW
+# ============================================================================
+
+class UserDailyStats(Base):
+    """Daily aggregated user activity statistics"""
+    __tablename__ = "user_daily_stats"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    date = Column(Date, nullable=False, index=True)
+    
+    # Activity Counts
+    logins_count = Column(Integer, default=0)
+    resumes_vetted = Column(Integer, default=0)
+    candidates_viewed = Column(Integer, default=0)
+    candidates_created = Column(Integer, default=0)
+    candidates_updated = Column(Integer, default=0)
+    searches_performed = Column(Integer, default=0)
+    reports_generated = Column(Integer, default=0)
+    jobs_created = Column(Integer, default=0)
+    jobs_updated = Column(Integer, default=0)
+    interviews_scheduled = Column(Integer, default=0)
+    emails_sent = Column(Integer, default=0)
+    
+    # Session Metrics
+    total_session_time = Column(Integer, default=0)  # in seconds
+    avg_session_duration = Column(Integer, default=0)  # in seconds
+    total_actions = Column(Integer, default=0)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    __table_args__ = (
+        # Unique constraint: one record per user per day
+        CheckConstraint("logins_count >= 0", name="chk_daily_logins_positive"),
+        CheckConstraint("total_session_time >= 0", name="chk_daily_session_time_positive"),
+    )
+
+
+class UserWeeklyStats(Base):
+    """Weekly aggregated user activity statistics"""
+    __tablename__ = "user_weekly_stats"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    week_number = Column(Integer, nullable=False, index=True)  # ISO week number (1-53)
+    week_start_date = Column(Date, nullable=False)
+    week_end_date = Column(Date, nullable=False)
+    
+    # Aggregated Activity Counts
+    logins_count = Column(Integer, default=0)
+    resumes_vetted = Column(Integer, default=0)
+    candidates_viewed = Column(Integer, default=0)
+    candidates_created = Column(Integer, default=0)
+    searches_performed = Column(Integer, default=0)
+    reports_generated = Column(Integer, default=0)
+    jobs_created = Column(Integer, default=0)
+    interviews_scheduled = Column(Integer, default=0)
+    
+    # Performance Metrics
+    total_session_time = Column(Integer, default=0)
+    avg_daily_actions = Column(Integer, default=0)
+    productivity_score = Column(Integer, default=0)  # 0-100
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    __table_args__ = (
+        CheckConstraint("week_number >= 1 AND week_number <= 53", name="chk_week_number_range"),
+        CheckConstraint("productivity_score >= 0 AND productivity_score <= 100", name="chk_productivity_score_range"),
+    )
+
+
+class UserMonthlyStats(Base):
+    """Monthly aggregated user activity statistics"""
+    __tablename__ = "user_monthly_stats"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    month = Column(Integer, nullable=False, index=True)  # 1-12
+    
+    # Aggregated Activity Counts
+    logins_count = Column(Integer, default=0)
+    resumes_vetted = Column(Integer, default=0)
+    candidates_viewed = Column(Integer, default=0)
+    candidates_created = Column(Integer, default=0)
+    searches_performed = Column(Integer, default=0)
+    reports_generated = Column(Integer, default=0)
+    jobs_created = Column(Integer, default=0)
+    interviews_scheduled = Column(Integer, default=0)
+    
+    # Performance Metrics
+    total_session_time = Column(Integer, default=0)
+    avg_daily_actions = Column(Integer, default=0)
+    productivity_score = Column(Integer, default=0)  # 0-100
+    quality_score = Column(Integer, default=0)  # 0-100 (based on decision accuracy)
+    
+    # Rankings (optional)
+    team_rank = Column(Integer)  # Ranking within team
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    __table_args__ = (
+        CheckConstraint("month >= 1 AND month <= 12", name="chk_month_range"),
+        CheckConstraint("productivity_score >= 0 AND productivity_score <= 100", name="chk_monthly_productivity_score_range"),
+        CheckConstraint("quality_score >= 0 AND quality_score <= 100", name="chk_quality_score_range"),
+    )
+
+
+class Interview(Base):
+    """Interview scheduling and management"""
+    __tablename__ = "interviews"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    candidate_id = Column(String(36), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id = Column(String(36), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    # Scheduling Information
+    scheduled_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
+    interviewer_ids = Column(JSON)  # Array of user IDs
+    scheduled_datetime = Column(DateTime(timezone=True), nullable=False, index=True)
+    duration_minutes = Column(Integer, default=60)
+    timezone = Column(String(50), default='UTC')
+    
+    # Interview Details
+    interview_type = Column(String(50), nullable=False, index=True)  # 'phone', 'video', 'in_person', 'technical', 'hr_round'
+    interview_round = Column(Integer, default=1)  # 1st round, 2nd round, etc.
+    location = Column(String(500))  # Physical location or meeting link
+    meeting_link = Column(String(500))  # Video call URL
+    meeting_id = Column(String(100))  # Meeting ID for video platforms
+    meeting_password = Column(String(100))  # Meeting password if applicable
+    
+    # Status Management
+    status = Column(String(50), default='scheduled', index=True)  # scheduled, confirmed, completed, cancelled, no_show, rescheduled
+    
+    # Notifications
+    reminder_sent = Column(Boolean, default=False)
+    confirmation_sent = Column(Boolean, default=False)
+    
+    # Interview Notes and Results
+    notes = Column(Text)  # Interviewer's notes
+    feedback = Column(Text)  # Structured feedback
+    rating = Column(Integer)  # 1-5 rating
+    recommendation = Column(String(50))  # 'hire', 'reject', 'proceed_next_round', 'hold'
+    
+    # Rescheduling
+    original_datetime = Column(DateTime(timezone=True))  # If rescheduled
+    reschedule_reason = Column(Text)
+    rescheduled_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"))
+    reschedule_count = Column(Integer, default=0)
+    
+    # Cancellation
+    cancelled_at = Column(DateTime(timezone=True))
+    cancelled_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"))
+    cancellation_reason = Column(Text)
+    
+    # Completion
+    completed_at = Column(DateTime(timezone=True))
+    completed_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"))
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    candidate = relationship("Candidate", foreign_keys=[candidate_id])
+    job = relationship("Job", foreign_keys=[job_id])
+    
+    __table_args__ = (
+        CheckConstraint("interview_type IN ('phone', 'video', 'in_person', 'technical', 'hr_round', 'panel', 'behavioral')", name="chk_interview_type"),
+        CheckConstraint("status IN ('scheduled', 'confirmed', 'completed', 'cancelled', 'no_show', 'rescheduled')", name="chk_interview_status"),
+        CheckConstraint("duration_minutes > 0 AND duration_minutes <= 480", name="chk_duration_range"),
+        CheckConstraint("rating >= 1 AND rating <= 5 OR rating IS NULL", name="chk_interview_rating_range"),
+        CheckConstraint("interview_round >= 1", name="chk_interview_round_positive"),
+        CheckConstraint("reschedule_count >= 0", name="chk_reschedule_count_positive"),
+    )
+
+
+class CandidateStatusHistory(Base):
+    """Candidate status change history for workflow tracking"""
+    __tablename__ = "candidate_status_history"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    candidate_id = Column(String(36), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    # Status Change
+    from_status = Column(String(50), index=True)
+    to_status = Column(String(50), nullable=False, index=True)
+    
+    # Change Details
+    changed_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
+    change_reason = Column(Text)
+    notes = Column(Text)
+    
+    # Related Entities
+    related_job_id = Column(String(36), ForeignKey("jobs.id", ondelete="SET NULL"))
+    related_interview_id = Column(String(36), ForeignKey("interviews.id", ondelete="SET NULL"))
+    
+    # Metadata
+    activity_metadata = Column(JSON)  # Additional context
+    
+    # Timestamp
+    changed_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    
+    # Relationships
+    candidate = relationship("Candidate", foreign_keys=[candidate_id])
+    user = relationship("User", foreign_keys=[changed_by])
+    
+    __table_args__ = (
+        CheckConstraint("to_status IN ('new', 'screened', 'interviewed', 'offered', 'hired', 'rejected', 'archived')", name="chk_status_history_to_status"),
     )
 
 
