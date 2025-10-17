@@ -359,15 +359,25 @@
                         method: 'POST'
                     });
                     
-                    const data = await response.json();
-                    
-                    if (response.ok && data.success) {
-                        showSuccess(data.message);
-                        modal.hide();
-                        loadDeletedCandidates(currentPage);
-                    } else {
+                    if (!response.ok) {
+                        const data = await response.json();
                         modal.hide();
                         showError(data.detail || data.message || 'Failed to restore candidate');
+                        return;
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        modal.hide();
+                        showSuccess(data.message);
+                        // Reload after short delay to show toast
+                        setTimeout(() => {
+                            loadDeletedCandidates(currentPage);
+                        }, 500);
+                    } else {
+                        modal.hide();
+                        showError(data.message || 'Failed to restore candidate');
                     }
                 } catch (error) {
                     console.error('Error restoring candidate:', error);
@@ -403,15 +413,25 @@
                         method: 'DELETE'
                     });
                     
-                    const data = await response.json();
-                    
-                    if (response.ok && data.success) {
-                        showSuccess(data.message);
-                        modal.hide();
-                        loadDeletedCandidates(currentPage);
-                    } else {
+                    if (!response.ok) {
+                        const data = await response.json();
                         modal.hide();
                         showError(data.detail || data.message || 'Failed to permanently delete candidate');
+                        return;
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        modal.hide();
+                        showSuccess(data.message);
+                        // Reload after short delay to show toast
+                        setTimeout(() => {
+                            loadDeletedCandidates(currentPage);
+                        }, 500);
+                    } else {
+                        modal.hide();
+                        showError(data.message || 'Failed to permanently delete candidate');
                     }
                 } catch (error) {
                     console.error('Error deleting candidate:', error);
