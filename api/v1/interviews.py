@@ -19,7 +19,7 @@ router = APIRouter()
 
 class ScheduleInterviewRequest(BaseModel):
     candidate_id: str
-    job_id: str
+    job_id: Optional[str] = None  # Optional since not all candidates have applied to jobs
     scheduled_datetime: datetime
     interview_type: str
     duration_minutes: int = 60
