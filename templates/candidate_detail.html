@@ -1031,6 +1031,8 @@
                 
                 // Store candidate ID globally for rating system
                 window.currentCandidateId = data.id;
+                // Store full candidate data for interview scheduling
+                window.candidateData = data;
                 
                 // Hide loading, show content
                 $('#loadingSpinner').hide();
@@ -2805,11 +2807,12 @@
         // Interview Scheduling Function
         async function submitInterview() {
             const candidateId = $('#interviewCandidateId').val();
-            const jobId = '{{ candidate.applied_jobs[0].id if candidate.applied_jobs else "" }}';
+            // Get job ID from candidate data if available
+            const jobId = window.candidateData?.applied_jobs?.[0]?.id || null;
             
             const data = {
                 candidate_id: candidateId,
-                job_id: jobId || null,
+                job_id: jobId,
                 scheduled_datetime: new Date($('#interviewDateTime').val()).toISOString(),
                 interview_type: $('#interviewType').val(),
                 duration_minutes: parseInt($('#interviewDuration').val()),
