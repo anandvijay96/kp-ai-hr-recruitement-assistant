@@ -33,7 +33,7 @@ class InterviewScheduler:
     async def schedule_interview(
         self,
         candidate_id: str,
-        job_id: str,
+        job_id: Optional[str],
         scheduled_by_user_id: str,
         scheduled_datetime: datetime,
         interview_type: str,
@@ -49,7 +49,7 @@ class InterviewScheduler:
         
         Args:
             candidate_id: Candidate ID
-            job_id: Job ID
+            job_id: Job ID (optional - not all interviews are job-specific)
             scheduled_by_user_id: User scheduling the interview
             scheduled_datetime: Interview date and time
             interview_type: Type of interview
@@ -72,10 +72,11 @@ class InterviewScheduler:
         if not candidate:
             raise ValueError(f"Candidate {candidate_id} not found")
         
-        # Validate job exists
-        job = await self.session.get(Job, job_id)
-        if not job:
-            raise ValueError(f"Job {job_id} not found")
+        # Validate job exists (only if job_id is provided)
+        if job_id:
+            job = await self.session.get(Job, job_id)
+            if not job:
+                raise ValueError(f"Job {job_id} not found")
         
         # Check for conflicts
         conflicts = await self.check_conflicts(
