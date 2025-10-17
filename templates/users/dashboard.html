@@ -562,8 +562,27 @@ async function createUser() {
                 </div>
             `;
             showAlert(message, 'success');
+        } else if (result.activation_link) {
+            const fullLink = window.location.origin + result.activation_link;
+            const message = `
+                <div class="text-center">
+                    <p class="mb-3"><strong>User created successfully!</strong></p>
+                    <div class="alert alert-info mb-0" style="background-color: #d1ecf1; border: 2px solid #0c5460;">
+                        <p class="mb-2"><strong>Activation Link:</strong></p>
+                        <p class="mb-2"><small class="text-muted">Share this link with the user to set their password:</small></p>
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control" id="activationLinkInput" value="${fullLink}" readonly style="font-family: monospace; font-size: 12px;">
+                            <button class="btn btn-outline-secondary" type="button" onclick="copyActivationLink()">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                        <small class="text-muted">Note: Email notifications are not configured. Manually share this link with the user.</small>
+                    </div>
+                </div>
+            `;
+            showAlert(message, 'success');
         } else {
-            showAlert('User created successfully! Activation email sent.', 'success');
+            showAlert('User created successfully!', 'success');
         }
         
         loadUsers();
@@ -571,6 +590,24 @@ async function createUser() {
     } catch (error) {
         console.error('Error creating user:', error);
         showAlert(error.message, 'danger');
+    }
+}
+
+function copyActivationLink() {
+    const input = document.getElementById('activationLinkInput');
+    input.select();
+    input.setSelectionRange(0, 99999); // For mobile devices
+    
+    try {
+        document.execCommand('copy');
+        showAlert('Activation link copied to clipboard!', 'success');
+    } catch (err) {
+        // Fallback for modern browsers
+        navigator.clipboard.writeText(input.value).then(() => {
+            showAlert('Activation link copied to clipboard!', 'success');
+        }).catch(() => {
+            showAlert('Failed to copy link. Please copy manually.', 'danger');
+        });
     }
 }
 
