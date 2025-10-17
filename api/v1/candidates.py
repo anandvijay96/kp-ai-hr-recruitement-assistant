@@ -753,3 +753,110 @@ async def restore_candidate(
         await db.rollback()
         logger.error(f"Error restoring candidate: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{candidate_id}/hard-delete")
+async def hard_delete_candidate(
+    candidate_id: str,  # UUID string
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Permanently delete a candidate from database (admin only - IRREVERSIBLE!)
+    
+    Args:
+        candidate_id: UUID of candidate to permanently delete
+    
+    Returns:
+        Success message
+    """
+    try:
+        # Find candidate using async query
+        result = await db.execute(select(Candidate).filter(Candidate.id == candidate_id))
+        candidate = result.scalar_one_or_none()
+        
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        
+        candidate_name = candidate.full_name
+        
+        # Permanently delete (CASCADE will handle related records)
+        await db.delete(candidate)
+        await db.commit()
+        
+        logger.warning(f"🗑️ HARD DELETE: Candidate {candidate_id} ({candidate_name}) permanently deleted")
+        
+        return {
+            "success": True,
+            "message": f"Candidate '{candidate_name}' permanently deleted",
+            "candidate_id": candidate_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error hard deleting candidate: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/deleted/list")
+async def get_deleted_candidates(
+    page: int = 1,
+    page_size: int = 20,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get all soft-deleted candidates (admin only)
+    
+    Args:
+        page: Page number (1-indexed)
+        page_size: Number of results per page
+    
+    Returns:
+        List of deleted candidates with pagination
+    """
+    try:
+        from sqlalchemy import func
+        
+        # Count total deleted candidates
+        count_stmt = select(func.count()).select_from(Candidate).filter(Candidate.is_deleted == True)
+        total_result = await db.execute(count_stmt)
+        total = total_result.scalar()
+        
+        # Get deleted candidates with pagination
+        offset = (page - 1) * page_size
+        stmt = select(Candidate).filter(
+            Candidate.is_deleted == True
+        ).order_by(
+            Candidate.deleted_at.desc()
+        ).offset(offset).limit(page_size)
+        
+        result = await db.execute(stmt)
+        candidates = result.scalars().all()
+        
+        return {
+            "success": True,
+            "results": [{
+                "id": c.id,
+                "uuid": c.uuid,
+                "full_name": c.full_name,
+                "email": c.email,
+                "phone": c.phone,
+                "location": c.location,
+                "status": c.status,
+                "deleted_at": c.deleted_at.isoformat() if c.deleted_at else None,
+                "deleted_by": c.deleted_by,
+                "deletion_reason": c.deletion_reason,
+                "created_at": c.created_at.isoformat() if c.created_at else None
+            } for c in candidates],
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total": total,
+                "total_pages": (total + page_size - 1) // page_size
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching deleted candidates: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

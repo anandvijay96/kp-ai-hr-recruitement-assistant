@@ -27,8 +27,8 @@
                     </a>
                 </li>
                 
-                <!-- Vetting (HR & Admin only) -->
-                {% if user and user.role in ['hr', 'admin'] %}
+                <!-- Vetting (Recruiter, HR & Admin) -->
+                {% if user and user.role in ['recruiter', 'manager', 'admin'] %}
                 <li class="nav-item">
                     <a class="nav-link {% if 'vet' in request.url.path %}active{% endif %}" 
                        href="/vet-resumes">
@@ -38,8 +38,8 @@
                 </li>
                 {% endif %}
                 
-                <!-- Candidates (HR & Admin) -->
-                {% if user and user.role in ['hr', 'admin'] %}
+                <!-- Candidates (Recruiter, HR Manager & Admin) -->
+                {% if user and user.role in ['recruiter', 'manager', 'admin'] %}
                 <li class="nav-item">
                     <a class="nav-link {% if 'candidates' in request.url.path or 'search' in request.url.path %}active{% endif %}" 
                        href="/candidates">
@@ -135,6 +135,11 @@
                         <li>
                             <a class="dropdown-item" href="/admin/activity-dashboard">
                                 <i class="bi bi-speedometer2"></i> Activity Dashboard
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="/admin/deleted-candidates">
+                                <i class="bi bi-trash3"></i> Deleted Candidates
                             </a>
                         </li>
                         <li>
