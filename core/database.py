@@ -51,7 +51,7 @@ def get_engine():
                 "timeout": 30.0,  # Increase timeout for write locks
             }
             # Note: aiosqlite uses NullPool by default, doesn't support pool_size
-            logger.info("🔧 SQLite detected - enabling WAL mode optimizations")
+            logger.info("🔧 SQLite detected - WAL mode will be enabled on first connection")
         else:
             # PostgreSQL and other databases support connection pooling
             engine_kwargs.update({
@@ -67,25 +67,21 @@ def get_engine():
             **engine_kwargs
         )
         
-        # Enable WAL mode for SQLite to allow concurrent reads during writes
+        # Set up event listener to enable WAL mode on first connection
         if "sqlite" in settings.database_url.lower():
-            import asyncio
-            asyncio.create_task(_enable_wal_mode(_engine))
+            from sqlalchemy import event
+            
+            @event.listens_for(_engine.sync_engine, "connect")
+            def set_sqlite_pragma(dbapi_conn, connection_record):
+                cursor = dbapi_conn.cursor()
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA synchronous=NORMAL")
+                cursor.execute("PRAGMA busy_timeout=30000")
+                cursor.execute("PRAGMA cache_size=-64000")
+                cursor.close()
+                logger.info("✅ SQLite WAL mode enabled - concurrent reads/writes now supported")
     
     return _engine
-
-
-async def _enable_wal_mode(engine):
-    """Enable WAL (Write-Ahead Logging) mode for SQLite to improve concurrency"""
-    try:
-        async with engine.begin() as conn:
-            await conn.execute("PRAGMA journal_mode=WAL;")
-            await conn.execute("PRAGMA synchronous=NORMAL;")
-            await conn.execute("PRAGMA busy_timeout=30000;")  # 30 seconds
-            await conn.execute("PRAGMA cache_size=-64000;")  # 64MB cache
-            logger.info("✅ SQLite WAL mode enabled - concurrent reads/writes now supported")
-    except Exception as e:
-        logger.warning(f"⚠️ Could not enable WAL mode: {e}")
 
 
 def get_async_session():
