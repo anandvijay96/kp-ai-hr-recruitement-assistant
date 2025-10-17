@@ -351,8 +351,8 @@
         // Load dashboard data
         async function loadDashboardData() {
             try {
-                // Fetch activity summary
-                const response = await fetch('/api/v1/activity/summary?days=1', {
+                // Fetch TEAM-WIDE activity summary (not per-user!)
+                const response = await fetch('/api/v1/admin/team-activity-summary?days=1', {
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('token')}`
                     }
@@ -386,7 +386,7 @@
             document.getElementById('totalActions').textContent = data.total_resumes_vetted + data.total_candidates_viewed + data.total_searches || 0;
             document.getElementById('resumesVetted').textContent = data.total_resumes_vetted || 0;
             document.getElementById('interviewsScheduled').textContent = data.total_interviews_scheduled || 0;
-            document.getElementById('activeUsers').textContent = data.active_days || 0;
+            document.getElementById('activeUsers').textContent = data.active_users || 0;  // Fixed: use active_users, not active_days!
         }
         
         function updateLeaderboard(leaderboard) {

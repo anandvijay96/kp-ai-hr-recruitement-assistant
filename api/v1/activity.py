@@ -71,6 +71,31 @@ async def get_daily_stats(
     }
 
 
+@router.get("/admin/team-activity-summary")
+async def get_team_activity_summary(
+    days: int = Query(1, ge=1, le=365, description="Number of days to look back"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get team-wide activity summary (admin only).
+    
+    Returns aggregated activity metrics for ALL users in the specified period.
+    """
+    # Check if user is admin (handle both dict and object)
+    user_role = current_user.get("role") if isinstance(current_user, dict) else current_user.role
+    if user_role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    tracker = ActivityTracker(db)
+    summary = await tracker.get_team_activity_summary(days=days)
+    
+    return {
+        "success": True,
+        "data": summary
+    }
+
+
 @router.get("/admin/team-leaderboard")
 async def get_team_leaderboard(
     period: str = Query("month", regex="^(day|week|month)$"),
