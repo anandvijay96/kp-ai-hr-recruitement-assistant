@@ -147,7 +147,12 @@ class ActivityLoggerMiddleware(BaseHTTPMiddleware):
             if hasattr(request, "session") and request.session:
                 user_id = request.session.get("user_id")
                 if user_id:
+                    logger.info(f"✅ Found user_id in session: {user_id}")
                     return user_id
+                else:
+                    logger.warning(f"⚠️ Session exists but no user_id found. Session keys: {list(request.session.keys())}")
+            else:
+                logger.warning(f"⚠️ No session found on request")
             
             # Fallback: Check if user is set by auth middleware in request.state
             if hasattr(request.state, "user") and request.state.user:
@@ -158,8 +163,9 @@ class ActivityLoggerMiddleware(BaseHTTPMiddleware):
                 elif hasattr(user, "id"):
                     return user.id
         except Exception as e:
-            logger.debug(f"Could not extract user ID: {e}")
+            logger.error(f"❌ Error extracting user ID: {e}")
         
+        logger.warning(f"⚠️ Could not extract user_id from request to {request.url.path}")
         return None
     
     def _determine_action_type(self, request: Request) -> str:
