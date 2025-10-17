@@ -39,33 +39,48 @@ async def apply_migration():
     logger.info("="*70)
     
     try:
-        # Use SQLAlchemy to create tables directly from models
-        logger.info("Creating Phase 3 tables using SQLAlchemy...")
-        
+        # Step 0: Create all tables first (including user_activity_log if it doesn't exist)
+        logger.info("Step 0: Creating all Phase 3 tables...")
         async with engine.begin() as conn:
-            # First, add columns to existing user_activity_log table
-            logger.info("Step 1: Enhancing user_activity_log table...")
-            alter_statements = [
-                "ALTER TABLE user_activity_log ADD COLUMN entity_type VARCHAR(50)",
-                "ALTER TABLE user_activity_log ADD COLUMN entity_id VARCHAR(36)",
-                "ALTER TABLE user_activity_log ADD COLUMN request_metadata TEXT",
-                "ALTER TABLE user_activity_log ADD COLUMN request_method VARCHAR(10)",
-                "ALTER TABLE user_activity_log ADD COLUMN request_path VARCHAR(500)",
-                "ALTER TABLE user_activity_log ADD COLUMN duration_ms INTEGER",
-            ]
+            # Create all tables defined in Base.metadata
+            await conn.run_sync(Base.metadata.create_all)
+            logger.info("  ✓ All tables created (or already exist)")
+        
+        # Step 1: Check if user_activity_log needs enhancement
+        logger.info("Step 1: Checking user_activity_log table...")
+        async with engine.begin() as conn:
+            # Check if entity_type column exists
+            result = await conn.execute(text(
+                "SELECT COUNT(*) as count FROM pragma_table_info('user_activity_log') WHERE name='entity_type'"
+            ))
+            entity_type_exists = result.scalar() > 0
             
-            for stmt in alter_statements:
-                try:
-                    await conn.execute(text(stmt))
-                    logger.info(f"  ✓ Added column")
-                except Exception as e:
-                    if 'duplicate column' in str(e).lower() or 'already exists' in str(e).lower():
-                        logger.info(f"  ⚠ Column already exists (skipping)")
-                    else:
-                        raise
+            if entity_type_exists:
+                logger.info("  ✓ user_activity_log already enhanced (skipping)")
+            else:
+                logger.info("  → Enhancing user_activity_log table...")
+                alter_statements = [
+                    "ALTER TABLE user_activity_log ADD COLUMN entity_type VARCHAR(50)",
+                    "ALTER TABLE user_activity_log ADD COLUMN entity_id VARCHAR(36)",
+                    "ALTER TABLE user_activity_log ADD COLUMN request_metadata TEXT",
+                    "ALTER TABLE user_activity_log ADD COLUMN request_method VARCHAR(10)",
+                    "ALTER TABLE user_activity_log ADD COLUMN request_path VARCHAR(500)",
+                    "ALTER TABLE user_activity_log ADD COLUMN duration_ms INTEGER",
+                ]
+                
+                for stmt in alter_statements:
+                    try:
+                        await conn.execute(text(stmt))
+                        logger.info(f"    ✓ Added column")
+                    except Exception as e:
+                        if 'duplicate column' in str(e).lower() or 'already exists' in str(e).lower():
+                            logger.info(f"    ⚠ Column already exists (skipping)")
+                        else:
+                            raise
             
-            # Create indexes on new columns
-            logger.info("Step 2: Creating indexes on user_activity_log...")
+        # Step 2: Create indexes on user_activity_log
+        logger.info("Step 2: Creating indexes on user_activity_log...")
+        async with engine.begin() as conn:
             index_statements = [
                 "CREATE INDEX IF NOT EXISTS idx_user_activity_entity_type ON user_activity_log(entity_type)",
                 "CREATE INDEX IF NOT EXISTS idx_user_activity_entity_id ON user_activity_log(entity_id)",
@@ -77,16 +92,6 @@ async def apply_migration():
                     logger.info(f"  ✓ Created index")
                 except Exception as e:
                     logger.warning(f"  ⚠ Index creation skipped: {e}")
-            
-            # Now create all Phase 3 tables using SQLAlchemy
-            logger.info("Step 3: Creating Phase 3 tables...")
-            
-            # Import Base to get metadata
-            await conn.run_sync(Base.metadata.create_all, checkfirst=True)
-            
-            logger.info("  ✓ All Phase 3 tables created")
-            
-            await conn.commit()
         
         logger.info("="*70)
         logger.info("PHASE 3 MIGRATION COMPLETED SUCCESSFULLY!")
@@ -128,7 +133,7 @@ async def verify_tables():
     
     async with engine.begin() as conn:
         for table in tables_to_check:
-            # Use SQLite-compatible query (works with both SQLite and PostgreSQL)
+
             result = await conn.execute(text(
                 f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table}'"
             ))
