@@ -2807,18 +2807,26 @@
         // Interview Scheduling Function
         async function submitInterview() {
             const candidateId = $('#interviewCandidateId').val();
+            const dateTime = $('#interviewDateTime').val();
+            
+            // Validate required fields
+            if (!dateTime) {
+                showErrorMessage('Please select interview date and time');
+                return;
+            }
+            
             // Get job ID from candidate data if available
             const jobId = window.candidateData?.applied_jobs?.[0]?.id || null;
             
             const data = {
                 candidate_id: candidateId,
-                job_id: jobId,
-                scheduled_datetime: new Date($('#interviewDateTime').val()).toISOString(),
+                job_id: jobId, // Optional - null if no job
+                scheduled_datetime: new Date(dateTime).toISOString(),
                 interview_type: $('#interviewType').val(),
                 duration_minutes: parseInt($('#interviewDuration').val()),
-                location: $('#interviewLocation').val() || null,
-                meeting_link: $('#interviewLocation').val() || null,
-                notes: $('#interviewNotes').val() || null,
+                location: $('#interviewLocation').val() || '',
+                meeting_link: $('#interviewLocation').val() || '',
+                notes: $('#interviewNotes').val() || '',
                 interview_round: parseInt($('#interviewRound').val())
             };
             
@@ -2838,11 +2846,28 @@
                     showSuccessMessage('Interview scheduled successfully!');
                     $('#scheduleInterviewForm')[0].reset();
                 } else {
-                    showErrorMessage(result.detail || 'Failed to schedule interview');
+                    // Close interview modal first to fix z-index issue
+                    $('#scheduleInterviewModal').modal('hide');
+                    
+                    // Extract error message properly
+                    let errorMsg = 'Failed to schedule interview';
+                    if (result.detail) {
+                        if (typeof result.detail === 'string') {
+                            errorMsg = result.detail;
+                        } else if (Array.isArray(result.detail)) {
+                            errorMsg = result.detail.map(e => e.msg || e.message || JSON.stringify(e)).join(', ');
+                        } else {
+                            errorMsg = JSON.stringify(result.detail);
+                        }
+                    }
+                    
+                    // Show error after modal is closed
+                    setTimeout(() => showErrorMessage(errorMsg), 300);
                 }
             } catch (error) {
                 console.error('Error scheduling interview:', error);
-                showErrorMessage('Failed to schedule interview. Please try again.');
+                $('#scheduleInterviewModal').modal('hide');
+                setTimeout(() => showErrorMessage('Failed to schedule interview. Please try again.'), 300);
             }
         }
     </script>
