@@ -141,9 +141,15 @@ class ActivityLoggerMiddleware(BaseHTTPMiddleware):
         return any(path.startswith(excluded) for excluded in self.EXCLUDED_PATHS)
     
     def _get_user_id(self, request: Request) -> Optional[str]:
-        """Extract user ID from request state"""
+        """Extract user ID from request session or state"""
         try:
-            # Check if user is set by auth middleware
+            # First, try to get from session (most common)
+            if hasattr(request, "session") and request.session:
+                user_id = request.session.get("user_id")
+                if user_id:
+                    return user_id
+            
+            # Fallback: Check if user is set by auth middleware in request.state
             if hasattr(request.state, "user") and request.state.user:
                 user = request.state.user
                 # Handle both dict and object types
