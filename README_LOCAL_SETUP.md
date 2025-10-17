@@ -18,7 +18,8 @@
 8. [⚙️ Running the Application](#-running-the-application)
 9. [🧪 Testing & Development](#-testing--development)
 10. [🔍 Troubleshooting](#-troubleshooting)
-11. [📚 Additional Resources](#-additional-resources)
+11. [⬆️ Upgrading from MVP-1](#️-upgrading-from-mvp-1)
+12. [📚 Additional Resources](#-additional-resources)
 
 ---
 
@@ -647,6 +648,49 @@ python -m uvicorn main:app --reload --log-level debug
 - **Linux:** `/var/log/postgresql/`
 - **macOS:** `/usr/local/var/log/postgresql/`
 - **Windows:** Event Viewer → Windows Logs → Application
+
+---
+
+## ⬆️ Upgrading from MVP-1
+
+### **For Existing MVP-1 Users**
+
+If you already have the MVP-1 version running locally, you can easily upgrade to MVP-2 with enhanced features and improved setup experience.
+
+#### **Quick Upgrade (5 minutes):**
+```bash
+# 1. Backup your current setup
+cp .env .env.backup
+cp hr_assistant.db hr_assistant_backup.db  # If using SQLite
+
+# 2. Switch to mvp-2 branch
+git fetch origin
+git checkout mvp-2
+
+# 3. Update dependencies
+pip install -r requirements.txt --upgrade
+
+# 4. Update environment configuration
+cp .env.example .env
+# Edit .env with your API keys
+
+# 5. Run migrations
+python -m alembic upgrade head
+
+# 6. Verify and start
+python verify_setup.py
+python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+#### **Complete Migration Guide:**
+For detailed step-by-step instructions, see: [`MIGRATION_GUIDE_MVP1_TO_MVP2.md`](MIGRATION_GUIDE_MVP1_TO_MVP2.md)
+
+**Key improvements in MVP-2:**
+- ✅ **Automated setup scripts** (`setup.sh`, `setup.ps1`)
+- ✅ **Setup verification** (`verify_setup.py`)
+- ✅ **Enhanced LLM configuration** (Gemini 2.5 Flash-Lite)
+- ✅ **Better documentation** and troubleshooting
+- ✅ **Improved environment** management
 
 ---
 
