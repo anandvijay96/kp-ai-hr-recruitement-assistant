@@ -45,8 +45,12 @@ class UserCreateRequest(BaseModel):
 
 class UserUpdateRequest(BaseModel):
     full_name: Optional[str] = Field(None, min_length=2, max_length=100)
+    email: Optional[str] = Field(None, pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
     mobile: Optional[str] = Field(None, pattern=r'^(\+?[1-9]\d{0,14})?$')
+    role: Optional[UserRole] = None
     department: Optional[str] = Field(None, max_length=100)
+    status: Optional[UserStatus] = None
+    new_password: Optional[str] = Field(None, min_length=8, max_length=100)
 
 
 class UserRoleChangeRequest(BaseModel):
