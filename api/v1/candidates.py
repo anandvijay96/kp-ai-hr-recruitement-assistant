@@ -8,6 +8,7 @@ import io
 import logging
 
 from core.database import get_db
+from core.auth import get_current_user
 from services.filter_service import FilterService
 from services.preset_service import PresetService
 from services.candidate_service import CandidateService
