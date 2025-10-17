@@ -100,7 +100,11 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Add session middleware for authentication
+# IMPORTANT: Middleware order matters! They execute in REVERSE order of addition.
+# Add activity logging middleware FIRST (so it runs LAST, after session is available)
+setup_activity_logging(app)
+
+# Add session middleware LAST (so it runs FIRST, making session available to other middleware)
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.secret_key if hasattr(settings, 'secret_key') else "your-secret-key-change-in-production-please",
@@ -109,9 +113,6 @@ app.add_middleware(
     same_site="lax",  # Prevent CSRF while allowing normal navigation
     https_only=False  # Set to True in production with HTTPS
 )
-
-# Phase 3: Add activity logging middleware
-setup_activity_logging(app)
 
 # Initialize database on startup
 @app.on_event("startup")
