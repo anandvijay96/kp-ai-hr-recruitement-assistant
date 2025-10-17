@@ -1617,7 +1617,9 @@
         
         $('#scheduleInterviewBtn').click(() => {
             // Open interview scheduling modal
-            showSuccessMessage('Interview scheduling feature coming soon!');
+            $('#scheduleInterviewModal').modal('show');
+            // Set candidate ID
+            $('#interviewCandidateId').val(candidateId);
         });
         
         $('#addToShortlistBtn').click(() => {
@@ -2799,6 +2801,119 @@
                 customModal.error('Failed to update LinkedIn profile. Please try again.');
             }
         }
+        
+        // Interview Scheduling Function
+        async function submitInterview() {
+            const candidateId = $('#interviewCandidateId').val();
+            const jobId = '{{ candidate.applied_jobs[0].id if candidate.applied_jobs else "" }}';
+            
+            const data = {
+                candidate_id: candidateId,
+                job_id: jobId || null,
+                scheduled_datetime: new Date($('#interviewDateTime').val()).toISOString(),
+                interview_type: $('#interviewType').val(),
+                duration_minutes: parseInt($('#interviewDuration').val()),
+                location: $('#interviewLocation').val() || null,
+                meeting_link: $('#interviewLocation').val() || null,
+                notes: $('#interviewNotes').val() || null,
+                interview_round: parseInt($('#interviewRound').val())
+            };
+            
+            try {
+                const response = await fetch('/api/v1/interviews', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    $('#scheduleInterviewModal').modal('hide');
+                    showSuccessMessage('Interview scheduled successfully!');
+                    $('#scheduleInterviewForm')[0].reset();
+                } else {
+                    showErrorMessage(result.detail || 'Failed to schedule interview');
+                }
+            } catch (error) {
+                console.error('Error scheduling interview:', error);
+                showErrorMessage('Failed to schedule interview. Please try again.');
+            }
+        }
     </script>
+    
+    <!-- Interview Scheduling Modal -->
+    <div class="modal fade" id="scheduleInterviewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-calendar-check me-2"></i>Schedule Interview
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="scheduleInterviewForm">
+                        <input type="hidden" id="interviewCandidateId">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Interview Date & Time *</label>
+                                <input type="datetime-local" class="form-control" id="interviewDateTime" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Duration (minutes) *</label>
+                                <select class="form-select" id="interviewDuration" required>
+                                    <option value="30">30 minutes</option>
+                                    <option value="45">45 minutes</option>
+                                    <option value="60" selected>1 hour</option>
+                                    <option value="90">1.5 hours</option>
+                                    <option value="120">2 hours</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Interview Type *</label>
+                                <select class="form-select" id="interviewType" required>
+                                    <option value="phone">Phone Screen</option>
+                                    <option value="video">Video Interview</option>
+                                    <option value="in_person">In-Person</option>
+                                    <option value="technical">Technical Round</option>
+                                    <option value="hr">HR Round</option>
+                                    <option value="final">Final Round</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Interview Round *</label>
+                                <input type="number" class="form-control" id="interviewRound" value="1" min="1" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Location / Meeting Link</label>
+                            <input type="text" class="form-control" id="interviewLocation" 
+                                   placeholder="Office address or video call link">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" id="interviewNotes" rows="3" 
+                                      placeholder="Additional notes for the interview"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitInterview()">
+                        <i class="bi bi-calendar-check me-1"></i>Schedule Interview
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
