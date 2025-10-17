@@ -229,16 +229,23 @@
         async function loadDeletedCandidates(page = 1) {
             try {
                 const response = await fetch(`/api/v1/candidates/deleted/list?page=${page}&page_size=${pageSize}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
                 
                 if (data.success) {
                     displayCandidates(data.results);
                     displayPagination(data.pagination);
                     currentPage = page;
+                } else {
+                    showError(data.message || 'Failed to load deleted candidates');
                 }
             } catch (error) {
                 console.error('Error loading deleted candidates:', error);
-                showError('Failed to load deleted candidates');
+                showError('Failed to load deleted candidates. Please refresh the page.');
             }
         }
         
