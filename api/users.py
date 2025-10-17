@@ -24,25 +24,16 @@ async def get_current_user(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ) -> User:
-    """Get current authenticated user"""
-    # Get token from header
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
+    """Get current authenticated user from session"""
+    # Check session for user_id
+    user_id = request.session.get("user_id")
+    if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    token = auth_header.split(" ")[1]
-    
-    # TODO: Implement token validation
-    # For now, return a mock user (replace with actual implementation)
+    # Fetch user from database
     from sqlalchemy import select
-    # Try to fetch the real admin seeded in the DB
-    result = await db.execute(select(User).where(User.email == "admin@bmad.com"))
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    
-    # Fallback: if the specific admin is not found, return any existing user
-    if not user:
-        result = await db.execute(select(User))
-        user = result.scalar_one_or_none()
     
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
