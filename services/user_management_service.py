@@ -373,30 +373,54 @@ class UserManagementService:
             # Store old values for audit
             old_values = {
                 "full_name": user.full_name,
+                "email": user.email,
                 "mobile": user.mobile,
-                "department": user.department
+                "role": user.role,
+                "department": user.department,
+                "status": user.status
             }
             
             # Update fields
             if user_data.full_name is not None:
                 user.full_name = user_data.full_name
+            if user_data.email is not None:
+                user.email = user_data.email
             if user_data.mobile is not None:
                 user.mobile = user_data.mobile
+            if user_data.role is not None:
+                role_value = user_data.role.value if hasattr(user_data.role, 'value') else user_data.role
+                user.role = role_value
             if user_data.department is not None:
                 user.department = user_data.department
+            if user_data.status is not None:
+                status_value = user_data.status.value if hasattr(user_data.status, 'value') else user_data.status
+                user.status = status_value
+                user.is_active = True if status_value == "active" else False
+            
+            # Update password if provided
+            if user_data.new_password:
+                user.password_hash = self.password_service.hash_password(user_data.new_password)
+                old_values["password"] = "***"
             
             user.updated_at = datetime.utcnow()
             
             # Create audit log
+            new_values = {
+                "full_name": user.full_name,
+                "email": user.email,
+                "mobile": user.mobile,
+                "role": user.role,
+                "department": user.department,
+                "status": user.status
+            }
+            if user_data.new_password:
+                new_values["password"] = "*** (changed)"
+            
             await self._create_audit_log(
                 target_user_id=user_id,
                 action_type="update",
                 old_values=old_values,
-                new_values={
-                    "full_name": user.full_name,
-                    "mobile": user.mobile,
-                    "department": user.department
-                },
+                new_values=new_values,
                 performed_by=updated_by.id,
                 ip_address=ip_address,
                 user_agent=user_agent
