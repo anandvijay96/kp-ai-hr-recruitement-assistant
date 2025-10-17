@@ -226,12 +226,15 @@
         let confirmAction = null;
         
         // Load deleted candidates
-        async function loadDeletedCandidates(page = 1) {
+        async function loadDeletedCandidates(page = 1, silent = false) {
             try {
                 const response = await fetch(`/api/v1/candidates/deleted/list?page=${page}&page_size=${pageSize}`);
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    if (!silent) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return;
                 }
                 
                 const data = await response.json();
@@ -240,12 +243,14 @@
                     displayCandidates(data.results);
                     displayPagination(data.pagination);
                     currentPage = page;
-                } else {
+                } else if (!silent) {
                     showError(data.message || 'Failed to load deleted candidates');
                 }
             } catch (error) {
                 console.error('Error loading deleted candidates:', error);
-                showError('Failed to load deleted candidates. Please refresh the page.');
+                if (!silent) {
+                    showError('Failed to load deleted candidates. Please refresh the page.');
+                }
             }
         }
         
@@ -371,9 +376,9 @@
                     if (data.success) {
                         modal.hide();
                         showSuccess(data.message);
-                        // Reload after short delay to show toast
+                        // Reload after short delay to show toast (silent mode to suppress errors)
                         setTimeout(() => {
-                            loadDeletedCandidates(currentPage);
+                            loadDeletedCandidates(currentPage, true);
                         }, 500);
                     } else {
                         modal.hide();
@@ -425,9 +430,9 @@
                     if (data.success) {
                         modal.hide();
                         showSuccess(data.message);
-                        // Reload after short delay to show toast
+                        // Reload after short delay to show toast (silent mode to suppress errors)
                         setTimeout(() => {
-                            loadDeletedCandidates(currentPage);
+                            loadDeletedCandidates(currentPage, true);
                         }, 500);
                     } else {
                         modal.hide();
