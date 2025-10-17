@@ -52,9 +52,11 @@
                     <a href="/jobs/create" class="btn btn-outline-primary">
                         <i class="bi bi-plus-circle"></i> Create Job
                     </a>
+                    {% if user and user.role == 'admin' %}
                     <a href="/admin/feedback" class="btn btn-outline-primary">
                         <i class="bi bi-chat-square-text"></i> Feedback Review
                     </a>
+                    {% endif %}
                 </div>
             </div>
             
