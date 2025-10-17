@@ -770,8 +770,20 @@ async def hard_delete_candidate(
         Success message
     """
     try:
-        # Find candidate using async query
-        result = await db.execute(select(Candidate).filter(Candidate.id == candidate_id))
+        # Find candidate using async query with all relationships loaded
+        from sqlalchemy.orm import selectinload
+        
+        result = await db.execute(
+            select(Candidate).options(
+                selectinload(Candidate.skills),
+                selectinload(Candidate.education),
+                selectinload(Candidate.work_experience),
+                selectinload(Candidate.certifications),
+                selectinload(Candidate.projects),
+                selectinload(Candidate.languages),
+                selectinload(Candidate.ratings)
+            ).filter(Candidate.id == candidate_id)
+        )
         candidate = result.scalar_one_or_none()
         
         if not candidate:
@@ -787,7 +799,7 @@ async def hard_delete_candidate(
         
         return {
             "success": True,
-            "message": f"Candidate '{candidate_name}' permanently deleted",
+            "message": f"Candidate '{candidate_name}' permanently deleted from database",
             "candidate_id": candidate_id
         }
         
@@ -795,8 +807,18 @@ async def hard_delete_candidate(
         raise
     except Exception as e:
         await db.rollback()
-        logger.error(f"Error hard deleting candidate: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error hard deleting candidate: {e}", exc_info=True)
+        
+        # User-friendly error message
+        error_msg = "Failed to permanently delete candidate. "
+        if "foreign key" in str(e).lower() or "constraint" in str(e).lower():
+            error_msg += "The candidate has related records that prevent deletion."
+        elif "not found" in str(e).lower():
+            error_msg += "Candidate not found."
+        else:
+            error_msg += "Please try again or contact support."
+        
+        raise HTTPException(status_code=500, detail=error_msg)
 
 
 @router.get("/deleted/list")

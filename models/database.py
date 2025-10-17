@@ -255,7 +255,7 @@ class Candidate(Base):
     
     # Relationships
     resumes = relationship("Resume", back_populates="candidate", foreign_keys="Resume.candidate_id")
-    skills = relationship("CandidateSkill")
+    skills = relationship("CandidateSkill", cascade="all, delete-orphan")
     education = relationship("Education", back_populates="candidate", cascade="all, delete-orphan")
     work_experience = relationship("WorkExperience", back_populates="candidate", cascade="all, delete-orphan")  # Add alias
     experience = relationship("WorkExperience", back_populates="candidate", cascade="all, delete-orphan", overlaps="work_experience")
