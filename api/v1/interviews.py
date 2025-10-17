@@ -143,7 +143,7 @@ async def get_candidate_interviews(
 async def reschedule_interview(
     interview_id: str,
     request: RescheduleRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Reschedule an interview."""
@@ -153,7 +153,7 @@ async def reschedule_interview(
         interview = await scheduler.reschedule_interview(
             interview_id=interview_id,
             new_datetime=request.new_datetime,
-            rescheduled_by_user_id=current_user.id,
+            rescheduled_by_user_id=current_user["id"],
             reason=request.reason
         )
         
@@ -169,7 +169,7 @@ async def reschedule_interview(
 async def cancel_interview(
     interview_id: str,
     reason: Optional[str] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Cancel an interview."""
@@ -178,7 +178,7 @@ async def cancel_interview(
     try:
         await scheduler.cancel_interview(
             interview_id=interview_id,
-            cancelled_by_user_id=current_user.id,
+            cancelled_by_user_id=current_user["id"],
             reason=reason
         )
         
@@ -194,7 +194,7 @@ async def cancel_interview(
 async def complete_interview(
     interview_id: str,
     request: CompleteInterviewRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Mark interview as completed with feedback."""
@@ -203,7 +203,7 @@ async def complete_interview(
     try:
         await scheduler.complete_interview(
             interview_id=interview_id,
-            completed_by_user_id=current_user.id,
+            completed_by_user_id=current_user["id"],
             rating=request.rating,
             feedback=request.feedback,
             recommendation=request.recommendation,
@@ -220,7 +220,7 @@ async def complete_interview(
 
 @router.get("/interviews/statistics")
 async def get_interview_statistics(
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Get interview statistics."""
