@@ -234,7 +234,9 @@ class UserManagementService:
                 password_hash = self.password_service.hash_password(temporary_password)
             else:
                 activation_token = secrets.token_urlsafe(32)
-                password_hash = None  # Will be set on activation
+                # Use a placeholder password hash that cannot be used for login
+                # User must set their password via activation link
+                password_hash = self.password_service.hash_password(f"UNSET_{secrets.token_urlsafe(32)}")
             
             # Create user
             # Handle both enum and string values
