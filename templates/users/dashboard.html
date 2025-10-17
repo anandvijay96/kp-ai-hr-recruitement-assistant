@@ -619,9 +619,31 @@ function viewUser(userId) {
     window.location.href = `/users/${userId}`;
 }
 
-function editUser(userId) {
-    // TODO: Implement edit functionality
-    showAlert('Edit functionality coming soon', 'info');
+async function editUser(userId) {
+    try {
+        // Fetch user details
+        const response = await fetch(`/api/users/${userId}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Populate form
+            $('#editUserId').val(data.id);
+            $('#editFullName').val(data.full_name);
+            $('#editEmail').val(data.email);
+            $('#editMobile').val(data.mobile);
+            $('#editRole').val(data.role);
+            $('#editDepartment').val(data.department || '');
+            $('#editStatus').val(data.status);
+            
+            // Show modal
+            $('#editUserModal').modal('show');
+        } else {
+            showAlert(data.detail || 'Failed to load user details', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading user:', error);
+        showAlert('Failed to load user details', 'error');
+    }
 }
 
 function exportUsers() {
@@ -709,7 +731,146 @@ function showAlert(message, type = 'info') {
     const modal = new bootstrap.Modal(document.getElementById('messageModal'));
     modal.show();
 }
+
+// User Edit Submit Function
+async function submitUserEdit() {
+    const userId = $('#editUserId').val();
+    const newPassword = $('#editNewPassword').val();
+    const confirmPassword = $('#editConfirmPassword').val();
+    
+    // Validate passwords if provided
+    if (newPassword || confirmPassword) {
+        if (newPassword !== confirmPassword) {
+            showAlert('Passwords do not match', 'error');
+            return;
+        }
+        if (newPassword.length < 8) {
+            showAlert('Password must be at least 8 characters', 'error');
+            return;
+        }
+    }
+    
+    const data = {
+        full_name: $('#editFullName').val(),
+        email: $('#editEmail').val(),
+        mobile: $('#editMobile').val(),
+        role: $('#editRole').val(),
+        department: $('#editDepartment').val() || null,
+        status: $('#editStatus').val()
+    };
+    
+    // Add password if provided
+    if (newPassword) {
+        data.new_password = newPassword;
+    }
+    
+    try {
+        const response = await fetch(`/api/users/${userId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            $('#editUserModal').modal('hide');
+            showAlert('User updated successfully!', 'success');
+            // Reload users list
+            loadUsers();
+        } else {
+            showAlert(result.detail || 'Failed to update user', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating user:', error);
+        showAlert('Failed to update user. Please try again.', 'error');
+    }
+}
 </script>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil-square me-2"></i>Edit User
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" id="editUserId">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Full Name *</label>
+                            <input type="text" class="form-control" id="editFullName" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email *</label>
+                            <input type="email" class="form-control" id="editEmail" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Mobile *</label>
+                            <input type="tel" class="form-control" id="editMobile" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Role *</label>
+                            <select class="form-select" id="editRole" required>
+                                <option value="admin">HR Admin</option>
+                                <option value="manager">HR Manager</option>
+                                <option value="recruiter">Recruiter</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Department</label>
+                            <input type="text" class="form-control" id="editDepartment" 
+                                   placeholder="e.g., Engineering, HR">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Status *</label>
+                            <select class="form-select" id="editStatus" required>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="locked">Locked</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    <h6 class="mb-3">Change Password (Optional)</h6>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="editNewPassword" 
+                                   placeholder="Leave blank to keep current password">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" id="editConfirmPassword">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitUserEdit()">
+                    <i class="bi bi-check-lg me-1"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Feedback Widget -->
