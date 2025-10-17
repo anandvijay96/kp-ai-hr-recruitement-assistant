@@ -28,8 +28,8 @@
      - ❌ Interview section in candidate detail
      - ❌ Reschedule/cancel/complete UI
      - ❌ Calendar view
-   - ❌ Email templates for candidate communication
-   - ❌ Email notifications (scheduled, reminders, updates)
+   - ❌ Email templates (Out of scope - no SMTP/SendGrid)
+   - ❌ Email notifications (Out of scope - manual approach used)
 
 3. ✅ **Admin Monitoring Dashboard**
    - Real-time activity feed
@@ -94,16 +94,14 @@
      - Notes
    - Update UI after actions
 
-**4. Email Notifications** (3-4 hours) 📧
-   - Setup SendGrid/AWS SES
-   - Email templates:
-     - Interview scheduled
-     - Interview reminder (24h, 1h before)
-     - Interview rescheduled
-     - Interview cancelled
-     - Feedback requested
-   - Service: `services/email_service.py`
-   - Configuration: SendGrid API key
+**4. ~~Email Notifications~~** ❌ **OUT OF SCOPE**
+   - Email/SMTP configuration not available
+   - **Manual approach implemented instead:**
+     - ✅ Display activation link in UI (copy to clipboard)
+     - ✅ Display temporary password in UI
+     - ✅ Admin manually shares credentials with users
+     - ✅ No email dependency
+   - **Future enhancement:** Add when SendGrid/SMTP available
 
 **5. Calendar View** (4-5 hours) 📆
    - Route: `/interviews/calendar`
@@ -118,10 +116,10 @@
 1. 🔥 Interview Dashboard (Must have for production)
 2. 🔥 Candidate Detail Section (Must have for production)
 3. 🟡 Interview Actions (Should have)
-4. 🟡 Email Notifications (Should have)
+4. ❌ Email Notifications (Out of scope - manual approach used)
 5. 🟢 Calendar View (Nice to have)
 
-**Estimated Total Time:** 12-17 hours
+**Estimated Total Time:** 8-13 hours (reduced from 12-17h)
 
 **Documentation:** `INTERVIEW_WORKFLOW_GUIDE.md` (Complete)
 
