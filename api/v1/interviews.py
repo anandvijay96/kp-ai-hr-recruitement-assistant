@@ -11,7 +11,6 @@ from datetime import datetime
 
 from core.database import get_db
 from core.auth import get_current_user
-from models.database import User
 from services.interview_scheduler import InterviewScheduler
 
 router = APIRouter()
@@ -45,7 +44,7 @@ class CompleteInterviewRequest(BaseModel):
 @router.post("/interviews")
 async def schedule_interview(
     request: ScheduleInterviewRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Schedule a new interview."""
@@ -55,7 +54,7 @@ async def schedule_interview(
         interview = await scheduler.schedule_interview(
             candidate_id=request.candidate_id,
             job_id=request.job_id,
-            scheduled_by_user_id=current_user.id,
+            scheduled_by_user_id=current_user["id"],
             scheduled_datetime=request.scheduled_datetime,
             interview_type=request.interview_type,
             duration_minutes=request.duration_minutes,
@@ -79,7 +78,7 @@ async def schedule_interview(
 async def get_upcoming_interviews(
     days_ahead: int = 7,
     interviewer_id: Optional[str] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Get upcoming interviews."""
@@ -113,7 +112,7 @@ async def get_upcoming_interviews(
 async def get_candidate_interviews(
     candidate_id: str,
     include_cancelled: bool = False,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Get all interviews for a candidate."""
