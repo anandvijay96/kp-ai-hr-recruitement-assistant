@@ -263,7 +263,12 @@
         // Display candidates
         function displayCandidates(candidates) {
             const container = document.getElementById('candidatesList');
-            document.getElementById('loadingState').style.display = 'none';
+            const loadingState = document.getElementById('loadingState');
+            
+            // Hide loading state if it exists
+            if (loadingState) {
+                loadingState.style.display = 'none';
+            }
             
             if (candidates.length === 0) {
                 container.innerHTML = `
