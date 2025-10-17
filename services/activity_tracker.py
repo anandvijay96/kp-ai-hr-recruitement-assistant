@@ -622,8 +622,8 @@ class ActivityTracker:
                 "action_type": activity.action_type,
                 "timestamp": activity.timestamp.isoformat(),
                 "time_ago": self._time_ago(activity.timestamp),
-                "resource_type": activity.resource_type,
-                "resource_id": activity.resource_id
+                "resource_type": activity.entity_type or "",
+                "resource_id": activity.entity_id or ""
             })
         
         return activity_list
