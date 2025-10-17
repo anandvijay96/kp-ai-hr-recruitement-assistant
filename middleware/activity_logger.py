@@ -66,6 +66,7 @@ class ActivityLoggerMiddleware(BaseHTTPMiddleware):
             "/api/v1/vetting/scan": "vet_resume",
             "/api/scan-resume": "vet_resume",
             "/api/batch-scan": "batch_vet_resumes",
+            "/api/v1/interviews": "schedule_interview",
             "/auth/login": "login",
             "/api/auth/login": "login",
         },

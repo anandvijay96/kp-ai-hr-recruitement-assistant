@@ -410,6 +410,63 @@ class ActivityTracker:
         
         return summary
     
+    async def get_team_activity_summary(self, days: int = 1) -> Dict[str, Any]:
+        """
+        Get team-wide activity summary for the last N days.
+        Query raw activity logs for all users.
+        
+        Args:
+            days: Number of days to look back
+        
+        Returns:
+            Dictionary with team-wide activity summary
+        """
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+        
+        # Query raw activity logs for ALL users (team-wide)
+        result = await self.session.execute(
+            select(UserActivityLog).where(
+                and_(
+                    UserActivityLog.timestamp >= start_date,
+                    UserActivityLog.timestamp <= end_date,
+                    UserActivityLog.status == "success"
+                )
+            ).order_by(UserActivityLog.timestamp)
+        )
+        activities = result.scalars().all()
+        
+        # Count by action type
+        action_counts = {}
+        unique_users = set()
+        
+        for activity in activities:
+            action_type = activity.action_type
+            action_counts[action_type] = action_counts.get(action_type, 0) + 1
+            unique_users.add(activity.user_id)
+        
+        # Aggregate totals
+        summary = {
+            "period_days": days,
+            "start_date": start_date.date().isoformat(),
+            "end_date": end_date.date().isoformat(),
+            "total_logins": action_counts.get("login", 0),
+            "total_resumes_vetted": action_counts.get("vet_resume", 0) + action_counts.get("batch_vet_resumes", 0),
+            "total_candidates_viewed": action_counts.get("view_candidate", 0),
+            "total_candidates_created": action_counts.get("create_candidate", 0),
+            "total_searches": action_counts.get("search_candidates", 0) + action_counts.get("search_jobs", 0),
+            "total_jobs_created": action_counts.get("create_job", 0),
+            "total_interviews_scheduled": action_counts.get("schedule_interview", 0) + action_counts.get("create_interview", 0),
+            "total_session_time_hours": sum(a.duration_ms or 0 for a in activities) / 3600000,  # ms to hours
+            "active_users": len(unique_users),  # Count of unique users with activity
+            "active_days": len(set(a.timestamp.date() for a in activities)),
+            "daily_breakdown": []  # Can be populated if needed
+        }
+        
+        logger.info(f"Team activity summary: {len(activities)} activities from {len(unique_users)} users, {summary['total_resumes_vetted']} resumes vetted")
+        
+        return summary
+    
     async def get_team_leaderboard(self, period: str = "month", limit: int = 10) -> List[Dict[str, Any]]:
         """
         Get team leaderboard based on productivity scores.
