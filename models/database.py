@@ -1,6 +1,5 @@
 """SQLAlchemy ORM models for authentication and resume management"""
-from sqlalchemy import Column, String, Boolean, Integer, DateTime, Date, Text, ForeignKey, CheckConstraint, JSON, ARRAY
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, Boolean, Integer, DateTime, Date, Text, ForeignKey, CheckConstraint, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from core.database import Base
@@ -753,9 +752,9 @@ class ResumeJobMatch(Base):
     skill_score = Column(Integer)
     experience_score = Column(Integer)
     education_score = Column(Integer)
-    matched_skills = Column(ARRAY(String))
-    missing_skills = Column(ARRAY(String))
-    match_details = Column(JSONB)
+    matched_skills = Column(JSON)  # Changed from ARRAY(String) for SQLite compatibility
+    missing_skills = Column(JSON)  # Changed from ARRAY(String) for SQLite compatibility
+    match_details = Column(JSON)   # Changed from JSONB for SQLite compatibility
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
