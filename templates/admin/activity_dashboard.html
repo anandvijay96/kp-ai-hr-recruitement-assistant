@@ -423,8 +423,8 @@
             setTimeout(() => this.classList.remove('spinning'), 1000);
         });
         
-        // Auto-refresh every 30 seconds
-        setInterval(loadDashboardData, 30000);
+        // Auto-refresh every 10 seconds for near real-time updates
+        setInterval(loadDashboardData, 10000);
         
         // Initial load
         loadDashboardData();
