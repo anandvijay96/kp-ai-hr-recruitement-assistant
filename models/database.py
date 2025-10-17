@@ -892,7 +892,7 @@ class Interview(Base):
     
     id = Column(String(36), primary_key=True, default=generate_uuid)
     candidate_id = Column(String(36), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
-    job_id = Column(String(36), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id = Column(String(36), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=True, index=True)  # Optional - not all interviews are job-specific
     
     # Scheduling Information
     scheduled_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
