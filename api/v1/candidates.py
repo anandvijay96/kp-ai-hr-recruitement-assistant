@@ -655,21 +655,26 @@ async def get_candidate_job_matches(
 async def soft_delete_candidate(
     candidate_id: str,  # UUID string
     reason: Optional[str] = None,
-    deleted_by: str = "admin",  # TODO: Get from auth session
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
-    Soft delete a candidate (admin only)
+    Soft delete a candidate (recruiter/manager/admin)
     
     Args:
         candidate_id: UUID of candidate to delete
         reason: Optional reason for deletion
-        deleted_by: Username of admin performing deletion
+        current_user: Logged-in user from session
     
     Returns:
         Success message with deletion details
     """
     try:
+        # Get user info for tracking
+        user_email = current_user.get("email") if isinstance(current_user, dict) else current_user.email
+        user_role = current_user.get("role") if isinstance(current_user, dict) else current_user.role
+        deleted_by = f"{user_email} ({user_role})"
+        
         # Find candidate using async query
         result = await db.execute(select(Candidate).filter(Candidate.id == candidate_id))
         candidate = result.scalar_one_or_none()
