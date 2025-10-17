@@ -358,6 +358,7 @@ class ActivityTracker:
     async def get_user_activity_summary(self, user_id: str, days: int = 30) -> Dict[str, Any]:
         """
         Get activity summary for a user over the last N days.
+        Query raw activity logs directly for real-time data.
         
         Args:
             user_id: User ID
@@ -366,45 +367,46 @@ class ActivityTracker:
         Returns:
             Dictionary with activity summary
         """
-        end_date = date.today()
+        end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
         
-        # Query daily stats
+        # Query raw activity logs directly (real-time, no aggregation needed)
         result = await self.session.execute(
-            select(UserDailyStats).where(
+            select(UserActivityLog).where(
                 and_(
-                    UserDailyStats.user_id == user_id,
-                    UserDailyStats.date >= start_date,
-                    UserDailyStats.date <= end_date
+                    UserActivityLog.user_id == user_id,
+                    UserActivityLog.timestamp >= start_date,
+                    UserActivityLog.timestamp <= end_date,
+                    UserActivityLog.status == "success"
                 )
-            ).order_by(UserDailyStats.date)
+            ).order_by(UserActivityLog.timestamp)
         )
-        daily_stats = result.scalars().all()
+        activities = result.scalars().all()
+        
+        # Count by action type
+        action_counts = {}
+        for activity in activities:
+            action_type = activity.action_type
+            action_counts[action_type] = action_counts.get(action_type, 0) + 1
         
         # Aggregate totals
         summary = {
             "period_days": days,
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat(),
-            "total_logins": sum(ds.logins_count for ds in daily_stats),
-            "total_resumes_vetted": sum(ds.resumes_vetted for ds in daily_stats),
-            "total_candidates_viewed": sum(ds.candidates_viewed for ds in daily_stats),
-            "total_candidates_created": sum(ds.candidates_created for ds in daily_stats),
-            "total_searches": sum(ds.searches_performed for ds in daily_stats),
-            "total_jobs_created": sum(ds.jobs_created for ds in daily_stats),
-            "total_interviews_scheduled": sum(ds.interviews_scheduled for ds in daily_stats),
-            "total_session_time_hours": sum(ds.total_session_time for ds in daily_stats) / 3600,
-            "active_days": len([ds for ds in daily_stats if ds.total_actions > 0]),
-            "daily_breakdown": [
-                {
-                    "date": ds.date.isoformat(),
-                    "actions": ds.total_actions,
-                    "resumes_vetted": ds.resumes_vetted,
-                    "candidates_viewed": ds.candidates_viewed
-                }
-                for ds in daily_stats
-            ]
+            "start_date": start_date.date().isoformat(),
+            "end_date": end_date.date().isoformat(),
+            "total_logins": action_counts.get("login", 0),
+            "total_resumes_vetted": action_counts.get("vet_resume", 0) + action_counts.get("batch_vet_resumes", 0),
+            "total_candidates_viewed": action_counts.get("view_candidate", 0),
+            "total_candidates_created": action_counts.get("create_candidate", 0),
+            "total_searches": action_counts.get("search_candidates", 0) + action_counts.get("search_jobs", 0),
+            "total_jobs_created": action_counts.get("create_job", 0),
+            "total_interviews_scheduled": action_counts.get("schedule_interview", 0) + action_counts.get("create_interview", 0),
+            "total_session_time_hours": sum(a.duration_ms or 0 for a in activities) / 3600000,  # ms to hours
+            "active_days": len(set(a.timestamp.date() for a in activities)),
+            "daily_breakdown": []  # Can be populated if needed
         }
+        
+        logger.info(f"Activity summary for user {user_id}: {len(activities)} activities, {summary['total_resumes_vetted']} resumes vetted")
         
         return summary
     
