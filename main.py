@@ -276,6 +276,19 @@ async def activity_dashboard(request: Request):
     
     return templates.TemplateResponse("admin/activity_dashboard.html", {"request": request, "user": user})
 
+@app.get("/admin/deleted-candidates", response_class=HTMLResponse)
+@require_auth
+async def deleted_candidates_page(request: Request):
+    """Admin page to manage soft-deleted candidates - requires admin authentication"""
+    user = await get_current_user(request)
+    
+    # Check if user is admin (handle both dict and object)
+    user_role = user.get("role") if isinstance(user, dict) else getattr(user, "role", None)
+    if not user or user_role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    return templates.TemplateResponse("admin/deleted_candidates.html", {"request": request, "user": user})
+
 @app.get("/upload", response_class=HTMLResponse)
 async def upload_form(request: Request):
     """
