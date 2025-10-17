@@ -38,33 +38,33 @@ def get_engine():
     if _engine is None:
         logger.info(f"Creating async engine with URL: {settings.database_url}")
         
-        # Configure connect_args based on database type
-        connect_args = {}
-        pool_size = 20
-        max_overflow = 40
+        # Configure engine parameters based on database type
+        engine_kwargs = {
+            "echo": settings.debug,
+            "future": True,
+        }
         
         if "sqlite" in settings.database_url.lower():
             # SQLite-specific optimizations for concurrent access
-            connect_args = {
+            engine_kwargs["connect_args"] = {
                 "check_same_thread": False,
                 "timeout": 30.0,  # Increase timeout for write locks
             }
-            # SQLite doesn't support large connection pools
-            pool_size = 5
-            max_overflow = 10
-            
-            logger.info("🔧 SQLite detected - enabling WAL mode and connection pooling optimizations")
+            # Note: aiosqlite uses NullPool by default, doesn't support pool_size
+            logger.info("🔧 SQLite detected - enabling WAL mode optimizations")
+        else:
+            # PostgreSQL and other databases support connection pooling
+            engine_kwargs.update({
+                "pool_pre_ping": True,
+                "pool_size": 20,
+                "max_overflow": 40,
+                "pool_timeout": 30,
+                "pool_recycle": 3600,
+            })
         
         _engine = create_async_engine(
             settings.database_url,
-            echo=settings.debug,
-            pool_pre_ping=True,
-            pool_size=pool_size,
-            max_overflow=max_overflow,
-            pool_timeout=30,
-            pool_recycle=3600,  # Recycle connections after 1 hour
-            future=True,
-            connect_args=connect_args
+            **engine_kwargs
         )
         
         # Enable WAL mode for SQLite to allow concurrent reads during writes
@@ -117,27 +117,35 @@ def get_sync_session():
     # Convert async URL to sync URL
     sync_url = settings.database_url.replace('+aiosqlite', '').replace('+asyncpg', '')
     
-    # Configure connect_args based on database type
-    connect_args = {}
-    pool_size = 20
-    max_overflow = 40
+    # Configure engine parameters based on database type
+    engine_kwargs = {
+        "echo": settings.debug,
+    }
     
     if "sqlite" in sync_url.lower():
-        connect_args = {
-            "check_same_thread": False,
-            "timeout": 30.0
-        }
-        pool_size = 5
-        max_overflow = 10
+        # SQLite with sync driver supports connection pooling
+        engine_kwargs.update({
+            "connect_args": {
+                "check_same_thread": False,
+                "timeout": 30.0
+            },
+            "pool_size": 5,
+            "max_overflow": 10,
+            "pool_timeout": 30,
+            "pool_recycle": 3600,
+        })
+    else:
+        # PostgreSQL and other databases
+        engine_kwargs.update({
+            "pool_size": 20,
+            "max_overflow": 40,
+            "pool_timeout": 30,
+            "pool_recycle": 3600,
+        })
     
     sync_engine = create_sync_engine(
         sync_url,
-        echo=settings.debug,
-        pool_size=pool_size,
-        max_overflow=max_overflow,
-        pool_timeout=30,
-        pool_recycle=3600,
-        connect_args=connect_args
+        **engine_kwargs
     )
     
     # Enable WAL mode for SQLite sync engine
