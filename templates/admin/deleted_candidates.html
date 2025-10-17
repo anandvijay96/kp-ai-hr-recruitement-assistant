@@ -226,13 +226,14 @@
         let confirmAction = null;
         
         // Load deleted candidates
-        async function loadDeletedCandidates(page = 1, silent = false) {
+        async function loadDeletedCandidates(page = 1, suppressErrorToast = false) {
             try {
                 const response = await fetch(`/api/v1/candidates/deleted/list?page=${page}&page_size=${pageSize}`);
                 
                 if (!response.ok) {
-                    if (!silent) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    console.error(`Failed to load: HTTP ${response.status}`);
+                    if (!suppressErrorToast) {
+                        showError(`Failed to load deleted candidates (HTTP ${response.status})`);
                     }
                     return;
                 }
@@ -240,15 +241,20 @@
                 const data = await response.json();
                 
                 if (data.success) {
+                    // ALWAYS update display, regardless of suppressErrorToast
                     displayCandidates(data.results);
                     displayPagination(data.pagination);
                     currentPage = page;
-                } else if (!silent) {
-                    showError(data.message || 'Failed to load deleted candidates');
+                    console.log(`✅ Loaded ${data.results.length} deleted candidates`);
+                } else {
+                    console.error('API returned success=false:', data);
+                    if (!suppressErrorToast) {
+                        showError(data.message || 'Failed to load deleted candidates');
+                    }
                 }
             } catch (error) {
                 console.error('Error loading deleted candidates:', error);
-                if (!silent) {
+                if (!suppressErrorToast) {
                     showError('Failed to load deleted candidates. Please refresh the page.');
                 }
             }
