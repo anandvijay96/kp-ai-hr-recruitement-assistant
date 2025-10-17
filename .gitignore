@@ -103,6 +103,28 @@ FEATURE_*.md
 FINAL_*.md
 CLIENT_VENDOR_*.md
 ANALYTICS_*.md
+*_SUMMARY.md
+*_CHECKLIST.md
+*_GUIDE.md
+*_FIX.md
+*_STATUS.md
+PRODUCTION_*.md
+POSTGRES_*.md
+GEMINI_*.md
+PHASE_*.md
+MERGE_*.md
+TESTING_*.md
+QUICK_*.md
+SOFT_*.md
+MANUAL_*.md
+JOB_*.md
+LINKEDIN_*.md
+RESPONSIBILITIES_*.md
+POST_*.md
+LLM_*.md
+.env.production*
+.env.*.example
 
 !Business Requirements Document 1.pdf
 !README.md
+!DEPLOY_GUIDE.md
