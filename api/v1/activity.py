@@ -125,6 +125,78 @@ async def get_team_leaderboard(
     }
 
 
+@router.get("/admin/activity-trend")
+async def get_activity_trend(
+    days: int = Query(7, ge=1, le=30, description="Number of days"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get daily activity trend for the last N days (admin only).
+    Returns data for line chart.
+    """
+    # Check if user is admin
+    user_role = current_user.get("role") if isinstance(current_user, dict) else current_user.role
+    if user_role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    tracker = ActivityTracker(db)
+    trend_data = await tracker.get_activity_trend(days=days)
+    
+    return {
+        "success": True,
+        "data": trend_data
+    }
+
+
+@router.get("/admin/activity-distribution")
+async def get_activity_distribution(
+    days: int = Query(7, ge=1, le=365, description="Number of days"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get activity distribution by type (admin only).
+    Returns data for pie/doughnut chart.
+    """
+    # Check if user is admin
+    user_role = current_user.get("role") if isinstance(current_user, dict) else current_user.role
+    if user_role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    tracker = ActivityTracker(db)
+    distribution = await tracker.get_activity_distribution(days=days)
+    
+    return {
+        "success": True,
+        "data": distribution
+    }
+
+
+@router.get("/admin/recent-activity")
+async def get_recent_activity(
+    limit: int = Query(10, ge=1, le=50, description="Number of activities"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get recent activity feed (admin only).
+    Returns latest user activities across the system.
+    """
+    # Check if user is admin
+    user_role = current_user.get("role") if isinstance(current_user, dict) else current_user.role
+    if user_role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    tracker = ActivityTracker(db)
+    activities = await tracker.get_recent_activity(limit=limit)
+    
+    return {
+        "success": True,
+        "data": activities
+    }
+
+
 @router.post("/admin/aggregate-stats")
 async def trigger_stats_aggregation(
     target_date: Optional[date] = None,

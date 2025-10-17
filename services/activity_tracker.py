@@ -467,6 +467,186 @@ class ActivityTracker:
         
         return summary
     
+    async def get_activity_trend(self, days: int = 7) -> Dict[str, Any]:
+        """
+        Get daily activity trend for the last N days.
+        Returns data suitable for line chart.
+        
+        Args:
+            days: Number of days to look back
+        
+        Returns:
+            Dictionary with labels and data for chart
+        """
+        from collections import defaultdict
+        
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+        
+        # Query activities grouped by date
+        result = await self.session.execute(
+            select(UserActivityLog).where(
+                and_(
+                    UserActivityLog.timestamp >= start_date,
+                    UserActivityLog.timestamp <= end_date,
+                    UserActivityLog.status == "success"
+                )
+            ).order_by(UserActivityLog.timestamp)
+        )
+        activities = result.scalars().all()
+        
+        # Group by date
+        daily_counts = defaultdict(int)
+        for activity in activities:
+            date_key = activity.timestamp.date()
+            daily_counts[date_key] += 1
+        
+        # Generate labels and data for all days (fill missing days with 0)
+        labels = []
+        data = []
+        current_date = start_date.date()
+        
+        while current_date <= end_date.date():
+            labels.append(current_date.strftime('%a'))  # Mon, Tue, Wed, etc.
+            data.append(daily_counts.get(current_date, 0))
+            current_date += timedelta(days=1)
+        
+        return {
+            "labels": labels,
+            "data": data,
+            "period_days": days
+        }
+    
+    async def get_activity_distribution(self, days: int = 7) -> Dict[str, Any]:
+        """
+        Get activity distribution by action type.
+        Returns data suitable for pie/doughnut chart.
+        
+        Args:
+            days: Number of days to look back
+        
+        Returns:
+            Dictionary with labels and data for chart
+        """
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+        
+        # Query activities
+        result = await self.session.execute(
+            select(UserActivityLog).where(
+                and_(
+                    UserActivityLog.timestamp >= start_date,
+                    UserActivityLog.timestamp <= end_date,
+                    UserActivityLog.status == "success"
+                )
+            )
+        )
+        activities = result.scalars().all()
+        
+        # Count by action type
+        action_counts = {}
+        for activity in activities:
+            action_type = activity.action_type
+            action_counts[action_type] = action_counts.get(action_type, 0) + 1
+        
+        # Group into categories for better visualization
+        categories = {
+            "Vetting": ["vet_resume", "batch_vet_resumes"],
+            "Viewing": ["view_candidate", "view_resume", "view_dashboard", "view_admin"],
+            "Creating": ["create_candidate", "create_job", "schedule_interview", "create_interview"],
+            "Searching": ["search_candidates", "search_jobs"],
+            "Other": []
+        }
+        
+        category_counts = {cat: 0 for cat in categories.keys()}
+        
+        for action_type, count in action_counts.items():
+            categorized = False
+            for category, actions in categories.items():
+                if action_type in actions:
+                    category_counts[category] += count
+                    categorized = True
+                    break
+            if not categorized:
+                category_counts["Other"] += count
+        
+        # Filter out zero counts
+        labels = [cat for cat, count in category_counts.items() if count > 0]
+        data = [count for count in category_counts.values() if count > 0]
+        
+        return {
+            "labels": labels,
+            "data": data,
+            "total": sum(data)
+        }
+    
+    async def get_recent_activity(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Get recent activity feed across all users.
+        
+        Args:
+            limit: Number of recent activities to return
+        
+        Returns:
+            List of recent activities with user info
+        """
+        from sqlalchemy.orm import selectinload
+        from models.database import User as UserModel
+        
+        # Query recent activities with user info
+        result = await self.session.execute(
+            select(UserActivityLog).where(
+                UserActivityLog.status == "success"
+            ).order_by(
+                UserActivityLog.timestamp.desc()
+            ).limit(limit)
+        )
+        activities = result.scalars().all()
+        
+        # Get user info for each activity
+        activity_list = []
+        for activity in activities:
+            # Get user
+            user_result = await self.session.execute(
+                select(UserModel).filter(UserModel.id == activity.user_id)
+            )
+            user = user_result.scalar_one_or_none()
+            
+            # Format action type for display
+            action_display = activity.action_type.replace('_', ' ').title()
+            
+            activity_list.append({
+                "user_name": user.full_name if user else "Unknown User",
+                "user_email": user.email if user else "",
+                "action": action_display,
+                "action_type": activity.action_type,
+                "timestamp": activity.timestamp.isoformat(),
+                "time_ago": self._time_ago(activity.timestamp),
+                "resource_type": activity.resource_type,
+                "resource_id": activity.resource_id
+            })
+        
+        return activity_list
+    
+    def _time_ago(self, timestamp: datetime) -> str:
+        """Convert timestamp to human-readable 'time ago' format"""
+        now = datetime.now()
+        diff = now - timestamp
+        
+        seconds = diff.total_seconds()
+        
+        if seconds < 60:
+            return "just now"
+        elif seconds < 3600:
+            minutes = int(seconds / 60)
+            return f"{minutes}m ago"
+        elif seconds < 86400:
+            hours = int(seconds / 3600)
+            return f"{hours}h ago"
+        else:
+            days = int(seconds / 86400)
+            return f"{days}d ago"
+    
     async def get_team_leaderboard(self, period: str = "month", limit: int = 10) -> List[Dict[str, Any]]:
         """
         Get team leaderboard based on productivity scores.

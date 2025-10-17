@@ -363,6 +363,30 @@
                     updateStatistics(data.data);
                 }
                 
+                // Fetch activity trend for chart
+                const trendResponse = await fetch('/api/v1/admin/activity-trend?days=7', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                if (trendResponse.ok) {
+                    const trendData = await trendResponse.json();
+                    updateActivityChart(trendData.data);
+                }
+                
+                // Fetch activity distribution for pie chart
+                const distResponse = await fetch('/api/v1/admin/activity-distribution?days=7', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                if (distResponse.ok) {
+                    const distData = await distResponse.json();
+                    updateDistributionChart(distData.data);
+                }
+                
                 // Fetch leaderboard
                 const leaderboardResponse = await fetch('/api/v1/admin/team-leaderboard?period=month&limit=5', {
                     headers: {
@@ -373,6 +397,18 @@
                 if (leaderboardResponse.ok) {
                     const leaderboardData = await leaderboardResponse.json();
                     updateLeaderboard(leaderboardData.data.leaderboard);
+                }
+                
+                // Fetch recent activity feed
+                const activityResponse = await fetch('/api/v1/admin/recent-activity?limit=10', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                if (activityResponse.ok) {
+                    const activityData = await activityResponse.json();
+                    updateActivityFeed(activityData.data);
                 }
                 
                 // Update timestamp
@@ -387,6 +423,58 @@
             document.getElementById('resumesVetted').textContent = data.total_resumes_vetted || 0;
             document.getElementById('interviewsScheduled').textContent = data.total_interviews_scheduled || 0;
             document.getElementById('activeUsers').textContent = data.active_users || 0;  // Fixed: use active_users, not active_days!
+        }
+        
+        function updateActivityChart(data) {
+            activityChart.data.labels = data.labels;
+            activityChart.data.datasets[0].data = data.data;
+            activityChart.update();
+        }
+        
+        function updateDistributionChart(data) {
+            distributionChart.data.labels = data.labels;
+            distributionChart.data.datasets[0].data = data.data;
+            distributionChart.update();
+        }
+        
+        function updateActivityFeed(activities) {
+            const container = document.getElementById('activityFeed');
+            
+            if (activities.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center py-3">No recent activity</p>';
+                return;
+            }
+            
+            container.innerHTML = activities.map(activity => `
+                <div class="activity-item">
+                    <div class="activity-icon bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-${getActivityIcon(activity.action_type)}"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-bold">${activity.user_name}</div>
+                        <div class="small text-muted">${activity.action}</div>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-muted">${activity.time_ago}</small>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function getActivityIcon(actionType) {
+            const icons = {
+                'vet_resume': 'shield-check',
+                'batch_vet_resumes': 'shield-check',
+                'view_candidate': 'person',
+                'create_candidate': 'person-plus',
+                'schedule_interview': 'calendar-check',
+                'create_interview': 'calendar-check',
+                'create_job': 'briefcase',
+                'search_candidates': 'search',
+                'search_jobs': 'search',
+                'login': 'box-arrow-in-right'
+            };
+            return icons[actionType] || 'activity';
         }
         
         function updateLeaderboard(leaderboard) {
