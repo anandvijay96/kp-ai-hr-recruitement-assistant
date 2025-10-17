@@ -308,11 +308,13 @@ class ActivityLoggerMiddleware(BaseHTTPMiddleware):
             try:
                 session.add(activity_log)
                 await session.commit()
-                logger.debug(f"Logged activity: {action_type} by user {user_id}")
+                logger.info(f"✅ Logged activity: {action_type} by user {user_id[:8]}... to {request.url.path}")
             except Exception as e:
                 await session.rollback()
-                logger.error(f"Failed to save activity log: {e}")
-                raise
+                logger.error(f"❌ Failed to save activity log: {e}")
+                logger.error(f"   Action: {action_type}, User: {user_id}, Path: {request.url.path}")
+                # Don't raise - we don't want to break the request
+                pass
 
 
 # Helper function to add middleware to FastAPI app
