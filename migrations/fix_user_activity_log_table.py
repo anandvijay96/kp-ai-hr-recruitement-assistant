@@ -47,7 +47,10 @@ async def run_migration():
             required_columns = {
                 'entity_type': 'VARCHAR(50)',
                 'entity_id': 'VARCHAR(36)',
-                'request_metadata': 'JSON'
+                'request_metadata': 'JSON',
+                'request_method': 'VARCHAR(10)',
+                'request_path': 'VARCHAR(500)',
+                'duration_ms': 'INTEGER'
             }
             
             # Add missing columns
