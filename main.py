@@ -281,16 +281,13 @@ async def activity_dashboard(request: Request):
 @app.get("/admin/database", response_class=HTMLResponse)
 @require_auth
 async def database_manager_page(request: Request):
-    """Admin database manager page - requires admin authentication"""
-    user = request.session.get("user")
+    """Admin database manager page - requires admin authentication (Developer-only)"""
+    user = await get_current_user(request)
     
-    # Only allow admin access
-    if not user or user.get("role") != "admin":
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "error": "Access Denied",
-            "message": "Only administrators can access the database manager."
-        })
+    # Check if user is admin (handle both dict and object)
+    user_role = user.get("role") if isinstance(user, dict) else getattr(user, "role", None)
+    if not user or user_role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
     
     return templates.TemplateResponse("admin/database_manager.html", {"request": request, "user": user})
 
