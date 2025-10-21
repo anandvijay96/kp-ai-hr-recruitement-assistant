@@ -1503,7 +1503,7 @@ ${scan.extracted_text || 'No text extracted'}
             try {
                 const response = await fetch('/api/v1/vetting-queue/status', {
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                     }
                 });
                 
@@ -1576,7 +1576,7 @@ ${scan.extracted_text || 'No text extracted'}
                 const response = await fetch('/api/v1/vetting-queue/join', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                     }
                 });
                 
@@ -1599,7 +1599,7 @@ ${scan.extracted_text || 'No text extracted'}
                 const response = await fetch('/api/v1/vetting-queue/leave', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                     }
                 });
                 
@@ -1622,7 +1622,7 @@ ${scan.extracted_text || 'No text extracted'}
                 const response = await fetch('/api/v1/vetting-queue/end-session', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                     }
                 });
                 
