@@ -46,17 +46,26 @@ class RedisLLMUsageTracker:
         """Initialize Redis connection"""
         self.redis_url = redis_url or settings.redis_url
         try:
+            # Parse Redis URL to handle authentication
+            # Format: redis://[:password@]host:port/db or redis://host:port/db
             self.redis_client = redis.from_url(
                 self.redis_url,
                 decode_responses=True,
                 socket_connect_timeout=5,
-                socket_timeout=5
+                socket_timeout=5,
+                retry_on_timeout=True,
+                health_check_interval=30
             )
             # Test connection
             self.redis_client.ping()
-            logger.info(f"✅ Redis LLM Usage Tracker connected to {self.redis_url}")
+            logger.info(f"✅ Redis LLM Usage Tracker connected successfully")
+        except redis.AuthenticationError as e:
+            logger.error(f"❌ Redis authentication failed. Check REDIS_URL format: {e}")
+            logger.error(f"   Expected format: redis://[:password@]host:port/db")
+            raise
         except Exception as e:
             logger.error(f"❌ Failed to connect to Redis: {e}")
+            logger.error(f"   Redis URL: {self.redis_url}")
             raise
     
     def _get_today_key(self) -> str:
