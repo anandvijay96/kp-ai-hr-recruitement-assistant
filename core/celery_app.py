@@ -1,11 +1,15 @@
 from celery import Celery
 from core.config import settings
 
+# Use REDIS_URL for both broker and backend, with fallback
+broker_url = settings.celery_broker_url or settings.redis_url
+backend_url = settings.celery_result_backend or settings.redis_url
+
 # Create Celery app
 celery_app = Celery(
     'hr_assistant',
-    broker=settings.celery_broker_url,
-    backend=settings.celery_result_backend,
+    broker=broker_url,
+    backend=backend_url,
     include=['tasks.resume_tasks']  # Import task modules
 )
 
