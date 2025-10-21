@@ -1126,7 +1126,7 @@ def _analyze_job_hopping(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, 
                 current_company = {
                     'company': current_company_name,
                     'total_duration': company_info['total_duration'],
-                    'roles': [r['title'] for r in company_info['roles']],
+                    'roles': [r['title'] for r in company_info['roles'] if r['title']],
                     'current_role': most_recent.get('title', 'Unknown Position')
                 }
         
@@ -1134,8 +1134,10 @@ def _analyze_job_hopping(extracted_data: Optional[Dict[str, Any]]) -> Dict[str, 
             total_duration = company_data['total_duration']
             
             if total_duration > 0 and total_duration < 12:  # Short tenure at company level
-                # Show all roles at this company
-                roles_display = ', '.join([r['title'] for r in company_data['roles']])
+                # Show all roles at this company (filter out None values)
+                roles_display = ', '.join([r['title'] for r in company_data['roles'] if r['title']])
+                if not roles_display:
+                    roles_display = 'Unknown Position'
                 short_stints.append({
                     'title': roles_display,
                     'company': company_data['company_name'],

@@ -48,9 +48,9 @@ class Settings(BaseSettings):
     # Redis Settings
     redis_url: str = "redis://localhost:6379/0"
     
-    # Celery Settings
-    celery_broker_url: str = "redis://localhost:6379/0"
-    celery_result_backend: str = "redis://localhost:6379/0"
+    # Celery Settings (use REDIS_URL if available)
+    celery_broker_url: Optional[str] = None
+    celery_result_backend: Optional[str] = None
     celery_task_track_started: bool = True
     celery_task_time_limit: int = 300
     
