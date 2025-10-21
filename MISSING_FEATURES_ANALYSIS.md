@@ -22,32 +22,83 @@
 
 ## 🚫 **MISSING FEATURES - DETAILED BREAKDOWN**
 
-### **PHASE 2: Resume Extraction Enhancement** (60% MISSING)
+### **🔥 CRITICAL PRIORITY: Gemini API Rate Limiting Queue** (NEW!)
 
-#### **❌ 1. Open-Resume Tool Integration**
+#### **❌ 1. Gemini API Rate Limiting & Queue System**
 **Status:** NOT IMPLEMENTED  
-**Priority:** HIGH  
-**Estimated Time:** 2-3 days
+**Priority:** 🔥 CRITICAL - MUST IMPLEMENT IMMEDIATELY  
+**Estimated Time:** 1-2 days
 
-**What Was Planned:**
-- Analyze open-resume tool (https://github.com/xitanggg/open-resume)
-- Identify superior parsing techniques
-- Benchmark against current extractor
-- Integrate best practices into enhanced_resume_extractor.py
-- Add test cases from their test suite
-- Measure accuracy improvements
+**Problem:**
+- Gemini Free Tier: 15 requests/minute limit
+- Multiple team members vetting simultaneously = API limit exceeded
+- Current system has no queue or rate limiting
+- Users get errors when limit is hit
+
+**Required Solution:**
+- Real-time vetting queue system
+- Only ONE user can vet at a time
+- Other users must wait in queue
+- Clear UI showing queue position
+- Countdown timer showing when next slot available
+- Automatic queue progression
+- Session timeout handling
+
+**Implementation Needs:**
+1. **Backend Queue System:**
+   - Redis-based queue (FIFO)
+   - Track current vetting session
+   - Track waiting users
+   - Session timeout (5 min max)
+   - Automatic queue progression
+
+2. **Rate Limiting:**
+   - Track API requests per minute
+   - Enforce 15 requests/min limit
+   - Reset counter every minute
+   - Block new sessions if limit reached
+
+3. **UI Components:**
+   - Queue status indicator
+   - "You are #3 in queue" message
+   - Countdown timer to next available slot
+   - "Vetting in progress by [User]" notification
+   - Auto-refresh queue position
+
+4. **User Experience:**
+   - Clear messaging about wait time
+   - Option to cancel queue position
+   - Notification when it's user's turn
+   - Session auto-release after completion
 
 **Expected Benefits:**
-- Higher extraction accuracy (target: 95%+ from current ~85%)
-- Better handling of non-standard resume formats
-- Improved section detection
-- More robust entity recognition
+- ✅ No API limit violations
+- ✅ Fair queue system for all users
+- ✅ Clear user expectations
+- ✅ Prevent concurrent vetting conflicts
+- ✅ Stay within free tier limits
 
 **Current Status:**
-- ✅ Basic extraction works
-- ❌ Not analyzed open-resume tool
-- ❌ No benchmarking done
-- ❌ Accuracy still ~85%
+- ❌ No queue system
+- ❌ No rate limiting
+- ❌ Multiple users can vet simultaneously
+- ❌ API errors when limit exceeded
+
+---
+
+### **PHASE 2: Resume Extraction Enhancement** (UPDATED)
+
+#### **✅ 1. LLM-Based Extraction** 
+**Status:** IMPLEMENTED ✅  
+**Completion:** 100%
+
+**What Was Implemented:**
+- Gemini-based resume extraction
+- Vastly improved accuracy
+- Better entity recognition
+- No need for open-resume integration
+
+**Note:** Open-Resume integration is **SKIPPED** - LLM extraction is superior
 
 ---
 
@@ -126,34 +177,12 @@
 
 ---
 
-#### **❌ 2. Email Templates & Automation**
+#### **⏸️ 2. Email Templates & Automation**
 **Status:** NOT IMPLEMENTED  
-**Priority:** HIGH  
-**Estimated Time:** 2-3 days
+**Priority:** LOW (Skipped - No paid services planned)  
+**Estimated Time:** N/A
 
-**What Was Planned:**
-- Email templates for common scenarios
-- Automated email sending
-- Interview invitation emails
-- Candidate status update emails
-- Rejection emails
-- Offer letters
-- Email tracking
-
-**Current Status:**
-- ✅ SendGrid infrastructure exists
-- ❌ No email templates
-- ❌ No automated sending
-- ❌ No email tracking
-- ❌ SendGrid API key not configured
-
-**What's Missing:**
-- Email template system
-- Template variables/placeholders
-- Automated email triggers
-- Email scheduling
-- Email tracking/analytics
-- SendGrid configuration
+**Decision:** **SKIPPED** - Not implementing email automation as we're not planning for paid services currently. This will be reconsidered if/when the product becomes a white-label solution.
 
 ---
 
@@ -408,15 +437,26 @@
 
 ## 📋 **SUMMARY OF MISSING FEATURES**
 
+### **🔥 CRITICAL PRIORITY (Implement IMMEDIATELY):**
+
+1. **❌ Gemini API Rate Limiting & Queue System** - MUST HAVE for multi-user vetting
+   - Prevent API limit violations
+   - Fair queue system
+   - Real-time queue management
+   - **Estimated Time:** 1-2 days
+
 ### **HIGH PRIORITY (Should be next):**
 
-1. **✅ DONE: Activity Logs** - Comprehensive tracking (Just completed!)
-2. **❌ Email Templates & Automation** - Critical for communication
+2. **✅ DONE: Activity Logs** - Comprehensive tracking (Just completed!)
 3. **❌ Client Management Module** - Core business requirement
 4. **❌ Vendor Management Module** - Core business requirement
 5. **❌ Multi-Tenant Architecture** - Required for clients/vendors
-6. **❌ Open-Resume Integration** - Improve extraction accuracy
-7. **⚠️ Education Verification** - Partially done, needs completion
+6. **⚠️ Education Verification** - Partially done, needs completion
+
+### **SKIPPED (Not implementing):**
+
+- **⏸️ Email Templates & Automation** - No paid services planned
+- **⏸️ Open-Resume Integration** - LLM extraction is superior
 
 ### **MEDIUM PRIORITY (Important but not urgent):**
 
@@ -437,12 +477,15 @@
 
 ## 🎯 **RECOMMENDED IMPLEMENTATION ORDER**
 
-### **Next Sprint (Week 1-2):**
-1. **Email Templates & Automation** (2-3 days)
-   - SendGrid configuration
-   - Email templates
-   - Automated sending
+### **🔥 IMMEDIATE (This Week):**
+1. **Gemini API Rate Limiting & Queue System** (1-2 days) ⚡ CRITICAL
+   - Redis-based queue
+   - Rate limiting logic
+   - Queue UI components
+   - Session management
+   - Real-time updates
 
+### **Next Sprint (Week 1-2):**
 2. **Education Verification Completion** (2 days)
    - Document upload
    - Verification workflow
