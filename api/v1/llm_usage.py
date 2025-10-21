@@ -1,12 +1,13 @@
 """
 LLM Usage API - Monitor and manage LLM API usage
+Now using Redis for better reliability and performance
 """
 
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 import logging
 import os
-from services.llm_usage_tracker import get_tracker
+from services.llm_usage_tracker_redis import get_redis_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -16,13 +17,13 @@ router = APIRouter(prefix="/llm-usage", tags=["LLM Usage"])
 @router.get("/stats")
 async def get_usage_stats() -> Dict[str, Any]:
     """
-    Get current LLM usage statistics
+    Get current LLM usage statistics from Redis
     
     Returns:
         Usage statistics including quota limits and warnings
     """
     try:
-        tracker = get_tracker()
+        tracker = get_redis_tracker()
         stats = tracker.get_usage_summary()
         return stats
     except Exception as e:
@@ -33,13 +34,13 @@ async def get_usage_stats() -> Dict[str, Any]:
 @router.post("/reset")
 async def reset_usage_stats() -> Dict[str, str]:
     """
-    Reset usage statistics (admin only)
+    Reset usage statistics in Redis (admin only)
     
     Returns:
         Success message
     """
     try:
-        tracker = get_tracker()
+        tracker = get_redis_tracker()
         tracker.reset_stats()
         return {"message": "Usage statistics reset successfully"}
     except Exception as e:
@@ -50,7 +51,7 @@ async def reset_usage_stats() -> Dict[str, str]:
 @router.get("/check-quota/{provider}")
 async def check_quota(provider: str) -> Dict[str, Any]:
     """
-    Check if quota allows making a request
+    Check if quota allows making a request (Redis-based)
     
     Args:
         provider: 'gemini' or 'openai'
@@ -59,7 +60,7 @@ async def check_quota(provider: str) -> Dict[str, Any]:
         can_proceed, warning_message
     """
     try:
-        tracker = get_tracker()
+        tracker = get_redis_tracker()
         can_proceed, warning = tracker.can_make_request(provider)
         
         return {
