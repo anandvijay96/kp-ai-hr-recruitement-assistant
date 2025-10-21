@@ -95,14 +95,18 @@ async def check_tables():
                 print("🔴 SOFT DELETE COLUMNS CHECK")
                 print("=" * 60)
                 
-                if has_soft_delete:
+                # Check which soft delete columns are missing
+                existing_col_names = [col[0] for col in columns]
+                missing_cols = [c for c in soft_delete_columns if c not in existing_col_names]
+                
+                if len(missing_cols) == 0:
                     print("\n✅ All soft delete columns exist!")
                     print("   - is_deleted")
                     print("   - deleted_at")
                     print("   - deleted_by")
                     print("   - deletion_reason")
+                    print("\n🎉 DATABASE IS READY!")
                 else:
-                    missing_cols = [c for c in soft_delete_columns if c not in [col[0] for col in columns]]
                     print(f"\n❌ Missing {len(missing_cols)} soft delete columns:")
                     for col in missing_cols:
                         print(f"  - {col}")
