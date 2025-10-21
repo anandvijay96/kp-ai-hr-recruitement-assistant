@@ -19,7 +19,9 @@ logger = logging.getLogger(__name__)
 
 def require_admin(current_user: User = Depends(get_current_user)):
     """Require admin role"""
-    if current_user.role != "admin":
+    # Handle both dict and object
+    user_role = current_user.get("role") if isinstance(current_user, dict) else getattr(current_user, "role", None)
+    if user_role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
 
