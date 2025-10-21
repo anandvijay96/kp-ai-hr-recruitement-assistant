@@ -111,6 +111,110 @@
             </div>
         </div>
 
+        <!-- Vetting Queue Status -->
+        <div class="card mb-4" id="queueStatusCard" style="border-left: 4px solid #6f42c1; display: none;">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-hourglass-split me-2"></i>Vetting Queue Status
+                    </h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshQueueStatus()" title="Refresh">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+                
+                <!-- Queue Available -->
+                <div id="queueAvailable" class="alert alert-success" style="display: none;">
+                    <i class="bi bi-check-circle me-2"></i>
+                    <strong>Ready to Vet!</strong> No one is currently vetting. You can start immediately.
+                </div>
+                
+                <!-- User is Active -->
+                <div id="userIsActive" class="alert alert-info" style="display: none;">
+                    <i class="bi bi-play-circle me-2"></i>
+                    <strong>Your Vetting Session is Active</strong>
+                    <div class="mt-2">
+                        <small>You can vet resumes now. Session will auto-expire after 5 minutes of inactivity.</small>
+                    </div>
+                    <button class="btn btn-sm btn-danger mt-2" onclick="endVettingSession()">
+                        <i class="bi bi-stop-circle"></i> End Session
+                    </button>
+                </div>
+                
+                <!-- Someone Else is Vetting -->
+                <div id="someoneVetting" class="alert alert-warning" style="display: none;">
+                    <i class="bi bi-person-fill me-2"></i>
+                    <strong>Vetting in Progress</strong>
+                    <div class="mt-2">
+                        <span id="activeUserName"></span> is currently vetting resumes.
+                    </div>
+                </div>
+                
+                <!-- User in Queue -->
+                <div id="userInQueue" class="alert alert-info" style="display: none;">
+                    <i class="bi bi-hourglass-split me-2"></i>
+                    <strong>You are in Queue</strong>
+                    <div class="mt-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div>Position: <strong id="queuePosition">#0</strong></div>
+                                <div class="small text-muted">Estimated wait: <span id="estimatedWait">0</span> seconds</div>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger" onclick="leaveQueue()">
+                                <i class="bi bi-x-circle"></i> Leave Queue
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Rate Limit Warning -->
+                <div id="rateLimitWarning" class="alert alert-danger" style="display: none;">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>API Rate Limit Reached</strong>
+                    <div class="mt-2">
+                        <p class="mb-2">Gemini Free Tier allows 15 requests per minute. Please wait for the next minute.</p>
+                        <div class="progress" style="height: 25px;">
+                            <div id="rateLimitProgress" class="progress-bar progress-bar-striped progress-bar-animated bg-danger" 
+                                 role="progressbar" style="width: 100%">
+                                <span id="rateLimitCountdown">60s</span>
+                            </div>
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            Requests used: <span id="requestsUsed">15</span> / 15
+                        </small>
+                    </div>
+                </div>
+                
+                <!-- Queue Info -->
+                <div class="mt-3 p-3 bg-light rounded">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="small text-muted">Queue Length</div>
+                            <div class="h4 mb-0" id="queueLength">0</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="small text-muted">Requests/Min</div>
+                            <div class="h4 mb-0"><span id="requestsPerMin">0</span>/15</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="small text-muted">Next Reset</div>
+                            <div class="h4 mb-0" id="nextReset">--</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Join Queue Button -->
+                <div id="joinQueueSection" class="mt-3" style="display: none;">
+                    <button class="btn btn-primary w-100" onclick="joinQueue()">
+                        <i class="bi bi-plus-circle"></i> Join Vetting Queue
+                    </button>
+                    <small class="text-muted d-block mt-2 text-center">
+                        <i class="bi bi-info-circle"></i> You'll be notified when it's your turn
+                    </small>
+                </div>
+            </div>
+        </div>
+
         <!-- Upload Section -->
         <div class="card" id="uploadSection">
             <div class="card-body">
@@ -1380,6 +1484,207 @@ ${scan.extracted_text || 'No text extracted'}
             const modal = new bootstrap.Modal(document.getElementById('resumeViewModal'));
             modal.show();
         }
+        
+        // ============================================
+        // VETTING QUEUE MANAGEMENT
+        // ============================================
+        
+        let queueCheckInterval = null;
+        let rateLimitCountdownInterval = null;
+        
+        // Check queue status on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshQueueStatus();
+            // Auto-refresh every 5 seconds
+            queueCheckInterval = setInterval(refreshQueueStatus, 5000);
+        });
+        
+        async function refreshQueueStatus() {
+            try {
+                const response = await fetch('/api/v1/vetting-queue/status', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                if (!response.ok) return;
+                
+                const result = await response.json();
+                const data = result.data;
+                
+                // Show queue card
+                document.getElementById('queueStatusCard').style.display = 'block';
+                
+                // Hide all alerts first
+                document.getElementById('queueAvailable').style.display = 'none';
+                document.getElementById('userIsActive').style.display = 'none';
+                document.getElementById('someoneVetting').style.display = 'none';
+                document.getElementById('userInQueue').style.display = 'none';
+                document.getElementById('rateLimitWarning').style.display = 'none';
+                document.getElementById('joinQueueSection').style.display = 'none';
+                
+                // Update queue info
+                document.getElementById('queueLength').textContent = data.queue_length;
+                document.getElementById('requestsPerMin').textContent = data.rate_limit.requests_used;
+                document.getElementById('nextReset').textContent = data.rate_limit.resets_in_seconds + 's';
+                
+                // Check rate limit
+                if (data.rate_limit.limit_exceeded) {
+                    document.getElementById('rateLimitWarning').style.display = 'block';
+                    document.getElementById('requestsUsed').textContent = data.rate_limit.requests_used;
+                    startRateLimitCountdown(data.rate_limit.resets_in_seconds);
+                    return;
+                }
+                
+                // User has active session
+                if (data.user_is_active) {
+                    document.getElementById('userIsActive').style.display = 'block';
+                    // Enable vetting
+                    enableVetting();
+                }
+                // User is in queue
+                else if (data.user_is_in_queue) {
+                    document.getElementById('userInQueue').style.display = 'block';
+                    document.getElementById('queuePosition').textContent = '#' + data.user_position;
+                    const estimatedWait = data.user_position * 60; // Rough estimate
+                    document.getElementById('estimatedWait').textContent = estimatedWait;
+                    // Disable vetting
+                    disableVetting();
+                }
+                // Someone else is vetting
+                else if (data.active_session) {
+                    document.getElementById('someoneVetting').style.display = 'block';
+                    document.getElementById('activeUserName').textContent = data.active_session.user_name;
+                    document.getElementById('joinQueueSection').style.display = 'block';
+                    // Disable vetting
+                    disableVetting();
+                }
+                // Queue is available
+                else if (data.is_available) {
+                    document.getElementById('queueAvailable').style.display = 'block';
+                    // Enable vetting
+                    enableVetting();
+                }
+                
+            } catch (error) {
+                console.error('Error refreshing queue status:', error);
+            }
+        }
+        
+        async function joinQueue() {
+            try {
+                const response = await fetch('/api/v1/vetting-queue/join', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ ' + result.message);
+                    refreshQueueStatus();
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error joining queue:', error);
+                alert('Failed to join queue');
+            }
+        }
+        
+        async function leaveQueue() {
+            try {
+                const response = await fetch('/api/v1/vetting-queue/leave', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ ' + result.message);
+                    refreshQueueStatus();
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error leaving queue:', error);
+                alert('Failed to leave queue');
+            }
+        }
+        
+        async function endVettingSession() {
+            try {
+                const response = await fetch('/api/v1/vetting-queue/end-session', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Session ended successfully');
+                    refreshQueueStatus();
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error ending session:', error);
+                alert('Failed to end session');
+            }
+        }
+        
+        function enableVetting() {
+            // Enable upload section
+            document.getElementById('uploadSection').style.opacity = '1';
+            document.getElementById('uploadSection').style.pointerEvents = 'auto';
+            document.getElementById('fileInput').disabled = false;
+        }
+        
+        function disableVetting() {
+            // Disable upload section
+            document.getElementById('uploadSection').style.opacity = '0.5';
+            document.getElementById('uploadSection').style.pointerEvents = 'none';
+            document.getElementById('fileInput').disabled = true;
+        }
+        
+        function startRateLimitCountdown(seconds) {
+            // Clear existing interval
+            if (rateLimitCountdownInterval) {
+                clearInterval(rateLimitCountdownInterval);
+            }
+            
+            let remaining = seconds;
+            
+            rateLimitCountdownInterval = setInterval(() => {
+                remaining--;
+                
+                if (remaining <= 0) {
+                    clearInterval(rateLimitCountdownInterval);
+                    refreshQueueStatus();
+                    return;
+                }
+                
+                // Update countdown
+                document.getElementById('rateLimitCountdown').textContent = remaining + 's';
+                
+                // Update progress bar
+                const percentage = (remaining / seconds) * 100;
+                document.getElementById('rateLimitProgress').style.width = percentage + '%';
+            }, 1000);
+        }
+        
+        // Clean up intervals on page unload
+        window.addEventListener('beforeunload', function() {
+            if (queueCheckInterval) clearInterval(queueCheckInterval);
+            if (rateLimitCountdownInterval) clearInterval(rateLimitCountdownInterval);
+        });
     </script>
 </body>
 </html>
