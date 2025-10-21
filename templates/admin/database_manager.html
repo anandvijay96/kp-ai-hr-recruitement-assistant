@@ -1,0 +1,661 @@
+{% extends "base.html" %}
+
+{% block title %}Database Manager - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .database-manager {
+        padding: 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .section-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .table-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+    
+    .table-item {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .table-item:hover {
+        background: #e9ecef;
+        transform: translateX(5px);
+    }
+    
+    .table-name {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+    }
+    
+    .table-info {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .user-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .user-table th {
+        background: #f8f9fa;
+        padding: 0.75rem;
+        text-align: left;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .user-table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .user-table tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .badge-success {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .badge-danger {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .badge-warning {
+        background: #fff3cd;
+        color: #856404;
+    }
+    
+    .badge-primary {
+        background: #cce5ff;
+        color: #004085;
+    }
+    
+    .btn-sm {
+        padding: 0.25rem 0.75rem;
+        font-size: 0.875rem;
+        margin: 0 0.25rem;
+    }
+    
+    .query-editor {
+        width: 100%;
+        min-height: 150px;
+        font-family: 'Courier New', monospace;
+        padding: 1rem;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        resize: vertical;
+    }
+    
+    .query-result {
+        margin-top: 1rem;
+        max-height: 400px;
+        overflow: auto;
+    }
+    
+    .result-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+    
+    .result-table th {
+        background: #343a40;
+        color: white;
+        padding: 0.5rem;
+        text-align: left;
+        position: sticky;
+        top: 0;
+    }
+    
+    .result-table td {
+        padding: 0.5rem;
+        border: 1px solid #dee2e6;
+    }
+    
+    .result-table tr:nth-child(even) {
+        background: #f8f9fa;
+    }
+    
+    .schema-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+    
+    .schema-table th {
+        background: #495057;
+        color: white;
+        padding: 0.75rem;
+        text-align: left;
+    }
+    
+    .schema-table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="database-manager">
+    <h1 class="mb-4">
+        <i class="bi bi-database"></i> Database Manager
+        <span class="badge badge-warning ms-2">Developer Only</span>
+    </h1>
+    
+    <!-- Database Stats -->
+    <div class="section-card">
+        <div class="section-header">
+            <h2 class="section-title">Database Statistics</h2>
+            <button class="btn btn-sm btn-primary" onclick="loadStats()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-value">-</div>
+                <div class="stat-label">Loading...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- User Management -->
+    <div class="section-card">
+        <div class="section-header">
+            <h2 class="section-title">User Management</h2>
+            <button class="btn btn-sm btn-primary" onclick="loadUsers()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+        <div id="usersContainer">
+            <p class="text-muted">Loading users...</p>
+        </div>
+    </div>
+    
+    <!-- Table Browser -->
+    <div class="section-card">
+        <div class="section-header">
+            <h2 class="section-title">Table Browser</h2>
+            <button class="btn btn-sm btn-primary" onclick="loadTables()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+        <div class="table-list" id="tableList">
+            <p class="text-muted">Loading tables...</p>
+        </div>
+    </div>
+    
+    <!-- SQL Query Editor -->
+    <div class="section-card">
+        <div class="section-header">
+            <h2 class="section-title">SQL Query Editor</h2>
+            <span class="badge badge-warning">SELECT queries only</span>
+        </div>
+        <textarea class="query-editor" id="queryEditor" placeholder="Enter your SELECT query here...
+Example:
+SELECT * FROM users LIMIT 10;
+SELECT COUNT(*) FROM candidates WHERE is_deleted = false;"></textarea>
+        <div class="mt-3">
+            <button class="btn btn-primary" onclick="executeQuery()">
+                <i class="bi bi-play-fill"></i> Execute Query
+            </button>
+            <button class="btn btn-secondary" onclick="clearQuery()">
+                <i class="bi bi-x-circle"></i> Clear
+            </button>
+        </div>
+        <div class="query-result" id="queryResult"></div>
+    </div>
+</div>
+
+<!-- Schema Modal -->
+<div class="modal fade" id="schemaModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Table Schema: <span id="schemaTableName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="schemaContent">
+                <p class="text-muted">Loading schema...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reset Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Reset password for: <strong id="resetUserEmail"></strong></p>
+                <div class="mb-3">
+                    <label class="form-label">New Password</label>
+                    <input type="text" class="form-control" id="newPassword" placeholder="Enter new password">
+                    <small class="text-muted">Min 8 characters, include uppercase, lowercase, number, special char</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="confirmResetPassword()">Reset Password</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentResetUserId = null;
+
+// Load database stats
+async function loadStats() {
+    try {
+        const response = await fetch('/api/v1/admin/database/stats');
+        const data = await response.json();
+        
+        if (data.success) {
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = '';
+            
+            const stats = data.stats;
+            const labels = {
+                'users': 'Total Users',
+                'candidates': 'Total Candidates',
+                'resumes': 'Total Resumes',
+                'jobs': 'Total Jobs',
+                'user_activity_log': 'Activity Logs',
+                'interviews': 'Interviews'
+            };
+            
+            for (const [key, value] of Object.entries(stats)) {
+                const card = document.createElement('div');
+                card.className = 'stat-card';
+                card.innerHTML = `
+                    <div class="stat-value">${value.toLocaleString()}</div>
+                    <div class="stat-label">${labels[key] || key}</div>
+                `;
+                statsGrid.appendChild(card);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading stats:', error);
+    }
+}
+
+// Load users
+async function loadUsers() {
+    try {
+        const response = await fetch('/api/v1/admin/database/users');
+        const data = await response.json();
+        
+        if (data.success) {
+            const container = document.getElementById('usersContainer');
+            
+            if (data.users.length === 0) {
+                container.innerHTML = '<p class="text-muted">No users found</p>';
+                return;
+            }
+            
+            let html = `
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Verified</th>
+                            <th>Logins</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            data.users.forEach(user => {
+                const statusBadge = user.is_active ? 
+                    '<span class="badge badge-success">Active</span>' : 
+                    '<span class="badge badge-danger">Inactive</span>';
+                
+                const verifiedBadge = user.email_verified ? 
+                    '<span class="badge badge-success">✓</span>' : 
+                    '<span class="badge badge-danger">✗</span>';
+                
+                const roleBadge = user.role === 'admin' ? 
+                    '<span class="badge badge-primary">Admin</span>' : 
+                    `<span class="badge badge-warning">${user.role}</span>`;
+                
+                html += `
+                    <tr>
+                        <td>${user.full_name}</td>
+                        <td>${user.email}</td>
+                        <td>${roleBadge}</td>
+                        <td>${statusBadge}</td>
+                        <td>${verifiedBadge}</td>
+                        <td>${user.login_count || 0}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="showResetPassword('${user.id}', '${user.email}')">
+                                <i class="bi bi-key"></i> Reset Password
+                            </button>
+                            <button class="btn btn-sm btn-${user.is_active ? 'danger' : 'success'}" 
+                                    onclick="toggleUserActive('${user.id}')">
+                                <i class="bi bi-toggle-${user.is_active ? 'on' : 'off'}"></i>
+                                ${user.is_active ? 'Deactivate' : 'Activate'}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
+}
+
+// Load tables
+async function loadTables() {
+    try {
+        const response = await fetch('/api/v1/admin/database/tables');
+        const data = await response.json();
+        
+        if (data.success) {
+            const container = document.getElementById('tableList');
+            container.innerHTML = '';
+            
+            data.tables.forEach(table => {
+                const div = document.createElement('div');
+                div.className = 'table-item';
+                div.onclick = () => showTableSchema(table.name);
+                div.innerHTML = `
+                    <div class="table-name">${table.name}</div>
+                    <div class="table-info">${table.column_count} columns</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading tables:', error);
+    }
+}
+
+// Show table schema
+async function showTableSchema(tableName) {
+    try {
+        document.getElementById('schemaTableName').textContent = tableName;
+        document.getElementById('schemaContent').innerHTML = '<p class="text-muted">Loading schema...</p>';
+        
+        const modal = new bootstrap.Modal(document.getElementById('schemaModal'));
+        modal.show();
+        
+        const response = await fetch(`/api/v1/admin/database/tables/${tableName}/schema`);
+        const data = await response.json();
+        
+        if (data.success) {
+            let html = `
+                <table class="schema-table">
+                    <thead>
+                        <tr>
+                            <th>Column Name</th>
+                            <th>Data Type</th>
+                            <th>Nullable</th>
+                            <th>Default</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            data.columns.forEach(col => {
+                html += `
+                    <tr>
+                        <td><strong>${col.name}</strong></td>
+                        <td>${col.type}</td>
+                        <td>${col.nullable ? 'YES' : 'NO'}</td>
+                        <td>${col.default || '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            document.getElementById('schemaContent').innerHTML = html;
+        }
+    } catch (error) {
+        console.error('Error loading schema:', error);
+        document.getElementById('schemaContent').innerHTML = '<p class="text-danger">Error loading schema</p>';
+    }
+}
+
+// Execute SQL query
+async function executeQuery() {
+    const query = document.getElementById('queryEditor').value.trim();
+    
+    if (!query) {
+        alert('Please enter a query');
+        return;
+    }
+    
+    if (!query.toUpperCase().startsWith('SELECT')) {
+        alert('Only SELECT queries are allowed for safety');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/v1/admin/database/query', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({query})
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayQueryResult(data);
+        } else {
+            document.getElementById('queryResult').innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> ${data.detail || 'Query failed'}
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error executing query:', error);
+        document.getElementById('queryResult').innerHTML = `
+            <div class="alert alert-danger">
+                <strong>Error:</strong> ${error.message}
+            </div>
+        `;
+    }
+}
+
+// Display query result
+function displayQueryResult(data) {
+    const container = document.getElementById('queryResult');
+    
+    if (data.rows.length === 0) {
+        container.innerHTML = '<div class="alert alert-info">Query returned 0 rows</div>';
+        return;
+    }
+    
+    let html = `
+        <div class="alert alert-success">
+            Query executed successfully. Returned ${data.row_count} row(s).
+        </div>
+        <table class="result-table">
+            <thead>
+                <tr>
+    `;
+    
+    data.columns.forEach(col => {
+        html += `<th>${col}</th>`;
+    });
+    
+    html += '</tr></thead><tbody>';
+    
+    data.rows.forEach(row => {
+        html += '<tr>';
+        data.columns.forEach(col => {
+            const value = row[col];
+            html += `<td>${value !== null ? value : '<em>NULL</em>'}</td>`;
+        });
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+// Clear query
+function clearQuery() {
+    document.getElementById('queryEditor').value = '';
+    document.getElementById('queryResult').innerHTML = '';
+}
+
+// Show reset password modal
+function showResetPassword(userId, email) {
+    currentResetUserId = userId;
+    document.getElementById('resetUserEmail').textContent = email;
+    document.getElementById('newPassword').value = '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+    modal.show();
+}
+
+// Confirm reset password
+async function confirmResetPassword() {
+    const newPassword = document.getElementById('newPassword').value;
+    
+    if (!newPassword || newPassword.length < 8) {
+        alert('Password must be at least 8 characters');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/v1/admin/database/users/${currentResetUserId}/reset-password`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({new_password: newPassword})
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`Password reset successfully for ${data.user.email}`);
+            bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal')).hide();
+            loadUsers();
+        } else {
+            alert('Error: ' + (data.detail || 'Failed to reset password'));
+        }
+    } catch (error) {
+        console.error('Error resetting password:', error);
+        alert('Error resetting password: ' + error.message);
+    }
+}
+
+// Toggle user active status
+async function toggleUserActive(userId) {
+    if (!confirm('Are you sure you want to toggle this user\'s active status?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/v1/admin/database/users/${userId}/toggle-active`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(data.message);
+            loadUsers();
+        } else {
+            alert('Error: ' + (data.detail || 'Failed to toggle user'));
+        }
+    } catch (error) {
+        console.error('Error toggling user:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+// Load data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadStats();
+    loadUsers();
+    loadTables();
+});
+</script>
+{% endblock %}

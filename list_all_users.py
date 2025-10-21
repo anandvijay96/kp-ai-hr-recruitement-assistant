@@ -32,7 +32,7 @@ async def list_users():
             
             for i, user in enumerate(users, 1):
                 status = "✅ Active" if user.is_active else "❌ Inactive"
-                verified = "✅" if user.is_email_verified else "❌"
+                verified = "✅" if user.email_verified else "❌"
                 
                 print(f"{i}. {user.full_name}")
                 print(f"   Email: {user.email}")

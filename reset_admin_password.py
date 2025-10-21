@@ -34,7 +34,7 @@ async def reset_password(email: str, new_password: str):
             # Update password
             user.password_hash = new_hash
             user.is_active = True
-            user.is_email_verified = True
+            user.email_verified = True
             
             await session.commit()
             

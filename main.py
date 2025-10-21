@@ -37,6 +37,7 @@ from api.v1 import activity as activity_v1
 from api.v1 import workflow as workflow_v1
 from api.v1 import interviews as interviews_v1
 from api.v1 import reports as reports_v1
+from api.v1 import admin_database
 from middleware.activity_logger import setup_activity_logging
 try:
     from api.v1 import vetting as vetting_v1
@@ -182,6 +183,7 @@ app.include_router(activity_v1.router, prefix="/api/v1", tags=["activity"])
 app.include_router(workflow_v1.router, prefix="/api/v1", tags=["workflow"])
 app.include_router(interviews_v1.router, prefix="/api/v1", tags=["interviews"])
 app.include_router(reports_v1.router, prefix="/api/v1", tags=["reports"])
+app.include_router(admin_database.router, prefix="/api/v1", tags=["admin-database"])
 
 if LLM_USAGE_ENABLED:
     app.include_router(llm_usage.router, prefix="/api/v1", tags=["llm-usage"])
@@ -275,6 +277,22 @@ async def activity_dashboard(request: Request):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     return templates.TemplateResponse("admin/activity_dashboard.html", {"request": request, "user": user})
+
+@app.get("/admin/database", response_class=HTMLResponse)
+@require_auth
+async def database_manager_page(request: Request):
+    """Admin database manager page - requires admin authentication"""
+    user = request.session.get("user")
+    
+    # Only allow admin access
+    if not user or user.get("role") != "admin":
+        return templates.TemplateResponse("error.html", {
+            "request": request,
+            "error": "Access Denied",
+            "message": "Only administrators can access the database manager."
+        })
+    
+    return templates.TemplateResponse("admin/database_manager.html", {"request": request, "user": user})
 
 @app.get("/admin/deleted-candidates", response_class=HTMLResponse)
 @require_auth
