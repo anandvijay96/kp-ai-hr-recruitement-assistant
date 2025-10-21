@@ -238,3 +238,275 @@ async def trigger_stats_aggregation(
         "success": True,
         "message": f"Aggregated stats for {aggregated_count} users on {target_date.isoformat()}"
     }
+
+
+@router.get("/admin/activity-stats")
+async def get_activity_stats(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get overall activity statistics (admin only).
+    Returns counts for today, this week, and this month.
+    """
+    # Check if user is admin
+    user_role = current_user.get("role") if isinstance(current_user, dict) else current_user.role
+    if user_role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    from sqlalchemy import select, func, and_
+    from models.database import UserActivityLog
+    from datetime import timedelta
+    
+    now = datetime.now()
+    today_start = datetime(now.year, now.month, now.day)
+    week_start = today_start - timedelta(days=now.weekday())
+    month_start = datetime(now.year, now.month, 1)
+    
+    # Count today's activities
+    result = await db.execute(
+        select(func.count(UserActivityLog.id)).where(
+            UserActivityLog.timestamp >= today_start
+        )
+    )
+    today_count = result.scalar() or 0
+    
+    # Count this week's activities
+    result = await db.execute(
+        select(func.count(UserActivityLog.id)).where(
+            UserActivityLog.timestamp >= week_start
+        )
+    )
+    week_count = result.scalar() or 0
+    
+    # Count this month's activities
+    result = await db.execute(
+        select(func.count(UserActivityLog.id)).where(
+            UserActivityLog.timestamp >= month_start
+        )
+    )
+    month_count = result.scalar() or 0
+    
+    # Count active users today
+    result = await db.execute(
+        select(func.count(func.distinct(UserActivityLog.user_id))).where(
+            UserActivityLog.timestamp >= today_start
+        )
+    )
+    active_users = result.scalar() or 0
+    
+    return {
+        "success": True,
+        "stats": {
+            "today": today_count,
+            "this_week": week_count,
+            "this_month": month_count,
+            "active_users_today": active_users
+        }
+    }
+
+
+@router.get("/admin/activity-logs")
+async def get_activity_logs(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    user_id: Optional[str] = None,
+    action_type: Optional[str] = None,
+    date_range: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get paginated activity logs with filters (admin only).
+    """
+    # Check if user is admin
+    user_role = current_user.get("role") if isinstance(current_user, dict) else current_user.role
+    if user_role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    from sqlalchemy import select, and_, func
+    from models.database import UserActivityLog, User as UserModel
+    from datetime import timedelta
+    
+    # Build query
+    query = select(UserActivityLog).join(
+        UserModel, UserActivityLog.user_id == UserModel.id, isouter=True
+    )
+    
+    # Apply filters
+    conditions = []
+    
+    if user_id:
+        conditions.append(UserActivityLog.user_id == user_id)
+    
+    if action_type:
+        conditions.append(UserActivityLog.action_type == action_type)
+    
+    if date_range:
+        now = datetime.now()
+        if date_range == "today":
+            start = datetime(now.year, now.month, now.day)
+            conditions.append(UserActivityLog.timestamp >= start)
+        elif date_range == "yesterday":
+            yesterday = now - timedelta(days=1)
+            start = datetime(yesterday.year, yesterday.month, yesterday.day)
+            end = datetime(now.year, now.month, now.day)
+            conditions.append(and_(
+                UserActivityLog.timestamp >= start,
+                UserActivityLog.timestamp < end
+            ))
+        elif date_range == "week":
+            start = now - timedelta(days=now.weekday())
+            start = datetime(start.year, start.month, start.day)
+            conditions.append(UserActivityLog.timestamp >= start)
+        elif date_range == "month":
+            start = datetime(now.year, now.month, 1)
+            conditions.append(UserActivityLog.timestamp >= start)
+    
+    if conditions:
+        query = query.where(and_(*conditions))
+    
+    # Order by timestamp descending
+    query = query.order_by(UserActivityLog.timestamp.desc())
+    
+    # Count total
+    count_query = select(func.count()).select_from(UserActivityLog)
+    if conditions:
+        count_query = count_query.where(and_(*conditions))
+    result = await db.execute(count_query)
+    total = result.scalar() or 0
+    
+    # Paginate
+    offset = (page - 1) * page_size
+    query = query.offset(offset).limit(page_size)
+    
+    result = await db.execute(query)
+    logs = result.scalars().all()
+    
+    # Format logs
+    formatted_logs = []
+    for log in logs:
+        # Get user info
+        user_result = await db.execute(
+            select(UserModel).where(UserModel.id == log.user_id)
+        )
+        user = user_result.scalar_one_or_none()
+        
+        formatted_logs.append({
+            "id": log.id,
+            "user_id": log.user_id,
+            "user_name": user.full_name if user else "Unknown",
+            "action_type": log.action_type,
+            "entity_type": log.entity_type,
+            "entity_id": log.entity_id,
+            "ip_address": log.ip_address,
+            "user_agent": log.user_agent,
+            "request_method": log.request_method,
+            "request_path": log.request_path,
+            "duration_ms": log.duration_ms,
+            "status": log.status,
+            "error_message": log.error_message,
+            "timestamp": log.timestamp.isoformat() if log.timestamp else None
+        })
+    
+    return {
+        "success": True,
+        "logs": formatted_logs,
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "total_pages": (total + page_size - 1) // page_size
+        }
+    }
+
+
+@router.get("/admin/activity-logs/export")
+async def export_activity_logs(
+    user_id: Optional[str] = None,
+    action_type: Optional[str] = None,
+    date_range: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Export activity logs to CSV (admin only).
+    """
+    # Check if user is admin
+    user_role = current_user.get("role") if isinstance(current_user, dict) else current_user.role
+    if user_role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    from fastapi.responses import StreamingResponse
+    from sqlalchemy import select, and_
+    from models.database import UserActivityLog, User as UserModel
+    from datetime import timedelta
+    import io
+    import csv
+    
+    # Build query (same as get_activity_logs)
+    query = select(UserActivityLog).join(
+        UserModel, UserActivityLog.user_id == UserModel.id, isouter=True
+    )
+    
+    conditions = []
+    if user_id:
+        conditions.append(UserActivityLog.user_id == user_id)
+    if action_type:
+        conditions.append(UserActivityLog.action_type == action_type)
+    if date_range:
+        now = datetime.now()
+        if date_range == "today":
+            start = datetime(now.year, now.month, now.day)
+            conditions.append(UserActivityLog.timestamp >= start)
+        elif date_range == "week":
+            start = now - timedelta(days=now.weekday())
+            start = datetime(start.year, start.month, start.day)
+            conditions.append(UserActivityLog.timestamp >= start)
+        elif date_range == "month":
+            start = datetime(now.year, now.month, 1)
+            conditions.append(UserActivityLog.timestamp >= start)
+    
+    if conditions:
+        query = query.where(and_(*conditions))
+    
+    query = query.order_by(UserActivityLog.timestamp.desc())
+    result = await db.execute(query)
+    logs = result.scalars().all()
+    
+    # Create CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Header
+    writer.writerow([
+        'Timestamp', 'User', 'Action Type', 'Entity Type', 'Entity ID',
+        'IP Address', 'Request Method', 'Request Path', 'Duration (ms)', 'Status'
+    ])
+    
+    # Data
+    for log in logs:
+        user_result = await db.execute(
+            select(UserModel).where(UserModel.id == log.user_id)
+        )
+        user = user_result.scalar_one_or_none()
+        
+        writer.writerow([
+            log.timestamp.isoformat() if log.timestamp else '',
+            user.full_name if user else 'Unknown',
+            log.action_type or '',
+            log.entity_type or '',
+            log.entity_id or '',
+            log.ip_address or '',
+            log.request_method or '',
+            log.request_path or '',
+            log.duration_ms or '',
+            log.status or ''
+        ])
+    
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=activity_logs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"}
+    )
