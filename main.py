@@ -37,6 +37,7 @@ from api.v1 import activity as activity_v1
 from api.v1 import workflow as workflow_v1
 from api.v1 import interviews as interviews_v1
 from api.v1 import reports as reports_v1
+from api.v1 import vetting_queue as vetting_queue_v1
 from middleware.activity_logger import setup_activity_logging
 try:
     from api.v1 import vetting as vetting_v1
@@ -182,6 +183,7 @@ app.include_router(activity_v1.router, prefix="/api/v1", tags=["activity"])
 app.include_router(workflow_v1.router, prefix="/api/v1", tags=["workflow"])
 app.include_router(interviews_v1.router, prefix="/api/v1", tags=["interviews"])
 app.include_router(reports_v1.router, prefix="/api/v1", tags=["reports"])
+app.include_router(vetting_queue_v1.router, prefix="/api/v1", tags=["vetting-queue"])
 
 if LLM_USAGE_ENABLED:
     app.include_router(llm_usage.router, prefix="/api/v1", tags=["llm-usage"])
