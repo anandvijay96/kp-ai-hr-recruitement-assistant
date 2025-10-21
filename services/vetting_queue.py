@@ -307,15 +307,16 @@ class VettingQueueService:
     def check_rate_limit(self) -> bool:
         """
         Check if we can make more API requests this minute.
+        Uses Redis LLM tracker's counter for accuracy.
         
         Returns:
             True if under limit, False if exceeded
         """
-        current_minute = datetime.now().strftime("%Y-%m-%d-%H-%M")
-        rate_key = self.RATE_LIMIT_KEY.format(minute=current_minute)
+        # Use the same key as Redis LLM tracker for consistency
+        llm_minute_key = "llm:minute:gemini"
         
         # Get current count
-        current_count = self.redis_client.get(rate_key)
+        current_count = self.redis_client.get(llm_minute_key)
         if current_count is None:
             current_count = 0
         else:
@@ -336,15 +337,15 @@ class VettingQueueService:
     
     def get_rate_limit_status(self) -> Dict:
         """
-        Get current rate limit status.
+        Get current rate limit status from Redis LLM tracker.
         
         Returns:
             Dict with rate limit info
         """
-        current_minute = datetime.now().strftime("%Y-%m-%d-%H-%M")
-        rate_key = self.RATE_LIMIT_KEY.format(minute=current_minute)
+        # Use the same key as Redis LLM tracker for consistency
+        llm_minute_key = "llm:minute:gemini"
         
-        current_count = self.redis_client.get(rate_key)
+        current_count = self.redis_client.get(llm_minute_key)
         if current_count is None:
             current_count = 0
         else:
