@@ -1,0 +1,491 @@
+{% extends "base.html" %}
+
+{% block title %}Activity Logs - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .activity-logs {
+        padding: 2rem;
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+    
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .filters-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .filter-group {
+        margin-bottom: 1rem;
+    }
+    
+    .filter-group label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    
+    .logs-table {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .log-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .log-table thead {
+        background: #f8f9fa;
+    }
+    
+    .log-table th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .log-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .log-table tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .action-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .action-view { background: #dbeafe; color: #1e40af; }
+    .action-create { background: #d1fae5; color: #065f46; }
+    .action-update { background: #fef3c7; color: #92400e; }
+    .action-delete { background: #fee2e2; color: #991b1b; }
+    .action-login { background: #e0e7ff; color: #3730a3; }
+    .action-logout { background: #f3f4f6; color: #374151; }
+    .action-vet { background: #fce7f3; color: #831843; }
+    .action-search { background: #ddd6fe; color: #5b21b6; }
+    
+    .user-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem 0.75rem;
+        background: #f3f4f6;
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+    
+    .user-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .timestamp {
+        font-size: 0.85rem;
+        color: #6b7280;
+    }
+    
+    .pagination {
+        margin-top: 1.5rem;
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    
+    .pagination button {
+        padding: 0.5rem 1rem;
+        border: 1px solid #d1d5db;
+        background: white;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .pagination button:hover:not(:disabled) {
+        background: #f3f4f6;
+    }
+    
+    .pagination button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .pagination button.active {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+    
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-left: 4px solid #667eea;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1f2937;
+    }
+    
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .export-btn {
+        background: #10b981;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .export-btn:hover {
+        background: #059669;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="activity-logs">
+    <div class="page-header">
+        <h1 class="mb-2">
+            <i class="bi bi-activity"></i> Activity Logs
+        </h1>
+        <p class="mb-0">Detailed view of all system activities and user actions</p>
+    </div>
+    
+    <!-- Statistics -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Total Actions Today</div>
+            <div class="stat-value" id="totalToday">0</div>
+        </div>
+        <div class="stat-card" style="border-left-color: #10b981;">
+            <div class="stat-label">Active Users Today</div>
+            <div class="stat-value" id="activeToday">0</div>
+        </div>
+        <div class="stat-card" style="border-left-color: #f59e0b;">
+            <div class="stat-label">This Week</div>
+            <div class="stat-value" id="totalWeek">0</div>
+        </div>
+        <div class="stat-card" style="border-left-color: #ef4444;">
+            <div class="stat-label">This Month</div>
+            <div class="stat-value" id="totalMonth">0</div>
+        </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="filters-card">
+        <h5 class="mb-3"><i class="bi bi-funnel"></i> Filters</h5>
+        <div class="row">
+            <div class="col-md-3">
+                <div class="filter-group">
+                    <label>User</label>
+                    <select class="form-select" id="filterUser">
+                        <option value="">All Users</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="filter-group">
+                    <label>Action Type</label>
+                    <select class="form-select" id="filterAction">
+                        <option value="">All Actions</option>
+                        <option value="view">View</option>
+                        <option value="create">Create</option>
+                        <option value="update">Update</option>
+                        <option value="delete">Delete</option>
+                        <option value="login">Login</option>
+                        <option value="logout">Logout</option>
+                        <option value="vet_resume">Vet Resume</option>
+                        <option value="search">Search</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="filter-group">
+                    <label>Date Range</label>
+                    <select class="form-select" id="filterDate">
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                        <option value="all">All Time</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="filter-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">
+                        <i class="bi bi-search"></i> Apply Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="mt-3">
+            <button class="export-btn" onclick="exportLogs()">
+                <i class="bi bi-download"></i> Export to CSV
+            </button>
+        </div>
+    </div>
+    
+    <!-- Logs Table -->
+    <div class="logs-table">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0"><i class="bi bi-list-ul"></i> Activity Log</h5>
+            <button class="btn btn-sm btn-outline-primary" onclick="loadLogs()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="log-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Details</th>
+                        <th>IP Address</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="logsTableBody">
+                    <tr>
+                        <td colspan="6" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="pagination" id="pagination"></div>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let totalPages = 1;
+const pageSize = 50;
+
+// Load statistics
+async function loadStats() {
+    try {
+        const response = await fetch('/api/v1/admin/activity-stats');
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('totalToday').textContent = data.stats.today.toLocaleString();
+            document.getElementById('activeToday').textContent = data.stats.active_users_today;
+            document.getElementById('totalWeek').textContent = data.stats.this_week.toLocaleString();
+            document.getElementById('totalMonth').textContent = data.stats.this_month.toLocaleString();
+        }
+    } catch (error) {
+        console.error('Error loading stats:', error);
+    }
+}
+
+// Load users for filter
+async function loadUsers() {
+    try {
+        const response = await fetch('/api/v1/admin/database/users');
+        const data = await response.json();
+        
+        if (data.success) {
+            const select = document.getElementById('filterUser');
+            data.users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = `${user.full_name} (${user.email})`;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
+}
+
+// Load activity logs
+async function loadLogs(page = 1) {
+    try {
+        const userId = document.getElementById('filterUser').value;
+        const actionType = document.getElementById('filterAction').value;
+        const dateRange = document.getElementById('filterDate').value;
+        
+        let url = `/api/v1/admin/activity-logs?page=${page}&page_size=${pageSize}`;
+        if (userId) url += `&user_id=${userId}`;
+        if (actionType) url += `&action_type=${actionType}`;
+        if (dateRange) url += `&date_range=${dateRange}`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success) {
+            displayLogs(data.logs);
+            currentPage = data.pagination.page;
+            totalPages = data.pagination.total_pages;
+            updatePagination();
+        }
+    } catch (error) {
+        console.error('Error loading logs:', error);
+        document.getElementById('logsTableBody').innerHTML = `
+            <tr><td colspan="6" class="text-center text-danger">Error loading logs</td></tr>
+        `;
+    }
+}
+
+// Display logs in table
+function displayLogs(logs) {
+    const tbody = document.getElementById('logsTableBody');
+    
+    if (logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No activity logs found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = logs.map(log => {
+        const actionClass = `action-${log.action_type.replace('_', '-')}`;
+        const userInitials = log.user_name ? log.user_name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
+        const timestamp = new Date(log.timestamp).toLocaleString();
+        
+        return `
+            <tr>
+                <td class="timestamp">${timestamp}</td>
+                <td>
+                    <div class="user-badge">
+                        <div class="user-avatar">${userInitials}</div>
+                        <span>${log.user_name || 'Unknown'}</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="action-badge ${actionClass}">
+                        ${log.action_type.replace('_', ' ').toUpperCase()}
+                    </span>
+                </td>
+                <td>${log.request_path || '-'}</td>
+                <td><small>${log.ip_address || '-'}</small></td>
+                <td>
+                    ${log.status === 'success' ? 
+                        '<span class="badge bg-success">Success</span>' : 
+                        '<span class="badge bg-danger">Failed</span>'}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Update pagination
+function updatePagination() {
+    const pagination = document.getElementById('pagination');
+    let html = '';
+    
+    // Previous button
+    html += `<button onclick="loadLogs(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+        <i class="bi bi-chevron-left"></i> Previous
+    </button>`;
+    
+    // Page numbers
+    for (let i = 1; i <= Math.min(totalPages, 10); i++) {
+        html += `<button onclick="loadLogs(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+    }
+    
+    if (totalPages > 10) {
+        html += `<button disabled>...</button>`;
+        html += `<button onclick="loadLogs(${totalPages})">${totalPages}</button>`;
+    }
+    
+    // Next button
+    html += `<button onclick="loadLogs(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+        Next <i class="bi bi-chevron-right"></i>
+    </button>`;
+    
+    pagination.innerHTML = html;
+}
+
+// Apply filters
+function applyFilters() {
+    loadLogs(1);
+}
+
+// Export logs
+async function exportLogs() {
+    try {
+        const userId = document.getElementById('filterUser').value;
+        const actionType = document.getElementById('filterAction').value;
+        const dateRange = document.getElementById('filterDate').value;
+        
+        let url = `/api/v1/admin/activity-logs/export?`;
+        if (userId) url += `user_id=${userId}&`;
+        if (actionType) url += `action_type=${actionType}&`;
+        if (dateRange) url += `date_range=${dateRange}&`;
+        
+        window.location.href = url;
+    } catch (error) {
+        console.error('Error exporting logs:', error);
+        alert('Failed to export logs');
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadStats();
+    loadUsers();
+    loadLogs();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(() => {
+        loadStats();
+        loadLogs(currentPage);
+    }, 30000);
+});
+</script>
+{% endblock %}
