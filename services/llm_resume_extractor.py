@@ -1,13 +1,14 @@
 """
 LLM-based Resume Extraction using Google Gemini or OpenAI
 Provides structured extraction with high accuracy across all resume formats
+Now using Redis-based usage tracking
 """
 import json
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import re
-from services.llm_usage_tracker import get_tracker
+from services.llm_usage_tracker_redis import get_redis_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ class LLMResumeExtractor:
         """Extract using Google Gemini"""
         
         # Check quota before making request
-        tracker = get_tracker()
+        tracker = get_redis_tracker()
         can_proceed, warning = tracker.can_make_request("gemini")
         
         if not can_proceed:
