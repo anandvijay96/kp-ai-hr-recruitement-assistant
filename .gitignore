@@ -131,6 +131,7 @@ LLM_*.md
 !MIGRATION_GUIDE_MVP1_TO_MVP2.md
 !CONTRIBUTING.md
 !AI_DEVELOPMENT_GUIDE.md
+!DEPLOY_GUIDE.md
 
 # Ignore session/archive docs
 *_SESSION_*.md
