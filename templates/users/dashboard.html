@@ -182,9 +182,9 @@
                         <input type="email" class="form-control" name="email" required>
                     </div>
                     <div class="form-group">
-                        <label>Mobile</label>
-                        <input type="tel" class="form-control" name="mobile" placeholder="+1234567890" pattern="[\+]?[0-9]{0,15}">
-                        <small class="form-text text-muted">Optional. Include country code if applicable (e.g., +919655852369)</small>
+                        <label>Mobile *</label>
+                        <input type="tel" class="form-control" name="mobile" placeholder="+1234567890" pattern="[\+]?[0-9]{10,15}" required>
+                        <small class="form-text text-muted">Include country code if applicable (e.g., +919655852369)</small>
                     </div>
                     <div class="form-group">
                         <label>Role *</label>
@@ -491,7 +491,7 @@ async function createUser() {
         const data = {
             full_name: formData.get('full_name'),
             email: formData.get('email'),
-            mobile: formData.get('mobile')?.trim() || null,
+            mobile: formData.get('mobile')?.trim() || '',
             role: formData.get('role'),
             department: formData.get('department')?.trim() || null,
             status: formData.get('status'),
