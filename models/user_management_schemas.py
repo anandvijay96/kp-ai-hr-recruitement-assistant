@@ -35,7 +35,7 @@ class DeactivationReason(str, Enum):
 class UserCreateRequest(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
-    mobile: Optional[str] = Field(None, pattern=r'^(\+?[1-9]\d{0,14})?$')
+    mobile: str = Field(..., min_length=10, max_length=15, pattern=r'^(\+?[1-9]\d{0,14})?$')
     role: UserRole
     department: Optional[str] = Field(None, max_length=100)
     password_option: PasswordOption = PasswordOption.AUTO_GENERATE

@@ -29,8 +29,8 @@ async def get_queue_status(
     - User's position in queue (if applicable)
     - Rate limit status
     """
-    # Get user info
-    user_id = current_user.get("id") if isinstance(current_user, dict) else current_user.id
+    # Get user info - ensure user_id is string for Redis
+    user_id = str(current_user.get("id") if isinstance(current_user, dict) else current_user.id)
     user_name = current_user.get("full_name") if isinstance(current_user, dict) else current_user.full_name
     
     # Get queue status
@@ -71,8 +71,8 @@ async def join_queue(
     If no one is vetting, session starts immediately.
     Otherwise, user is added to queue.
     """
-    # Get user info
-    user_id = current_user.get("id") if isinstance(current_user, dict) else current_user.id
+    # Get user info - ensure user_id is string for Redis
+    user_id = str(current_user.get("id") if isinstance(current_user, dict) else current_user.id)
     user_name = current_user.get("full_name") if isinstance(current_user, dict) else current_user.full_name
     
     # Join queue
@@ -93,8 +93,8 @@ async def leave_queue(
     """
     Leave the vetting queue.
     """
-    # Get user info
-    user_id = current_user.get("id") if isinstance(current_user, dict) else current_user.id
+    # Get user info - ensure user_id is string for Redis
+    user_id = str(current_user.get("id") if isinstance(current_user, dict) else current_user.id)
     
     # Leave queue
     result = vetting_queue.leave_queue(user_id)
@@ -117,8 +117,8 @@ async def start_session(
     1. No one else is vetting
     2. Rate limit not exceeded
     """
-    # Get user info
-    user_id = current_user.get("id") if isinstance(current_user, dict) else current_user.id
+    # Get user info - ensure user_id is string for Redis
+    user_id = str(current_user.get("id") if isinstance(current_user, dict) else current_user.id)
     user_name = current_user.get("full_name") if isinstance(current_user, dict) else current_user.full_name
     
     # Start session
@@ -141,8 +141,8 @@ async def end_session(
     
     Automatically processes next user in queue.
     """
-    # Get user info
-    user_id = current_user.get("id") if isinstance(current_user, dict) else current_user.id
+    # Get user info - ensure user_id is string for Redis
+    user_id = str(current_user.get("id") if isinstance(current_user, dict) else current_user.id)
     
     # End session
     result = vetting_queue.end_vetting_session(user_id)
