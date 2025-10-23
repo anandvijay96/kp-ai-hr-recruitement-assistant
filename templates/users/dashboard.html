@@ -470,7 +470,7 @@ function renderUsersTable(users) {
             <td><span class="badge bg-${getStatusColor(user.status)}" style="color: #000; font-weight: 600;">${user.status.charAt(0).toUpperCase() + user.status.slice(1)}</span></td>
             <td>${formatDate(user.last_login)}</td>
             <td>
-                <button class="btn btn-sm btn-primary" onclick="viewUser('${user.id}')" title="View Details">
+                <button class="btn btn-sm btn-primary" onclick="editUser('${user.id}')" title="View/Edit Details">
                     <i class="fas fa-eye"></i>
                 </button>
                 <button class="btn btn-sm btn-warning" onclick="editUser('${user.id}')" title="Edit">
@@ -740,28 +740,35 @@ function viewUser(userId) {
 
 async function editUser(userId) {
     try {
-        // Fetch user details
-        const response = await fetch(`/api/users/${userId}`);
+        // Fetch user details with auth header
+        const response = await fetch(`/api/users/${userId}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            }
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to load user details');
+        }
+        
         const data = await response.json();
         
-        if (response.ok) {
-            // Populate form
-            $('#editUserId').val(data.id);
-            $('#editFullName').val(data.full_name);
-            $('#editEmail').val(data.email);
-            $('#editMobile').val(data.mobile);
-            $('#editRole').val(data.role);
-            $('#editDepartment').val(data.department || '');
-            $('#editStatus').val(data.status);
-            
-            // Show modal
-            $('#editUserModal').modal('show');
-        } else {
-            showAlert(data.detail || 'Failed to load user details', 'error');
-        }
+        // Populate form
+        $('#editUserId').val(data.id);
+        $('#editFullName').val(data.full_name);
+        $('#editEmail').val(data.email);
+        $('#editMobile').val(data.mobile);
+        $('#editRole').val(data.role);
+        $('#editDepartment').val(data.department || '');
+        $('#editStatus').val(data.status);
+        
+        // Show modal
+        $('#editUserModal').modal('show');
+        
     } catch (error) {
         console.error('Error loading user:', error);
-        showAlert('Failed to load user details', 'error');
+        showAlert(error.message || 'Failed to load user details', 'danger');
     }
 }
 
