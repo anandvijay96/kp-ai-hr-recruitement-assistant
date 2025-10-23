@@ -607,6 +607,14 @@ async function confirmDeactivate() {
         
         if (!response.ok) {
             const error = await response.json();
+            // Handle Pydantic validation errors (array format)
+            if (Array.isArray(error.detail)) {
+                const errors = error.detail.map(err => {
+                    const field = err.loc ? err.loc.join('.') : 'unknown';
+                    return `${field}: ${err.msg}`;
+                }).join(', ');
+                throw new Error(errors);
+            }
             throw new Error(error.detail || 'Failed to deactivate user');
         }
         

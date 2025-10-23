@@ -226,17 +226,26 @@ class UserManagementService:
             temporary_password = None
             activation_token = None
             
-            # Handle both enum and string values for password_option
-            password_option = user_data.password_option.value if hasattr(user_data.password_option, 'value') else user_data.password_option
-            
-            if password_option == "auto_generate":
-                temporary_password = self._generate_secure_password()
-                password_hash = self.password_service.hash_password(temporary_password)
+            # CRITICAL FIX: Check if password is provided directly (from frontend form)
+            if user_data.password:
+                # Use the provided password
+                logger.info(f"Using provided password for user: {user_data.email}")
+                password_hash = self.password_service.hash_password(user_data.password)
+                temporary_password = user_data.password  # Return it so admin knows what was set
             else:
-                activation_token = secrets.token_urlsafe(32)
-                # Use a placeholder password hash that cannot be used for login
-                # User must set their password via activation link
-                password_hash = self.password_service.hash_password(f"UNSET_{secrets.token_urlsafe(32)}")
+                # Handle both enum and string values for password_option
+                password_option = user_data.password_option.value if hasattr(user_data.password_option, 'value') else user_data.password_option
+                
+                if password_option == "auto_generate":
+                    logger.info(f"Auto-generating password for user: {user_data.email}")
+                    temporary_password = self._generate_secure_password()
+                    password_hash = self.password_service.hash_password(temporary_password)
+                else:
+                    logger.info(f"Setting unset password for user activation: {user_data.email}")
+                    activation_token = secrets.token_urlsafe(32)
+                    # Use a placeholder password hash that cannot be used for login
+                    # User must set their password via activation link
+                    password_hash = self.password_service.hash_password(f"UNSET_{secrets.token_urlsafe(32)}")
             
             # Create user
             # Handle both enum and string values

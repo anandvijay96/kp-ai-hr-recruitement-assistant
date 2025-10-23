@@ -629,6 +629,29 @@
         });
 
         async function scanResumes(files) {
+            // CRITICAL: Start vetting session BEFORE scanning
+            try {
+                const sessionResponse = await fetch('/api/v1/vetting-queue/start-session', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                
+                const sessionResult = await sessionResponse.json();
+                
+                if (!sessionResult.success) {
+                    alert('❌ Cannot start vetting: ' + sessionResult.message);
+                    return;
+                }
+                
+                console.log('✅ Vetting session started');
+            } catch (error) {
+                console.error('Failed to start vetting session:', error);
+                alert('Failed to start vetting session. Please try again.');
+                return;
+            }
+            
             document.getElementById('uploadSection').classList.add('hidden');
             document.getElementById('scanningSection').classList.remove('hidden');
 
@@ -671,6 +694,21 @@
             // Final refresh of usage stats
             if (useLLM) {
                 fetchUsageStats();
+            }
+            
+            // CRITICAL: End vetting session after scanning completes
+            try {
+                await fetch('/api/v1/vetting-queue/end-session', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                console.log('✅ Vetting session ended');
+                // Refresh queue status
+                refreshQueueStatus();
+            } catch (error) {
+                console.error('Failed to end vetting session:', error);
             }
         }
 
