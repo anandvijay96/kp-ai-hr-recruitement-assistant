@@ -39,6 +39,7 @@ class UserCreateRequest(BaseModel):
     role: UserRole
     department: Optional[str] = Field(None, max_length=100)
     password_option: PasswordOption = PasswordOption.AUTO_GENERATE
+    password: Optional[str] = Field(None, min_length=8, max_length=72)  # Manual password (if password_option is ignored by frontend)
     send_welcome_email: bool = True
     status: UserStatus = UserStatus.ACTIVE
 
