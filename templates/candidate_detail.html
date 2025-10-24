@@ -647,6 +647,20 @@
                                 Loading matches...
                             </div>
                         </div>
+                        <!-- Not Suitable Status Badge (Hidden by default) -->
+                        <div id="notSuitableBadge" class="alert alert-danger d-none mb-3" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-x-circle-fill me-2" style="font-size: 1.5rem;"></i>
+                                <div class="flex-grow-1">
+                                    <strong>Marked as Not Suitable</strong>
+                                    <p class="mb-0 small" id="notSuitableReasonText"></p>
+                                    <p class="mb-0 small text-muted" id="notSuitableNotesText"></p>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger" id="removeNotSuitableBtn">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i>Undo
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Quick Actions -->
@@ -1100,13 +1114,58 @@
         // Get candidate ID from template (passed from backend)
         const candidateId = "{{ candidate_id }}";
         
-        // Initialize on page load
-        $(document).ready(function() {
-            if (candidateId) {
-                loadCandidateDetails();
+        // Display Not Suitable Badge
+        function displayNotSuitableBadge(reason, notes) {
+            $('#notSuitableReasonText').text(`Reason: ${reason}`);
+            if (notes) {
+                $('#notSuitableNotesText').text(`Notes: ${notes}`).show();
             } else {
-                showError();
+                $('#notSuitableNotesText').hide();
             }
+            $('#notSuitableBadge').removeClass('d-none').show();
+        }
+        
+        // Check if candidate is marked as not suitable
+        function checkNotSuitableStatus() {
+            const notSuitableData = localStorage.getItem(`notSuitable_${candidateId}`);
+            if (notSuitableData) {
+                try {
+                    const data = JSON.parse(notSuitableData);
+                    displayNotSuitableBadge(data.reason, data.notes);
+                    
+                    // Update button
+                    $('#markNotSuitableBtn')
+                        .removeClass('btn-outline-danger')
+                        .addClass('btn-danger')
+                        .html('<i class="bi bi-x-circle-fill me-1"></i> Marked as Not Suitable');
+                } catch (e) {
+                    console.error('Error parsing not suitable data:', e);
+                }
+            }
+        }
+        
+        // Remove Not Suitable status
+        $('#removeNotSuitableBtn').click(() => {
+            localStorage.removeItem(`notSuitable_${candidateId}`);
+            $('#notSuitableBadge').addClass('d-none').hide();
+            
+            // Reset button
+            $('#markNotSuitableBtn')
+                .removeClass('btn-danger')
+                .addClass('btn-outline-danger')
+                .html('<i class="bi bi-x-circle me-1"></i> Mark as Not Suitable');
+            
+            showSuccessMessage('Not Suitable status removed');
+        });
+        
+        // Load candidate details on page load
+        $(document).ready(() => {
+            checkNotSuitableStatus();
+            loadCandidateDetails();
+            loadJobMatches();
+            loadRatingSummary();
+            loadRatings();
+            initStarRatings();
         });
         
         // Load candidate details from API
@@ -1650,7 +1709,7 @@
         
         // Download resume
         function downloadResume(resumeId) {
-            window.location.href = `/api/v1/resumes/${resumeId}/download`;
+            window.open(`/api/v1/resumes/${resumeId}/download`, '_blank');
         }
         
         // Update score display with color coding
@@ -1792,8 +1851,26 @@
             // Close modal
             bootstrap.Modal.getInstance(document.getElementById('markNotSuitableModal')).hide();
             
+            // Show badge
+            displayNotSuitableBadge(reason, notes);
+            
+            // Update button
+            $('#markNotSuitableBtn')
+                .removeClass('btn-outline-danger')
+                .addClass('btn-danger')
+                .html('<i class="bi bi-x-circle-fill me-1"></i> Marked as Not Suitable');
+            
             // Show success
             showSuccessMessage(`Candidate marked as not suitable: ${reason}`);
+            
+            // Save to localStorage (temporary until backend is ready)
+            const notSuitableData = {
+                candidateId: candidateId,
+                reason: reason,
+                notes: notes,
+                markedAt: new Date().toISOString()
+            };
+            localStorage.setItem(`notSuitable_${candidateId}`, JSON.stringify(notSuitableData));
         });
         
         // Edit button handler
