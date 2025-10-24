@@ -188,6 +188,7 @@
             font-weight: 600;
             font-size: 18px;
             color: white;
+            margin: auto;
         }
         
         .score-excellent { background: #28a745; }
@@ -2320,6 +2321,75 @@
             $(`.language-edit-item[data-index="${index}"]`).remove();
         }
         
+        // Render projects for editing
+        function renderProjectsEdit(projects) {
+            const container = $('#projectsEditList');
+            container.empty();
+            
+            projects.forEach((proj, index) => {
+                container.append(`
+                    <div class="border rounded p-3 mb-3 project-edit-item" data-index="${index}">
+                        <div class="row">
+                            <div class="col-md-12 mb-2">
+                                <label class="form-label">Project Name</label>
+                                <input type="text" class="form-control" data-field="name" placeholder="Project name" value="${proj.name || ''}">
+                            </div>
+                            <div class="col-md-12 mb-2">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-control" data-field="description" rows="2" placeholder="Project description">${proj.description || ''}</textarea>
+                            </div>
+                            <div class="col-md-10 mb-2">
+                                <label class="form-label">Technologies</label>
+                                <input type="text" class="form-control" data-field="technologies" placeholder="e.g. React, Node.js, MongoDB" value="${proj.technologies || ''}">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">&nbsp;</label>
+                                <button class="btn btn-danger btn-sm w-100" onclick="removeProject(${index})">
+                                    <i class="bi bi-trash"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `);
+            });
+        }
+        
+        // Render languages for editing
+        function renderLanguagesEdit(languages) {
+            const container = $('#languagesEditList');
+            container.empty();
+            
+            languages.forEach((lang, index) => {
+                container.append(`
+                    <div class="border rounded p-3 mb-3 language-edit-item" data-index="${index}">
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label">Language</label>
+                                <input type="text" class="form-control" data-field="language" placeholder="e.g. English" value="${lang.language || ''}">
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label">Proficiency</label>
+                                <select class="form-select" data-field="proficiency">
+                                    <option value="">Select...</option>
+                                    <option value="Native" ${lang.proficiency === 'Native' ? 'selected' : ''}>Native</option>
+                                    <option value="Fluent" ${lang.proficiency === 'Fluent' ? 'selected' : ''}>Fluent</option>
+                                    <option value="Advanced" ${lang.proficiency === 'Advanced' ? 'selected' : ''}>Advanced</option>
+                                    <option value="Intermediate" ${lang.proficiency === 'Intermediate' ? 'selected' : ''}>Intermediate</option>
+                                    <option value="Basic" ${lang.proficiency === 'Basic' ? 'selected' : ''}>Basic</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">&nbsp;</label>
+                                <button class="btn btn-danger btn-sm w-100" onclick="removeLanguage(${index})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `);
+            });
+        }
+        
         // Save all changes
         function saveAllChanges() {
             // Collect personal info
@@ -2416,13 +2486,38 @@
                 }
             });
             
+            // Collect projects
+            const projects = [];
+            $('.project-edit-item').each(function() {
+                const name = $(this).find('[data-field="name"]').val();
+                const description = $(this).find('[data-field="description"]').val();
+                const technologies = $(this).find('[data-field="technologies"]').val();
+                
+                if (name) {
+                    projects.push({ name, description, technologies });
+                }
+            });
+            
+            // Collect languages
+            const languages = [];
+            $('.language-edit-item').each(function() {
+                const language = $(this).find('[data-field="language"]').val();
+                const proficiency = $(this).find('[data-field="proficiency"]').val();
+                
+                if (language) {
+                    languages.push({ language, proficiency });
+                }
+            });
+            
             // Prepare update payload
             const updates = {
                 personal_info: personalInfo,
                 skills: skills,
                 work_experience: experience,
                 education: education,
-                certifications: certifications
+                certifications: certifications,
+                projects: projects,
+                languages: languages
             };
             
             // Show loading
@@ -2497,6 +2592,12 @@
                     
                     // Populate certifications
                     renderCertificationsEdit(data.certifications || []);
+                    
+                    // Populate projects
+                    renderProjectsEdit(data.projects || []);
+                    
+                    // Populate languages
+                    renderLanguagesEdit(data.languages || []);
                     
                     // Show modal
                     new bootstrap.Modal(document.getElementById('editCandidateModal')).show();
