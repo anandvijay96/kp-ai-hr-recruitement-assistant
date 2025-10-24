@@ -380,12 +380,21 @@ class CandidateService:
                     select(func.count()).select_from(CandidateSkill).where(CandidateSkill.candidate_id == candidate.id)
                 )
                 
-                # Calculate total experience
-                exp_result = await self.db.execute(
-                    select(func.sum(WorkExperience.duration_months))
+                # Calculate total experience from work history
+                work_exp_result = await self.db.execute(
+                    select(WorkExperience)
                     .where(WorkExperience.candidate_id == candidate.id)
                 )
-                total_exp = exp_result.scalar() or 0
+                work_experiences = work_exp_result.scalars().all()
+                
+                # Calculate total months from start_date and end_date
+                from datetime import date
+                total_exp = 0
+                for exp in work_experiences:
+                    if exp.start_date:
+                        end_dt = exp.end_date if exp.end_date else date.today()
+                        months = (end_dt.year - exp.start_date.year) * 12 + (end_dt.month - exp.start_date.month)
+                        total_exp += max(0, months)  # Ensure non-negative
                 
                 candidate_list.append({
                     "id": candidate.id,
