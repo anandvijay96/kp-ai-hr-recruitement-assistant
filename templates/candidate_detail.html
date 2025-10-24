@@ -1208,20 +1208,26 @@
             const container = $('#jobMatchesContainer');
             const candidateId = window.currentCandidateId;
             
-            if (!candidateId) {
-                container.html('<p class="text-muted text-center py-3">Unable to load job matches</p>');
-                return;
-            }
-            
             try {
-                // Get matches from new endpoint
-                const response = await fetch(`/api/v1/candidates/${candidateId}/job-matches`);
+                container.html('<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Loading job matches...</p></div>');
                 
+                const response = await fetch(`/api/v1/candidates/${candidateId}/job-matches`);
                 if (!response.ok) {
-                    throw new Error('Failed to load matches');
+                    throw new Error('Failed to load job matches');
                 }
                 
                 const data = await response.json();
+                
+                if (!data.has_resume) {
+                    container.html(`
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-briefcase fs-1 mb-3"></i>
+                            <p class="mb-0">No resume uploaded for matching analysis</p>
+                            <small class="text-muted">Upload a resume to see matching jobs</small>
+                        </div>
+                    `);
+                    return;
+                }
                 
                 // Handle cases with no matches
                 if (data.message) {

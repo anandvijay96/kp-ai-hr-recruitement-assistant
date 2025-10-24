@@ -12,6 +12,7 @@ import hashlib
 import uuid
 import os
 import re
+import json
 import aiofiles
 from datetime import datetime
 
@@ -827,7 +828,6 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     projects_data = extracted_data.get('projects', [])
                     if projects_data:
                         from models.database import Project
-                        import json
                         logger.info(f"Storing {len(projects_data)} projects for {candidate_name}")
                         for proj in projects_data:
                             if not proj.get('name'):
@@ -895,7 +895,6 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     matching_score_int = int(matching_score_dict)
                 
                 # Convert parsed_data to JSON string for SQLite
-                import json
                 parsed_data_json = json.dumps(extracted_data) if extracted_data else None
                 
                 if existing_resume:
