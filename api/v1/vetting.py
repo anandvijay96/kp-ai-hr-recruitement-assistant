@@ -689,10 +689,16 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 
                 # Store skills, education, work experience (for both new and restored candidates)
                 if candidate:
+                    # Delete existing skills first (for re-vetting scenarios)
+                    from models.database import Skill, CandidateSkill
+                    from sqlalchemy import delete
+                    await db.execute(delete(CandidateSkill).where(CandidateSkill.candidate_id == candidate.id))
+                    await db.commit()
+                    logger.info(f"Cleared existing skills for candidate {candidate.id} before re-adding")
+                    
                     # Store skills
                     skills_data = extracted_data.get('skills', [])
                     if skills_data:
-                        from models.database import Skill, CandidateSkill
                         for skill_item in skills_data:
                             if not skill_item:
                                 continue

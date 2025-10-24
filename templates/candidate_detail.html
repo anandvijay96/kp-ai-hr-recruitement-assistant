@@ -1161,10 +1161,7 @@
         // Load candidate details on page load
         $(document).ready(() => {
             checkNotSuitableStatus();
-            loadCandidateDetails();
-            loadJobMatches();
-            loadRatingSummary();
-            loadRatings();
+            loadCandidateDetails(); // This will call loadJobMatches and loadRatingSummary internally
             initStarRatings();
         });
         
