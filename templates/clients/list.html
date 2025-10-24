@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clients - KloudifyHR</title>
+    
+    <!-- Bootstrap 5.3 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Unified Styles -->
+    <link rel="stylesheet" href="/static/css/unified_styles.css">
+    
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .page-header {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .filters-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .table-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-active { background: #d4edda; color: #155724; }
+        .status-inactive { background: #f8d7da; color: #721c24; }
+        .status-on_hold { background: #fff3cd; color: #856404; }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-buttons .btn {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 400px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+        
+        .empty-state i {
+            font-size: 48px;
+            color: #dee2e6;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Unified Navigation -->
+    {% include 'components/unified_navbar.html' %}
+
+    <div class="container-fluid mt-4">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-1">
+                        <i class="bi bi-building me-2"></i>Clients Management
+                    </h3>
+                    <p class="text-muted mb-0">Manage your client companies and contracts</p>
+                </div>
+                <button class="btn btn-primary" onclick="openAddClientModal()">
+                    <i class="bi bi-plus-circle me-1"></i> Add New Client
+                </button>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-card">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Company name, contact, email...">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="statusFilter">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="on_hold">On Hold</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Type</label>
+                    <select class="form-select" id="typeFilter">
+                        <option value="">All Types</option>
+                        <option value="direct">Direct</option>
+                        <option value="agency">Agency</option>
+                        <option value="partner">Partner</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Clients Table -->
+        <div class="table-card">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Company Name</th>
+                            <th>Contact Person</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Status</th>
+                            <th>Type</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientsTableBody">
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <i class="bi bi-inbox"></i>
+            <h5>No clients found</h5>
+            <p>Start by adding your first client</p>
+        </div>
+
+        <!-- Pagination -->
+        <nav id="paginationNav" style="display: none;" class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item" id="prevBtn">
+                    <a class="page-link" href="#" onclick="previousPage()">Previous</a>
+                </li>
+                <li class="page-item active" id="pageIndicator">
+                    <span class="page-link">Page 1</span>
+                </li>
+                <li class="page-item" id="nextBtn">
+                    <a class="page-link" href="#" onclick="nextPage()">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Add/Edit Client Modal -->
+    <div class="modal fade" id="clientModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Add New Client</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="clientForm">
+                        <!-- Company Info Tab -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Company Name *</label>
+                                <input type="text" class="form-control" id="companyName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Industry</label>
+                                <input type="text" class="form-control" id="industry" placeholder="e.g., Technology, Finance">
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Website</label>
+                                <input type="url" class="form-control" id="website" placeholder="https://example.com">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Type</label>
+                                <select class="form-select" id="clientType">
+                                    <option value="direct">Direct</option>
+                                    <option value="agency">Agency</option>
+                                    <option value="partner">Partner</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" id="description" rows="2" placeholder="Brief description of the client..."></textarea>
+                        </div>
+
+                        <!-- Contact Info -->
+                        <hr>
+                        <h6 class="mb-3">Contact Information</h6>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Contact Person *</label>
+                                <input type="text" class="form-control" id="contactPerson" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email *</label>
+                                <input type="email" class="form-control" id="contactEmail" required>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Phone</label>
+                                <input type="tel" class="form-control" id="contactPhone" placeholder="+1 (555) 000-0000">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" id="status">
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                    <option value="on_hold">On Hold</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Address -->
+                        <hr>
+                        <h6 class="mb-3">Address</h6>
+
+                        <div class="mb-3">
+                            <label class="form-label">Address</label>
+                            <input type="text" class="form-control" id="address" placeholder="Street address">
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">City</label>
+                                <input type="text" class="form-control" id="city">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">State/Province</label>
+                                <input type="text" class="form-control" id="state">
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Country</label>
+                                <input type="text" class="form-control" id="country">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Postal Code</label>
+                                <input type="text" class="form-control" id="postalCode">
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <hr>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" rows="2" placeholder="Any additional notes..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveClient()">Save Client</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentPage = 1;
+        let currentFilters = {};
+        const clientModal = new bootstrap.Modal(document.getElementById('clientModal'));
+
+        // Load clients on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadClients();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('searchInput').addEventListener('keyup', debounce(loadClients, 300));
+            document.getElementById('statusFilter').addEventListener('change', loadClients);
+            document.getElementById('typeFilter').addEventListener('change', loadClients);
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        async function loadClients() {
+            try {
+                currentPage = 1;
+                const search = document.getElementById('searchInput').value;
+                const status = document.getElementById('statusFilter').value;
+                const type = document.getElementById('typeFilter').value;
+
+                const params = new URLSearchParams();
+                if (search) params.append('search', search);
+                if (status) params.append('status', status);
+                if (type) params.append('type', type);
+                params.append('page', currentPage);
+                params.append('page_size', 20);
+
+                const response = await fetch(`/api/v1/clients?${params}`);
+                const data = await response.json();
+
+                if (data.results && data.results.length > 0) {
+                    displayClients(data.results);
+                    updatePagination(data.pagination);
+                    document.getElementById('emptyState').style.display = 'none';
+                } else {
+                    document.getElementById('clientsTableBody').innerHTML = '';
+                    document.getElementById('emptyState').style.display = 'block';
+                    document.getElementById('paginationNav').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error loading clients:', error);
+                showError('Failed to load clients');
+            }
+        }
+
+        function displayClients(clients) {
+            const tbody = document.getElementById('clientsTableBody');
+            tbody.innerHTML = clients.map(client => `
+                <tr>
+                    <td><strong>${client.company_name || '-'}</strong></td>
+                    <td>${client.contact_person || '-'}</td>
+                    <td>${client.contact_email || '-'}</td>
+                    <td>${client.contact_phone || '-'}</td>
+                    <td>
+                        <span class="status-badge status-${client.status}">
+                            ${client.status}
+                        </span>
+                    </td>
+                    <td>${client.client_type || '-'}</td>
+                    <td>${new Date(client.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-sm btn-outline-primary" onclick="editClient('${client.id}')">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteClient('${client.id}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updatePagination(pagination) {
+            if (pagination.total_pages > 1) {
+                document.getElementById('paginationNav').style.display = 'block';
+                document.getElementById('pageIndicator').innerHTML = `<span class="page-link">Page ${currentPage} of ${pagination.total_pages}</span>`;
+                
+                document.getElementById('prevBtn').classList.toggle('disabled', currentPage === 1);
+                document.getElementById('nextBtn').classList.toggle('disabled', currentPage === pagination.total_pages);
+            } else {
+                document.getElementById('paginationNav').style.display = 'none';
+            }
+        }
+
+        function openAddClientModal() {
+            document.getElementById('clientForm').reset();
+            document.getElementById('modalTitle').textContent = 'Add New Client';
+            document.getElementById('clientForm').dataset.clientId = '';
+            clientModal.show();
+        }
+
+        async function editClient(clientId) {
+            try {
+                const response = await fetch(`/api/v1/clients/${clientId}`);
+                const client = await response.json();
+
+                document.getElementById('companyName').value = client.company_name || '';
+                document.getElementById('industry').value = client.industry || '';
+                document.getElementById('website').value = client.website || '';
+                document.getElementById('clientType').value = client.client_type || 'direct';
+                document.getElementById('description').value = client.description || '';
+                document.getElementById('contactPerson').value = client.contact_person || '';
+                document.getElementById('contactEmail').value = client.contact_email || '';
+                document.getElementById('contactPhone').value = client.contact_phone || '';
+                document.getElementById('status').value = client.status || 'active';
+                document.getElementById('address').value = client.address || '';
+                document.getElementById('city').value = client.city || '';
+                document.getElementById('state').value = client.state || '';
+                document.getElementById('country').value = client.country || '';
+                document.getElementById('postalCode').value = client.postal_code || '';
+                document.getElementById('notes').value = client.notes || '';
+
+                document.getElementById('modalTitle').textContent = 'Edit Client';
+                document.getElementById('clientForm').dataset.clientId = clientId;
+                clientModal.show();
+            } catch (error) {
+                console.error('Error loading client:', error);
+                showError('Failed to load client details');
+            }
+        }
+
+        async function saveClient() {
+            try {
+                const clientId = document.getElementById('clientForm').dataset.clientId;
+                const data = {
+                    company_name: document.getElementById('companyName').value,
+                    industry: document.getElementById('industry').value,
+                    website: document.getElementById('website').value,
+                    client_type: document.getElementById('clientType').value,
+                    description: document.getElementById('description').value,
+                    contact_person: document.getElementById('contactPerson').value,
+                    contact_email: document.getElementById('contactEmail').value,
+                    contact_phone: document.getElementById('contactPhone').value,
+                    status: document.getElementById('status').value,
+                    address: document.getElementById('address').value,
+                    city: document.getElementById('city').value,
+                    state: document.getElementById('state').value,
+                    country: document.getElementById('country').value,
+                    postal_code: document.getElementById('postalCode').value,
+                    notes: document.getElementById('notes').value
+                };
+
+                const url = clientId ? `/api/v1/clients/${clientId}` : '/api/v1/clients';
+                const method = clientId ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    clientModal.hide();
+                    showSuccess(clientId ? 'Client updated successfully!' : 'Client created successfully!');
+                    loadClients();
+                } else {
+                    const error = await response.json();
+                    showError(error.detail || 'Failed to save client');
+                }
+            } catch (error) {
+                console.error('Error saving client:', error);
+                showError('Failed to save client');
+            }
+        }
+
+        async function deleteClient(clientId) {
+            if (!confirm('Are you sure you want to delete this client?')) return;
+
+            try {
+                const response = await fetch(`/api/v1/clients/${clientId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showSuccess('Client deleted successfully!');
+                    loadClients();
+                } else {
+                    showError('Failed to delete client');
+                }
+            } catch (error) {
+                console.error('Error deleting client:', error);
+                showError('Failed to delete client');
+            }
+        }
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('typeFilter').value = '';
+            loadClients();
+        }
+
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                loadClients();
+            }
+        }
+
+        function nextPage() {
+            currentPage++;
+            loadClients();
+        }
+
+        function showSuccess(message) {
+            alert(message); // Replace with toast notification later
+        }
+
+        function showError(message) {
+            alert('Error: ' + message); // Replace with toast notification later
+        }
+    </script>
+</body>
+</html>
