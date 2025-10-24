@@ -73,6 +73,7 @@ try:
     from api import users as api_users
     from api import resumes as api_resumes
     from api import candidates as api_candidates
+    from api import clients as api_clients
     API_V2_ENABLED = True
     print("✅ API V2 modules loaded successfully!")
     print("   - Jobs API: ENABLED")
@@ -213,6 +214,7 @@ if API_V2_ENABLED:
     app.include_router(api_users.router, tags=["users"])
     app.include_router(api_resumes.router, tags=["resumes"])
     app.include_router(api_candidates.router, tags=["candidates"])
+    app.include_router(api_clients.router, tags=["clients"])
 else:
     # Fallback to simple auth if V2 not available
     app.include_router(simple_auth.router, prefix="/api/auth", tags=["auth"])
