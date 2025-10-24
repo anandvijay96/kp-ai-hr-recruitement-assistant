@@ -995,6 +995,34 @@
                             </div>
                             <div id="certificationsEditList"></div>
                         </div>
+
+                        <!-- Projects Tab -->
+                        <div class="tab-pane fade" id="projects" role="tabpanel">
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-primary btn-sm" id="addProjectBtn">
+                                    <i class="bi bi-plus-circle me-1"></i>Add Project
+                                </button>
+                            </div>
+                            <div id="projectsEditList"></div>
+                            <div class="alert alert-info mt-3">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Note:</strong> Projects can be manually added here if not extracted from resume.
+                            </div>
+                        </div>
+
+                        <!-- Languages Tab -->
+                        <div class="tab-pane fade" id="languages" role="tabpanel">
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-primary btn-sm" id="addLanguageBtn">
+                                    <i class="bi bi-plus-circle me-1"></i>Add Language
+                                </button>
+                            </div>
+                            <div id="languagesEditList"></div>
+                            <div class="alert alert-info mt-3">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Note:</strong> Languages can be manually added here if not extracted from resume.
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -2219,6 +2247,79 @@
             $(`.certification-edit-item[data-index="${index}"]`).remove();
         }
         
+        // Add new project
+        function addNewProject() {
+            const container = $('#projectsEditList');
+            const index = container.children().length;
+            container.append(`
+                <div class="border rounded p-3 mb-3 project-edit-item" data-index="${index}">
+                    <div class="row">
+                        <div class="col-md-12 mb-2">
+                            <label class="form-label">Project Name</label>
+                            <input type="text" class="form-control" data-field="name" placeholder="Project name">
+                        </div>
+                        <div class="col-md-12 mb-2">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" data-field="description" rows="2" placeholder="Project description"></textarea>
+                        </div>
+                        <div class="col-md-10 mb-2">
+                            <label class="form-label">Technologies</label>
+                            <input type="text" class="form-control" data-field="technologies" placeholder="e.g. React, Node.js, MongoDB (comma-separated)">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button class="btn btn-danger btn-sm w-100" onclick="removeProject(${index})">
+                                <i class="bi bi-trash"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `);
+        }
+        
+        // Remove project
+        function removeProject(index) {
+            $(`.project-edit-item[data-index="${index}"]`).remove();
+        }
+        
+        // Add new language
+        function addNewLanguage() {
+            const container = $('#languagesEditList');
+            const index = container.children().length;
+            container.append(`
+                <div class="border rounded p-3 mb-3 language-edit-item" data-index="${index}">
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">Language</label>
+                            <input type="text" class="form-control" data-field="language" placeholder="e.g. English">
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label">Proficiency</label>
+                            <select class="form-select" data-field="proficiency">
+                                <option value="">Select...</option>
+                                <option value="Native">Native</option>
+                                <option value="Fluent">Fluent</option>
+                                <option value="Advanced">Advanced</option>
+                                <option value="Intermediate">Intermediate</option>
+                                <option value="Basic">Basic</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button class="btn btn-danger btn-sm w-100" onclick="removeLanguage(${index})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `);
+        }
+        
+        // Remove language
+        function removeLanguage(index) {
+            $(`.language-edit-item[data-index="${index}"]`).remove();
+        }
+        
         // Save all changes
         function saveAllChanges() {
             // Collect personal info
@@ -2368,6 +2469,8 @@
         $('#addExperienceBtn').click(addNewExperience);
         $('#addEducationBtn').click(addNewEducation);
         $('#addCertificationBtn').click(addNewCertification);
+        $('#addProjectBtn').click(addNewProject);
+        $('#addLanguageBtn').click(addNewLanguage);
         
         // Bind edit candidate button
         $('#editCandidateBtn').click(function() {
