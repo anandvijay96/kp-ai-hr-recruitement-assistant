@@ -529,6 +529,65 @@ async def export_all_candidates_excel(
         }
     )
 
+@router.get("/{candidate_id}/export")
+async def export_candidate_profile(
+    candidate_id: str,
+    db: Session = Depends(get_db)
+):
+    """Export single candidate profile as HTML"""
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from fastapi.responses import Response
+    
+    # Fetch candidate with relationships
+    result = await db.execute(
+        select(Candidate)
+        .options(
+            selectinload(Candidate.work_experience),
+            selectinload(Candidate.education),
+            selectinload(Candidate.certifications)
+        )
+        .where(Candidate.uuid == candidate_id)
+    )
+    candidate = result.scalar_one_or_none()
+    
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    # Fetch skills
+    from models.db.skill import Skill
+    from models.db.candidate_skill import CandidateSkill
+    skills_result = await db.execute(
+        select(Skill).join(CandidateSkill).where(CandidateSkill.candidate_id == candidate.id)
+    )
+    skills = skills_result.scalars().all()
+    
+    # Generate HTML profile
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>{candidate.full_name}</title>
+<style>body{{font-family:Arial,sans-serif;margin:40px;line-height:1.6}}h1{{color:#2c3e50;border-bottom:3px solid #3498db;padding-bottom:10px}}h2{{color:#34495e;margin-top:30px;border-bottom:2px solid #ecf0f1;padding-bottom:5px}}.section{{margin-bottom:30px}}.info-row{{margin:10px 0}}.label{{font-weight:bold;color:#7f8c8d}}.skill{{display:inline-block;background:#3498db;color:white;padding:5px 10px;margin:5px;border-radius:5px}}.item{{margin:15px 0;padding:15px;background:#f8f9fa;border-left:4px solid #3498db}}.date{{color:#95a5a6;font-size:0.9em}}</style>
+</head><body><h1>{candidate.full_name}</h1>
+<div class="section">
+<div class="info-row"><span class="label">Email:</span> {candidate.email or 'N/A'}</div>
+<div class="info-row"><span class="label">Phone:</span> {candidate.phone or 'N/A'}</div>
+<div class="info-row"><span class="label">Location:</span> {candidate.location or 'N/A'}</div>
+{f'<div class="info-row"><span class="label">LinkedIn:</span> <a href="{candidate.linkedin_url}">{candidate.linkedin_url}</a></div>' if candidate.linkedin_url else ''}
+</div>
+{f'<div class="section"><h2>Professional Summary</h2><p>{candidate.professional_summary}</p></div>' if candidate.professional_summary else ''}
+<div class="section"><h2>Skills</h2>
+{''.join([f'<span class="skill">{s.name}</span>' for s in skills]) if skills else '<p>No skills</p>'}</div>
+<div class="section"><h2>Work Experience</h2>
+{''.join([f'<div class="item"><h3>{e.job_title or "Position"}</h3><div><strong>{e.company or "Company"}</strong></div><div class="date">{e.start_date or ""} - {"Present" if e.is_current else e.end_date or ""}</div></div>' for e in candidate.work_experience]) if candidate.work_experience else '<p>No experience</p>'}</div>
+<div class="section"><h2>Education</h2>
+{''.join([f'<div class="item"><h3>{ed.degree or "Degree"}</h3><div><strong>{ed.institution or "Institution"}</strong></div><div class="date">{ed.start_date or ""} - {ed.end_date or ""}</div></div>' for ed in candidate.education]) if candidate.education else '<p>No education</p>'}</div>
+</body></html>"""
+    
+    return Response(
+        content=html,
+        media_type="text/html",
+        headers={"Content-Disposition": f"inline; filename={candidate.full_name.replace(' ', '_')}_profile.html"}
+    )
+
 @router.get("/{candidate_id}/job-matches")
 async def get_candidate_job_matches(
     candidate_id: str,
