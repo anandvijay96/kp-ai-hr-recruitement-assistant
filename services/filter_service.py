@@ -111,16 +111,33 @@ class FilterService:
             # ALWAYS exclude soft-deleted candidates
             filter_conditions.append(Candidate.is_deleted == False)
             
-            # Filter by search query (name, email, location)
+            # Filter by search query (name, email, location, skills, education)
             if filters.search_query:
                 search_term = f"%{filters.search_query}%"
+                
+                # Need skill join for skills search
+                if not needs_skill_join:
+                    stmt = stmt.outerjoin(CandidateSkill, Candidate.id == CandidateSkill.candidate_id)
+                    stmt = stmt.outerjoin(Skill, CandidateSkill.skill_id == Skill.id)
+                    needs_skill_join = True
+                
+                # Need education join for education search
+                if not needs_education_join:
+                    stmt = stmt.outerjoin(Education, Candidate.id == Education.candidate_id)
+                    needs_education_join = True
+                
+                # Search across multiple fields
                 filter_conditions.append(
                     or_(
                         Candidate.full_name.ilike(search_term),
                         Candidate.email.ilike(search_term),
-                        Candidate.location.ilike(search_term)
+                        Candidate.location.ilike(search_term),
+                        Skill.name.ilike(search_term),  # Search in skills
+                        Education.degree.ilike(search_term),  # Search in education degree
+                        Education.institution.ilike(search_term)  # Search in education institution
                     )
                 )
+                logger.info(f"Searching for: {filters.search_query} across name, email, location, skills, and education")
             
             # Filter by location (exact or partial match)
             if filters.location:
@@ -145,19 +162,18 @@ class FilterService:
             
             # Filter by skills (match ANY of the selected skills)
             if filters.skills and len(filters.skills) > 0:
-                needs_skill_join = True
-                stmt = stmt.join(CandidateSkill, Candidate.id == CandidateSkill.candidate_id)
-                stmt = stmt.join(Skill, CandidateSkill.skill_id == Skill.id)
+                if not needs_skill_join:
+                    stmt = stmt.outerjoin(CandidateSkill, Candidate.id == CandidateSkill.candidate_id)
+                    stmt = stmt.outerjoin(Skill, CandidateSkill.skill_id == Skill.id)
+                    needs_skill_join = True
                 filter_conditions.append(Skill.name.in_(filters.skills))
                 logger.info(f"Filtering by skills: {filters.skills}")
             
             # Filter by education level
             if filters.education and len(filters.education) > 0:
-                needs_education_join = True
-                if not needs_skill_join:  # Avoid duplicate candidate selection
-                    stmt = stmt.join(Education, Candidate.id == Education.candidate_id)
-                else:
+                if not needs_education_join:
                     stmt = stmt.outerjoin(Education, Candidate.id == Education.candidate_id)
+                    needs_education_join = True
                 filter_conditions.append(Education.degree.in_(filters.education))
                 logger.info(f"Filtering by education: {filters.education}")
             

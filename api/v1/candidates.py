@@ -32,13 +32,9 @@ export_service = ExportService()
 async def search_candidates(filters: CandidateFilter, page: int = 1, page_size: int = 20, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
     Searches and filters candidates using database queries.
-    If search_query is provided, uses full-text search with optional filters.
+    Supports comprehensive filtering with all filters working together.
     """
-    # If search_query is provided, use full-text search
-    if filters.search_query:
-        return await filter_service.full_text_search(filters.search_query, db, page, page_size)
-    
-    # Otherwise use traditional filtering
+    # Use the comprehensive search that combines all filters
     return await filter_service.search_candidates(filters, db, page, page_size)
 
 @router.get("/full-text-search")
