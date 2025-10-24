@@ -908,6 +908,18 @@
                                 <i class="bi bi-award me-1"></i>Certifications
                             </button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="projects-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#projects" type="button" role="tab">
+                                <i class="bi bi-folder me-1"></i>Projects
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="languages-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#languages" type="button" role="tab">
+                                <i class="bi bi-translate me-1"></i>Languages
+                            </button>
+                        </li>
                     </ul>
 
                     <!-- Tab Content -->
@@ -1215,20 +1227,8 @@
             }
             $('#candidatePhone').text(phone);
             
-            // TEMP FIX: Hide location if it looks wrong (single word, job-related terms)
-            const location = candidate.location || '';
-            const suspiciousWords = ['data', 'implementation', 'enterprise', 'manager', 'engineer', 'oval', 'senior', 'lead'];
-            const isSuspicious = location && (
-                location.split(',').length < 2 || // Not in "City, State" format
-                suspiciousWords.some(word => location.toLowerCase().includes(word)) ||
-                location.length < 3 // Too short
-            );
-            if (isSuspicious || !location) {
-                $('#candidateLocation').text('-').css('opacity', '0.5');
-                // TODO: Fix extraction - currently hiding wrong data
-            } else {
-                $('#candidateLocation').text(location);
-            }
+            // Display location directly from database
+            $('#candidateLocation').text(candidate.location || '-');
             
             $('#candidateSummary').text(candidate.professional_summary || 'No professional summary available.');
             
