@@ -44,12 +44,13 @@ class PermissionService:
             role = role_result.scalar_one_or_none()
             
             if not role:
-                logger.warning(f"Role not found: {user.role}")
-                return []
-            
-            # Parse permissions from JSON
-            permissions = role.permissions if isinstance(role.permissions, list) else json.loads(role.permissions or '[]')
-            permissions = list(permissions)  # Make a copy
+                logger.warning(f"Role not found: {user.role}, using default permissions")
+                # Fallback to default permissions based on role
+                permissions = self._get_default_permissions(user.role)
+            else:
+                # Parse permissions from JSON
+                permissions = role.permissions if isinstance(role.permissions, list) else json.loads(role.permissions or '[]')
+                permissions = list(permissions)  # Make a copy
             
             # Get custom permissions
             custom_result = await self.db.execute(
@@ -202,7 +203,42 @@ class PermissionService:
             
         except Exception as e:
             logger.error(f"Error getting permission matrix: {str(e)}")
-            return {"roles": [], "all_permissions": []}
+            raise
+    
+    def _get_default_permissions(self, role: str) -> List[str]:
+        """
+        Get default permissions for a role when UserRole record doesn't exist
+        
+        Args:
+            role: Role name (admin, manager, recruiter)
+            
+        Returns:
+            List of permission strings
+        """
+        # Default permission sets
+        default_permissions = {
+            "admin": [
+                "user.view", "user.create", "user.edit", "user.manage", "user.delete",
+                "job.view", "job.create", "job.edit", "job.delete",
+                "candidate.view", "candidate.create", "candidate.edit", "candidate.delete",
+                "resume.view", "resume.upload", "resume.vet",
+                "analytics.view", "settings.manage"
+            ],
+            "manager": [
+                "user.view", "user.create",
+                "job.view", "job.create", "job.edit",
+                "candidate.view", "candidate.create", "candidate.edit",
+                "resume.view", "resume.upload", "resume.vet",
+                "analytics.view"
+            ],
+            "recruiter": [
+                "job.view",
+                "candidate.view", "candidate.create", "candidate.edit",
+                "resume.view", "resume.upload", "resume.vet"
+            ]
+        }
+        
+        return default_permissions.get(role, [])
     
     async def validate_role_change(self, user_id: str, new_role: str) -> tuple[bool, Optional[str]]:
         """
