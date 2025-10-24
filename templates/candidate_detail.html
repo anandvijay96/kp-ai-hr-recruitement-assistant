@@ -1896,20 +1896,25 @@
                 return new Date(resume.upload_date) > new Date(latest.upload_date) ? resume : latest;
             });
             
-            // Parse the analysis data
-            let parsedData = {};
+            // Parse the analysis data from authenticity_details and jd_match_details
+            let authScore = {};
+            let matchScore = {};
             try {
-                if (latestResume.parsed_data) {
-                    parsedData = typeof latestResume.parsed_data === 'string' 
-                        ? JSON.parse(latestResume.parsed_data) 
-                        : latestResume.parsed_data;
+                if (latestResume.authenticity_details) {
+                    authScore = typeof latestResume.authenticity_details === 'string' 
+                        ? JSON.parse(latestResume.authenticity_details) 
+                        : latestResume.authenticity_details;
+                }
+                if (latestResume.jd_match_details) {
+                    matchScore = typeof latestResume.jd_match_details === 'string' 
+                        ? JSON.parse(latestResume.jd_match_details) 
+                        : latestResume.jd_match_details;
                 }
             } catch (e) {
-                console.error('Error parsing analysis data:', e);
+                console.error('Error parsing analysis details:', e);
             }
             
             // Populate Authenticity Analysis
-            const authScore = parsedData.authenticity_score || {};
             populateScoreBar('fontScore', authScore.font_consistency || 0);
             populateScoreBar('grammarScore', authScore.grammar_score || 0);
             populateScoreBar('formattingScore', authScore.formatting_score || 0);
@@ -1938,7 +1943,6 @@
             }
             
             // Populate JD Match Analysis
-            const matchScore = parsedData.matching_score || {};
             populateScoreBar('skillsMatch', matchScore.skills_match || 0, 'bg-success');
             populateScoreBar('experienceMatch', matchScore.experience_match || 0, 'bg-info');
             populateScoreBar('educationMatch', matchScore.education_match || 0, 'bg-warning');

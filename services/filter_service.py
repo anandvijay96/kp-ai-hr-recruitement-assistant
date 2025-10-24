@@ -423,12 +423,16 @@ class FilterService:
             except Exception as e:
                 logger.debug(f"Error loading skills for candidate {candidate.id}: {e}")
             
-            # Calculate total experience years
-            experience_years = 0
+            # Calculate total experience months
+            total_experience_months = 0
             try:
                 if hasattr(candidate, 'work_experience') and candidate.work_experience:
-                    total_months = sum(exp.duration_months or 0 for exp in candidate.work_experience)
-                    experience_years = round(total_months / 12, 1) if total_months > 0 else 0
+                    from datetime import date
+                    for exp in candidate.work_experience:
+                        if exp.start_date:
+                            end_dt = exp.end_date if exp.end_date else date.today()
+                            months = (end_dt.year - exp.start_date.year) * 12 + (end_dt.month - exp.start_date.month)
+                            total_experience_months += max(0, months)
             except Exception as e:
                 logger.debug(f"Error calculating experience for candidate {candidate.id}: {e}")
             
@@ -450,7 +454,7 @@ class FilterService:
                 "phone": candidate.phone or "N/A",
                 "linkedin": candidate.linkedin_url or "",
                 "skills": skills_list,
-                "experience_years": experience_years,
+                "total_experience_months": total_experience_months,
                 "education": education,
                 "status": candidate.status or "new",
                 "location": candidate.location or "N/A",

@@ -155,7 +155,9 @@ class Resume(Base):
     
     # Assessment Scores
     authenticity_score = Column(Integer)  # 0-100
+    authenticity_details = Column(JSON)  # Detailed breakdown: font_consistency, grammar_score, etc.
     jd_match_score = Column(Integer)  # 0-100
+    jd_match_details = Column(JSON)  # Detailed breakdown: skills_match, experience_match, etc.
     
     # Upload Metadata
     uploaded_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)  # Nullable for system uploads
@@ -237,6 +239,7 @@ class Candidate(Base):
     phone = Column(String(50), index=True)
     linkedin_url = Column(String(500))
     linkedin_suggestions = Column(JSON)  # Array of LinkedIn profiles found during vetting for HR to select
+    github_url = Column(String(500))  # GitHub profile URL
     location = Column(String(255))
     professional_summary = Column(Text)  # Professional summary/objective
     

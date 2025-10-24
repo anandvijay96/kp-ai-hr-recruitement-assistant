@@ -78,7 +78,7 @@ async def update_candidate(candidate_id: str, updates: dict, db: Session = Depen
     """Update candidate profile with all related data."""
     from sqlalchemy import select, delete
     from sqlalchemy.orm import selectinload
-    from models.database import Candidate, CandidateSkill, Skill, Education, WorkExperience, Certification
+    from models.database import Candidate, CandidateSkill, Skill, Education, WorkExperience, Certification, Project, Language
     
     try:
         # Get candidate
@@ -96,6 +96,7 @@ async def update_candidate(candidate_id: str, updates: dict, db: Session = Depen
             candidate.email = personal_info.get('email', candidate.email)
             candidate.phone = personal_info.get('phone', candidate.phone)
             candidate.linkedin_url = personal_info.get('linkedin_url', candidate.linkedin_url)
+            candidate.github_url = personal_info.get('github_url', candidate.github_url)
             candidate.location = personal_info.get('location', candidate.location)
             candidate.professional_summary = personal_info.get('professional_summary', candidate.professional_summary)
         
@@ -238,6 +239,40 @@ async def update_candidate(candidate_id: str, updates: dict, db: Session = Depen
                     credential_id=cert_data.get('credential_id')
                 )
                 db.add(certification)
+        
+        # Update projects - delete all and recreate
+        if 'projects' in updates:
+            await db.execute(delete(Project).where(Project.candidate_id == candidate_id))
+            
+            for project_data in updates['projects']:
+                if not project_data.get('name'):
+                    continue
+                
+                project = Project(
+                    candidate_id=candidate_id,
+                    name=project_data.get('name'),
+                    description=project_data.get('description'),
+                    technologies=project_data.get('technologies'),
+                    start_date=project_data.get('start_date'),
+                    end_date=project_data.get('end_date'),
+                    url=project_data.get('url')
+                )
+                db.add(project)
+        
+        # Update languages - delete all and recreate
+        if 'languages' in updates:
+            await db.execute(delete(Language).where(Language.candidate_id == candidate_id))
+            
+            for lang_data in updates['languages']:
+                if not lang_data.get('language'):
+                    continue
+                
+                language = Language(
+                    candidate_id=candidate_id,
+                    language=lang_data.get('language'),
+                    proficiency=lang_data.get('proficiency', 'intermediate')
+                )
+                db.add(language)
         
         # Commit all changes
         await db.commit()

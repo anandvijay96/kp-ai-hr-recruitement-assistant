@@ -874,23 +874,25 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                 file_ext = os.path.splitext(file_name)[1].lower().replace('.', '')
                 
                 # Get assessment scores from scan result
-                authenticity_score = scan_result.get('authenticity_score')
-                matching_score = scan_result.get('matching_score')
+                authenticity_score_dict = scan_result.get('authenticity_score')
+                matching_score_dict = scan_result.get('matching_score')
                 
-                # Convert scores dict to integer if it's a dict with 'overall_score'
-                if isinstance(authenticity_score, dict):
-                    authenticity_score = int(authenticity_score.get('overall_score', 0))
-                elif authenticity_score:
-                    authenticity_score = int(authenticity_score)
-                else:
-                    authenticity_score = None
+                # Extract integer scores and keep full details
+                authenticity_score_int = None
+                authenticity_details = None
+                if isinstance(authenticity_score_dict, dict):
+                    authenticity_score_int = int(authenticity_score_dict.get('overall_score', 0))
+                    authenticity_details = json.dumps(authenticity_score_dict)
+                elif authenticity_score_dict:
+                    authenticity_score_int = int(authenticity_score_dict)
                 
-                if isinstance(matching_score, dict):
-                    matching_score = int(matching_score.get('overall_score', 0))
-                elif matching_score:
-                    matching_score = int(matching_score)
-                else:
-                    matching_score = None
+                matching_score_int = None
+                matching_details = None
+                if isinstance(matching_score_dict, dict):
+                    matching_score_int = int(matching_score_dict.get('overall_score', 0))
+                    matching_details = json.dumps(matching_score_dict)
+                elif matching_score_dict:
+                    matching_score_int = int(matching_score_dict)
                 
                 # Convert parsed_data to JSON string for SQLite
                 import json
@@ -909,8 +911,10 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                     existing_resume.processing_status = "completed"
                     existing_resume.extracted_text = extracted_text
                     existing_resume.parsed_data = parsed_data_json
-                    existing_resume.authenticity_score = authenticity_score
-                    existing_resume.jd_match_score = matching_score
+                    existing_resume.authenticity_score = authenticity_score_int
+                    existing_resume.authenticity_details = authenticity_details
+                    existing_resume.jd_match_score = matching_score_int
+                    existing_resume.jd_match_details = matching_details
                     existing_resume.candidate_id = candidate.id
                     existing_resume.candidate_name = candidate_name
                     existing_resume.candidate_email = candidate_email
@@ -936,8 +940,10 @@ async def upload_approved_to_database(session_id: str, db: Session = Depends(get
                         processing_status="completed",  # Mark as completed since we have all data
                         extracted_text=extracted_text,
                         parsed_data=parsed_data_json,  # Store as JSON string
-                        authenticity_score=authenticity_score,
-                        jd_match_score=matching_score,
+                        authenticity_score=authenticity_score_int,
+                        authenticity_details=authenticity_details,
+                        jd_match_score=matching_score_int,
+                        jd_match_details=matching_details,
                         uploaded_by=None,  # NULL for system uploads (no user context in vetting)
                         candidate_id=candidate.id,  # Link to candidate
                         candidate_name=candidate_name,
