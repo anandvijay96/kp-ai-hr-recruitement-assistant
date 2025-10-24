@@ -491,6 +491,23 @@ class Job(Base):
     )
 
 
+class JobApplication(Base):
+    """Job applications - candidates applying to jobs"""
+    __tablename__ = "job_applications"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    job_id = Column(String(36), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    candidate_id = Column(String(36), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    status = Column(String(50), default="applied", index=True)  # applied, screening, interview, offer, hired, rejected
+    applied_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    notes = Column(Text)
+    
+    # Relationships
+    job = relationship("Job", backref="applications")
+    candidate = relationship("Candidate", backref="job_applications")
+
+
 class JobSkill(Base):
     """Many-to-many relationship between jobs and skills"""
     __tablename__ = "job_skills"

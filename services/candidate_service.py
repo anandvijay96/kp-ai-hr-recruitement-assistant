@@ -388,13 +388,30 @@ class CandidateService:
                 work_experiences = work_exp_result.scalars().all()
                 
                 # Calculate total months from start_date and end_date
-                from datetime import date
+                from datetime import date, datetime
                 total_exp = 0
                 for exp in work_experiences:
                     if exp.start_date:
-                        end_dt = exp.end_date if exp.end_date else date.today()
-                        months = (end_dt.year - exp.start_date.year) * 12 + (end_dt.month - exp.start_date.month)
-                        total_exp += max(0, months)  # Ensure non-negative
+                        try:
+                            # Handle both string and date objects
+                            if isinstance(exp.start_date, str):
+                                start_dt = datetime.fromisoformat(exp.start_date.replace('Z', '+00:00')).date()
+                            else:
+                                start_dt = exp.start_date
+                            
+                            if exp.end_date:
+                                if isinstance(exp.end_date, str):
+                                    end_dt = datetime.fromisoformat(exp.end_date.replace('Z', '+00:00')).date()
+                                else:
+                                    end_dt = exp.end_date
+                            else:
+                                end_dt = date.today()
+                            
+                            months = (end_dt.year - start_dt.year) * 12 + (end_dt.month - start_dt.month)
+                            total_exp += max(0, months)  # Ensure non-negative
+                        except (ValueError, AttributeError) as e:
+                            logger.warning(f"Error parsing date for candidate {candidate.id}: {e}")
+                            continue
                 
                 candidate_list.append({
                     "id": candidate.id,

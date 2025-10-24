@@ -182,6 +182,13 @@ if VETTING_ENABLED:
     app.include_router(vetting_v1.router, prefix="/api/v1/vetting", tags=["vetting"])
 app.include_router(shortlist_v1.router, prefix="/api/v1", tags=["shortlist"])
 
+# Job applications router
+try:
+    from api.v1 import job_applications
+    app.include_router(job_applications.router, prefix="/api/v1/jobs", tags=["job-applications"])
+except ImportError:
+    logger.warning("Job applications router not available")
+
 # Phase 3: Activity tracking and workflow routers
 app.include_router(activity_v1.router, prefix="/api/v1", tags=["activity"])
 app.include_router(workflow_v1.router, prefix="/api/v1", tags=["workflow"])
