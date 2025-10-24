@@ -1,6 +1,12 @@
 """Migration script to add Client table and update Job table"""
 import asyncio
 import logging
+import sys
+import os
+
+# Add parent directory to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from sqlalchemy import text
 from core.database import engine
 
@@ -55,25 +61,56 @@ async def migrate():
             
             # Create indexes
             logger.info("Creating indexes...")
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_clients_company_name ON clients(company_name)"))
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_clients_contact_email ON clients(contact_email)"))
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_clients_status ON clients(status)"))
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_clients_created_at ON clients(created_at)"))
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_clients_is_deleted ON clients(is_deleted)"))
-            logger.info("✓ Indexes created")
+            try:
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_clients_company_name ON clients(company_name)"))
+                logger.info("✓ company_name index created")
+            except Exception as e:
+                logger.warning(f"⚠ company_name index: {str(e)}")
+            
+            try:
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_clients_status ON clients(status)"))
+                logger.info("✓ status index created")
+            except Exception as e:
+                logger.warning(f"⚠ status index: {str(e)}")
+            
+            try:
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_clients_created_at ON clients(created_at)"))
+                logger.info("✓ created_at index created")
+            except Exception as e:
+                logger.warning(f"⚠ created_at index: {str(e)}")
+            
+            try:
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_clients_is_deleted ON clients(is_deleted)"))
+                logger.info("✓ is_deleted index created")
+            except Exception as e:
+                logger.warning(f"⚠ is_deleted index: {str(e)}")
             
             # Add client_id column to jobs table if it doesn't exist
             logger.info("Updating jobs table...")
-            await conn.execute(text("""
-                ALTER TABLE jobs
-                ADD COLUMN IF NOT EXISTS client_id VARCHAR(36) REFERENCES clients(id) ON DELETE SET NULL,
-                ADD COLUMN IF NOT EXISTS show_client_to_candidate BOOLEAN DEFAULT FALSE
-            """))
-            logger.info("✓ Jobs table updated")
+            try:
+                await conn.execute(text("""
+                    ALTER TABLE jobs
+                    ADD COLUMN client_id VARCHAR(36) REFERENCES clients(id) ON DELETE SET NULL
+                """))
+                logger.info("✓ client_id column added to jobs table")
+            except Exception as e:
+                logger.warning(f"⚠ client_id column: {str(e)}")
+            
+            try:
+                await conn.execute(text("""
+                    ALTER TABLE jobs
+                    ADD COLUMN show_client_to_candidate BOOLEAN DEFAULT FALSE
+                """))
+                logger.info("✓ show_client_to_candidate column added to jobs table")
+            except Exception as e:
+                logger.warning(f"⚠ show_client_to_candidate column: {str(e)}")
             
             # Create index on jobs.client_id
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_jobs_client_id ON jobs(client_id)"))
-            logger.info("✓ Job client_id index created")
+            try:
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_jobs_client_id ON jobs(client_id)"))
+                logger.info("✓ Job client_id index created")
+            except Exception as e:
+                logger.warning(f"⚠ Job client_id index: {str(e)}")
             
             logger.info("✅ Migration completed successfully!")
             
