@@ -6,7 +6,7 @@ from typing import List
 import logging
 
 from core.database import get_db
-from models.db.candidate import Candidate
+from models.database import Candidate
 
 logger = logging.getLogger(__name__)
 

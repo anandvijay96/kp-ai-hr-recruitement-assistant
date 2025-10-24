@@ -555,8 +555,7 @@ async def export_candidate_profile(
         raise HTTPException(status_code=404, detail="Candidate not found")
     
     # Fetch skills
-    from models.db.skill import Skill
-    from models.db.candidate_skill import CandidateSkill
+    from models.database import Skill, CandidateSkill
     skills_result = await db.execute(
         select(Skill).join(CandidateSkill).where(CandidateSkill.candidate_id == candidate.id)
     )
