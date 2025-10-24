@@ -31,6 +31,7 @@ from api.v1 import simple_auth
 from api.v1 import dashboard as dashboard_v1
 from api.v1 import matching as matching_v1
 from api.v1 import ratings as ratings_v1
+from api.v1 import shortlist as shortlist_v1
 
 # Phase 3: Activity tracking and workflow
 from api.v1 import activity as activity_v1
@@ -179,6 +180,7 @@ app.include_router(matching_v1.router, prefix="/api/v1", tags=["matching"])
 app.include_router(ratings_v1.router, prefix="/api/v1", tags=["ratings"])
 if VETTING_ENABLED:
     app.include_router(vetting_v1.router, prefix="/api/v1/vetting", tags=["vetting"])
+app.include_router(shortlist_v1.router, prefix="/api/v1", tags=["shortlist"])
 
 # Phase 3: Activity tracking and workflow routers
 app.include_router(activity_v1.router, prefix="/api/v1", tags=["activity"])

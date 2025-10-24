@@ -1623,9 +1623,33 @@
             $('#interviewCandidateId').val(candidateId);
         });
         
-        $('#addToShortlistBtn').click(() => {
+        $('#addToShortlistBtn').click(async () => {
             // Add to shortlist
-            showSuccessMessage('Add to shortlist feature coming soon!');
+            try {
+                const response = await fetch(`/api/v1/candidates/${candidateId}/shortlist`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to add to shortlist');
+                }
+                
+                const data = await response.json();
+                showSuccessMessage(`✓ ${$('#candidateName').text()} added to shortlist! (${data.shortlist_count} candidates)`);
+                
+                // Update button to show it's shortlisted
+                $('#addToShortlistBtn')
+                    .removeClass('btn-success')
+                    .addClass('btn-warning')
+                    .html('<i class="bi bi-star-fill me-1"></i> Shortlisted');
+                    
+            } catch (error) {
+                console.error('Error adding to shortlist:', error);
+                showErrorMessage('Failed to add candidate to shortlist. Please try again.');
+            }
         });
         
         $('#rejectBtn').click(() => {
