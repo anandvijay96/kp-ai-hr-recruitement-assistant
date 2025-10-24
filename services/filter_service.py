@@ -57,11 +57,15 @@ class FilterService:
             count_result = await db.execute(count_stmt)
             total_count = count_result.scalar() or 0
             
-            # Apply pagination
+            # Apply pagination and eager load relationships
             offset = (page - 1) * page_size
-            stmt = stmt.offset(offset).limit(page_size)
+            stmt = stmt.options(
+                selectinload(Candidate.skills).selectinload(CandidateSkill.skill),
+                selectinload(Candidate.education),
+                selectinload(Candidate.work_experience)
+            ).offset(offset).limit(page_size)
             result = await db.execute(stmt)
-            candidates = result.scalars().all()
+            candidates = result.scalars().unique().all()
             
             # Format results
             results = self._format_candidate_results(candidates)

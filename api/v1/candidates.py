@@ -659,8 +659,9 @@ async def get_candidate_job_matches(
             return {
                 "candidate_id": candidate_id,
                 "candidate_name": candidate.full_name,
+                "has_resume": False,
                 "matches": [],
-                "message": "No resume available for this candidate"
+                "message": "No resume uploaded for matching analysis"
             }
         
         if not resume.extracted_text:
@@ -668,6 +669,7 @@ async def get_candidate_job_matches(
             return {
                 "candidate_id": candidate_id,
                 "candidate_name": candidate.full_name,
+                "has_resume": True,
                 "matches": [],
                 "message": "Resume text not yet extracted. Please re-upload the resume."
             }
