@@ -222,7 +222,97 @@
                     </div>
                 </div>
                 ` : ''}
+                
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-people-fill"></i> Applications</h5>
+                        <span class="badge bg-primary" id="applicationsCount">Loading...</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="applicationsList">
+                            <div class="text-center">
+                                <div class="spinner-border spinner-border-sm" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             `;
+            
+            // Load applications
+            loadApplications(job.id);
+        }
+        
+        async function loadApplications(jobId) {
+            try {
+                const response = await fetch(`/api/v1/jobs/${jobId}/applications`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load applications');
+                
+                const data = await response.json();
+                renderApplications(data);
+            } catch (error) {
+                console.error('Error loading applications:', error);
+                document.getElementById('applicationsList').innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> No applications yet
+                    </div>
+                `;
+                document.getElementById('applicationsCount').textContent = '0';
+            }
+        }
+        
+        function renderApplications(data) {
+            document.getElementById('applicationsCount').textContent = data.total_applications || 0;
+            
+            if (!data.applications || data.applications.length === 0) {
+                document.getElementById('applicationsList').innerHTML = `
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                        <p class="mt-2">No applications received yet</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const applicationsHtml = data.applications.map(app => `
+                <div class="border-bottom pb-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">
+                                <a href="/candidates/${app.candidate_id}" class="text-decoration-none">
+                                    ${app.candidate_name}
+                                </a>
+                            </h6>
+                            <div class="text-muted small">
+                                <i class="bi bi-envelope"></i> ${app.candidate_email || 'N/A'}
+                                ${app.candidate_phone ? `<span class="ms-2"><i class="bi bi-telephone"></i> ${app.candidate_phone}</span>` : ''}
+                            </div>
+                            <div class="mt-2">
+                                <span class="badge bg-${app.status === 'applied' ? 'info' : app.status === 'shortlisted' ? 'warning' : app.status === 'rejected' ? 'danger' : 'success'}">
+                                    ${app.status}
+                                </span>
+                                <small class="text-muted ms-2">
+                                    Applied: ${new Date(app.applied_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </small>
+                            </div>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <a href="/candidates/${app.candidate_id}" class="btn btn-outline-primary" title="View Candidate">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </div>
+                    </div>
+                    ${app.notes ? `<div class="mt-2 small"><strong>Notes:</strong> ${app.notes}</div>` : ''}
+                </div>
+            `).join('');
+            
+            document.getElementById('applicationsList').innerHTML = applicationsHtml;
         }
 
         function formatLocation(job) {

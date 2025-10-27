@@ -96,7 +96,9 @@ async def update_candidate(candidate_id: str, updates: dict, db: Session = Depen
             candidate.email = personal_info.get('email', candidate.email)
             candidate.phone = personal_info.get('phone', candidate.phone)
             candidate.linkedin_url = personal_info.get('linkedin_url', candidate.linkedin_url)
-            candidate.github_url = personal_info.get('github_url', candidate.github_url)
+            # Explicitly handle github_url to allow updates to empty string
+            if 'github_url' in personal_info:
+                candidate.github_url = personal_info['github_url'] or None
             candidate.location = personal_info.get('location', candidate.location)
             candidate.professional_summary = personal_info.get('professional_summary', candidate.professional_summary)
         
@@ -364,6 +366,7 @@ async def get_candidate(candidate_id: str, db: Session = Depends(get_db)):
         "email": candidate.email,
         "phone": candidate.phone,
         "linkedin_url": candidate.linkedin_url,
+        "github_url": candidate.github_url if hasattr(candidate, 'github_url') else None,
         "linkedin_suggestions": candidate.linkedin_suggestions if hasattr(candidate, 'linkedin_suggestions') else [],
         "location": candidate.location,
         "professional_summary": candidate.professional_summary,
@@ -380,7 +383,9 @@ async def get_candidate(candidate_id: str, db: Session = Depends(get_db)):
             "status": r.status,
             "upload_date": r.upload_date.isoformat() if r.upload_date else None,
             "authenticity_score": r.authenticity_score,
-            "jd_match_score": r.jd_match_score
+            "authenticity_details": r.authenticity_details,
+            "jd_match_score": r.jd_match_score,
+            "jd_match_details": r.jd_match_details
         } for r in candidate.resumes] if candidate.resumes else [],
         "skills": [{
             "name": cs.skill.name if cs.skill else None,
@@ -690,6 +695,12 @@ async def get_candidate_job_matches(
                 "message": "No active jobs available for matching"
             }
         
+        # Get all applications for this candidate to check status
+        from models.database import JobApplication
+        app_stmt = select(JobApplication).filter(JobApplication.candidate_id == candidate_id)
+        app_result = await db.execute(app_stmt)
+        applications = {app.job_id: app.status for app in app_result.scalars().all()}
+        
         # Initialize JD matcher
         jd_matcher = JDMatcher()
         
@@ -702,6 +713,10 @@ async def get_candidate_job_matches(
                     resume.extracted_text,
                     job.description
                 )
+                
+                # Check if already applied
+                application_status = applications.get(job.id, None)
+                has_applied = application_status is not None
                 
                 matches.append({
                     "job_id": job.id,
@@ -716,7 +731,9 @@ async def get_candidate_job_matches(
                     "matched_skills": match_result.get("matched_skills", []),
                     "missing_skills": match_result.get("missing_skills", []),
                     "match_details": match_result.get("details", []),
-                    "can_apply": match_result.get("overall_match", 0) >= 50  # Allow apply if match >= 50%
+                    "can_apply": match_result.get("overall_match", 0) >= 50,  # Allow apply if match >= 50%
+                    "has_applied": has_applied,
+                    "application_status": application_status
                 })
             except Exception as e:
                 # Log error but continue with other jobs

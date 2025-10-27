@@ -120,3 +120,68 @@ async def create_job_application(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create job application"
         )
+
+
+@router.get("/{job_id}/applications")
+async def get_job_applications(
+    job_id: str,
+    db: AsyncSession = Depends(get_db),
+    request: Request = None
+):
+    """
+    Get all applications for a job
+    
+    Args:
+        job_id: Job UUID
+        
+    Returns:
+        List of applications with candidate details
+    """
+    try:
+        # Verify job exists
+        job_result = await db.execute(
+            select(Job).where(Job.id == job_id)
+        )
+        job = job_result.scalar_one_or_none()
+        
+        if not job:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Job not found"
+            )
+        
+        # Get all applications with candidate info
+        from sqlalchemy.orm import selectinload
+        applications_result = await db.execute(
+            select(JobApplication)
+            .options(selectinload(JobApplication.candidate))
+            .where(JobApplication.job_id == job_id)
+            .order_by(JobApplication.applied_at.desc())
+        )
+        applications = applications_result.scalars().all()
+        
+        # Format response
+        return {
+            "job_id": job_id,
+            "job_title": job.title,
+            "total_applications": len(applications),
+            "applications": [{
+                "id": app.id,
+                "candidate_id": app.candidate_id,
+                "candidate_name": app.candidate.full_name if app.candidate else "Unknown",
+                "candidate_email": app.candidate.email if app.candidate else None,
+                "candidate_phone": app.candidate.phone if app.candidate else None,
+                "status": app.status,
+                "applied_at": app.applied_at.isoformat() if app.applied_at else None,
+                "notes": app.notes
+            } for app in applications]
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting job applications: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get job applications"
+        )

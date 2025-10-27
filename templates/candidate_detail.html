@@ -1214,8 +1214,12 @@
                 }
                 
                 const data = await response.json();
+                console.log('Job Matches Data:', data);
+                console.log('Has Resume:', data.has_resume);
+                console.log('Matches Count:', data.matches ? data.matches.length : 0);
                 
-                if (!data.has_resume) {
+                // Only show "no resume" if explicitly false (not undefined)
+                if (data.has_resume === false) {
                     container.html(`
                         <div class="text-center py-5 text-muted">
                             <i class="bi bi-briefcase fs-1 mb-3"></i>
@@ -1313,13 +1317,17 @@
                                     </div>
                                 </div>
                             ` : ''}
-                            ${match.can_apply ? `
+                            ${match.has_applied ? `
+                                <button class="btn btn-sm btn-success mt-2" disabled>
+                                    <i class="bi bi-check-circle me-1"></i>Applied - ${match.application_status || 'Pending'}
+                                </button>
+                            ` : match.can_apply ? `
                                 <button class="btn btn-sm btn-primary mt-2" onclick="applyToJob('${match.job_id}', '${candidateId}')">
                                     <i class="bi bi-send me-1"></i>Apply to this Job
                                 </button>
                             ` : `
                                 <div class="alert alert-warning alert-sm mt-2 mb-0 py-1 px-2">
-                                    <small><i class="bi bi-info-circle me-1"></i>Match score below threshold (${match.match_score}% < 50%)</small>
+                                    <small>Match score too low to apply (minimum 50% required)</small>
                                 </div>
                             `}
                         </div>
@@ -1460,7 +1468,12 @@
             
             // GitHub
             if (candidate.github_url) {
-                $('#githubLink').attr('href', candidate.github_url).text('View Profile').show();
+                // Ensure URL has protocol
+                let githubUrl = candidate.github_url;
+                if (!githubUrl.startsWith('http://') && !githubUrl.startsWith('https://')) {
+                    githubUrl = 'https://' + githubUrl;
+                }
+                $('#githubLink').attr('href', githubUrl).attr('target', '_blank').text('View Profile').show();
                 $('#candidateGithub').show();
             } else {
                 $('#githubLink').hide();
@@ -1901,6 +1914,10 @@
                 return new Date(resume.upload_date) > new Date(latest.upload_date) ? resume : latest;
             });
             
+            console.log('Latest Resume Data:', latestResume);
+            console.log('Authenticity Details:', latestResume.authenticity_details);
+            console.log('JD Match Details:', latestResume.jd_match_details);
+            
             // Parse the analysis data from authenticity_details and jd_match_details
             let authScore = {};
             let matchScore = {};
@@ -1909,11 +1926,13 @@
                     authScore = typeof latestResume.authenticity_details === 'string' 
                         ? JSON.parse(latestResume.authenticity_details) 
                         : latestResume.authenticity_details;
+                    console.log('Parsed Auth Score:', authScore);
                 }
                 if (latestResume.jd_match_details) {
                     matchScore = typeof latestResume.jd_match_details === 'string' 
                         ? JSON.parse(latestResume.jd_match_details) 
                         : latestResume.jd_match_details;
+                    console.log('Parsed Match Score:', matchScore);
                 }
             } catch (e) {
                 console.error('Error parsing analysis details:', e);
