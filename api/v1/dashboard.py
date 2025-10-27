@@ -30,19 +30,44 @@ async def get_hr_dashboard_data(
     """
     try:
         # Get quick stats
-        stats = await get_hr_stats(db)
+        try:
+            stats = await get_hr_stats(db)
+        except Exception as e:
+            logger.error(f"Error getting stats: {e}")
+            await db.rollback()
+            stats = {"total_candidates": 0, "active_jobs": 0, "pending_vetting": 0, "recent_hires": 0}
         
         # Get pending vetting resumes
-        pending_vetting = await get_pending_vetting(db)
+        try:
+            pending_vetting = await get_pending_vetting(db)
+        except Exception as e:
+            logger.error(f"Error getting pending vetting: {e}")
+            await db.rollback()
+            pending_vetting = []
         
         # Get recent candidates
-        recent_candidates = await get_recent_candidates(db)
+        try:
+            recent_candidates = await get_recent_candidates(db)
+        except Exception as e:
+            logger.error(f"Error getting recent candidates: {e}")
+            await db.rollback()
+            recent_candidates = []
         
         # Get active jobs (mock data for now until Job model is available)
-        active_jobs = await get_active_jobs(db)
+        try:
+            active_jobs = await get_active_jobs(db)
+        except Exception as e:
+            logger.error(f"Error getting active jobs: {e}")
+            await db.rollback()
+            active_jobs = []
         
         # Get recent activity
-        recent_activity = await get_recent_activity(db)
+        try:
+            recent_activity = await get_recent_activity(db)
+        except Exception as e:
+            logger.error(f"Error getting recent activity: {e}")
+            await db.rollback()
+            recent_activity = []
         
         return {
             "stats": stats,
