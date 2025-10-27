@@ -92,6 +92,18 @@ async def run_migrations():
             session, 'candidates', 'linkedin_suggestions', 'TEXT', 'NULL'
         )
         
+        print("\n📋 Checking resumes table...")
+        
+        # Add authenticity_details to resumes table
+        await add_column_if_not_exists(
+            session, 'resumes', 'authenticity_details', 'JSONB', 'NULL'
+        )
+        
+        # Add jd_match_details to resumes table
+        await add_column_if_not_exists(
+            session, 'resumes', 'jd_match_details', 'JSONB', 'NULL'
+        )
+        
         print("\n📋 Checking clients table...")
         
         # Create clients table if it doesn't exist
