@@ -6,12 +6,9 @@ from sqlalchemy import select, func, or_, and_
 from sqlalchemy.orm import selectinload
 from datetime import datetime
 
-from models.client_models import Client, ClientContact, ClientJob, ClientActivity
+from models.client_models import Client  # Only import Client, other classes don't exist yet
 from models.client_schemas import (
-    ClientCreate, ClientUpdate, ClientFilter,
-    ClientContactCreate, ClientContactUpdate,
-    ClientJobCreate, ClientJobUpdate,
-    ClientActivityCreate, ClientActivityUpdate
+    ClientCreate, ClientUpdate, ClientFilter
 )
 
 logger = logging.getLogger(__name__)
@@ -30,19 +27,18 @@ class ClientService:
     async def create_client(self, client_data: ClientCreate, created_by: str) -> Client:
         """Create a new client"""
         try:
-            # Check if client with same email already exists
+            # Check if client with same name already exists
             existing = await self.db.execute(
-                select(Client).where(Client.company_email == client_data.company_email)
+                select(Client).where(Client.company_name == client_data.company_name)
             )
             if existing.scalar_one_or_none():
-                raise ValueError(f"Client with email {client_data.company_email} already exists")
+                raise ValueError(f"Client with name {client_data.company_name} already exists")
             
             # Create client
             client = Client(
                 **client_data.model_dump(),
                 created_by=created_by,
-                status="active",
-                is_active=True
+                status="active"
             )
             
             self.db.add(client)
@@ -64,11 +60,8 @@ class ClientService:
         try:
             result = await self.db.execute(
                 select(Client)
-                .options(
-                    selectinload(Client.contacts),
-                    selectinload(Client.jobs)
-                )
                 .where(Client.id == client_id)
+                .where(Client.is_deleted == False)
             )
             return result.scalar_one_or_none()
         except Exception as e:
@@ -100,20 +93,20 @@ class ClientService:
             logger.error(f"Error updating client: {str(e)}")
             raise
     
-    async def delete_client(self, client_id: str) -> bool:
-        """Delete client (soft delete by deactivating)"""
+    async def delete_client(self, client_id: str, deleted_by: str) -> bool:
+        """Delete client (soft delete)"""
         try:
             client = await self.get_client(client_id)
             if not client:
                 raise ValueError(f"Client not found: {client_id}")
             
-            client.status = "inactive"
-            client.is_active = False
-            client.deactivated_at = datetime.utcnow()
+            client.is_deleted = True
+            client.deleted_at = datetime.utcnow()
+            client.deleted_by = deleted_by
             
             await self.db.commit()
             
-            logger.info(f"Deactivated client: {client.company_name} (ID: {client_id})")
+            logger.info(f"Deleted client: {client.company_name} (ID: {client_id})")
             return True
             
         except ValueError:
@@ -141,7 +134,8 @@ class ClientService:
                 filter_conditions.append(
                     or_(
                         Client.company_name.ilike(search_term),
-                        Client.company_email.ilike(search_term),
+                        Client.contact_email.ilike(search_term),
+                        Client.contact_person.ilike(search_term),
                         Client.city.ilike(search_term),
                         Client.industry.ilike(search_term)
                     )
@@ -155,9 +149,9 @@ class ClientService:
             if filters.industry:
                 filter_conditions.append(Client.industry.ilike(f"%{filters.industry}%"))
             
-            # Company size filter
-            if filters.company_size:
-                filter_conditions.append(Client.company_size.in_(filters.company_size))
+            # Client type filter
+            if hasattr(filters, 'client_type') and filters.client_type:
+                filter_conditions.append(Client.client_type.in_(filters.client_type))
             
             # City filter
             if filters.city:
@@ -203,16 +197,11 @@ class ClientService:
             # Format results
             client_list = []
             for client in clients:
-                # Get counts
-                contacts_count = len(client.contacts) if hasattr(client, 'contacts') else 0
-                jobs_count = len(client.jobs) if hasattr(client, 'jobs') else 0
-                active_jobs_count = sum(1 for job in client.jobs if job.status == 'open') if hasattr(client, 'jobs') else 0
-                
                 client_dict = {
                     **client.__dict__,
-                    'contacts_count': contacts_count,
-                    'jobs_count': jobs_count,
-                    'active_jobs_count': active_jobs_count
+                    'contacts_count': 0,
+                    'jobs_count': 0,
+                    'active_jobs_count': 0
                 }
                 client_list.append(client_dict)
             
@@ -228,248 +217,7 @@ class ClientService:
             logger.error(f"Error searching clients: {str(e)}")
             raise
     
-    # ============================================================================
-    # CLIENT CONTACT OPERATIONS
-    # ============================================================================
-    
-    async def create_contact(self, contact_data: ClientContactCreate, created_by: str) -> ClientContact:
-        """Create a new client contact"""
-        try:
-            # Verify client exists
-            client = await self.get_client(contact_data.client_id)
-            if not client:
-                raise ValueError(f"Client not found: {contact_data.client_id}")
-            
-            # If this is primary contact, unset other primary contacts
-            if contact_data.is_primary:
-                await self.db.execute(
-                    select(ClientContact)
-                    .where(
-                        ClientContact.client_id == contact_data.client_id,
-                        ClientContact.is_primary == True
-                    )
-                )
-                # Update existing primary contacts
-                existing_primary = await self.db.execute(
-                    select(ClientContact).where(
-                        ClientContact.client_id == contact_data.client_id,
-                        ClientContact.is_primary == True
-                    )
-                )
-                for contact in existing_primary.scalars():
-                    contact.is_primary = False
-            
-            # Create contact
-            contact = ClientContact(
-                **contact_data.model_dump(),
-                created_by=created_by,
-                is_active=True
-            )
-            
-            self.db.add(contact)
-            await self.db.commit()
-            await self.db.refresh(contact)
-            
-            logger.info(f"Created contact: {contact.full_name} for client {contact_data.client_id}")
-            return contact
-            
-        except ValueError:
-            raise
-        except Exception as e:
-            await self.db.rollback()
-            logger.error(f"Error creating contact: {str(e)}")
-            raise
-    
-    async def get_client_contacts(self, client_id: str) -> List[ClientContact]:
-        """Get all contacts for a client"""
-        try:
-            result = await self.db.execute(
-                select(ClientContact)
-                .where(ClientContact.client_id == client_id)
-                .order_by(ClientContact.is_primary.desc(), ClientContact.created_at.desc())
-            )
-            return result.scalars().all()
-        except Exception as e:
-            logger.error(f"Error getting client contacts: {str(e)}")
-            raise
-    
-    async def update_contact(self, contact_id: str, contact_data: ClientContactUpdate) -> ClientContact:
-        """Update client contact"""
-        try:
-            result = await self.db.execute(
-                select(ClientContact).where(ClientContact.id == contact_id)
-            )
-            contact = result.scalar_one_or_none()
-            
-            if not contact:
-                raise ValueError(f"Contact not found: {contact_id}")
-            
-            # Update fields
-            update_data = contact_data.model_dump(exclude_unset=True)
-            
-            # If setting as primary, unset other primary contacts
-            if update_data.get('is_primary'):
-                existing_primary = await self.db.execute(
-                    select(ClientContact).where(
-                        ClientContact.client_id == contact.client_id,
-                        ClientContact.is_primary == True,
-                        ClientContact.id != contact_id
-                    )
-                )
-                for existing in existing_primary.scalars():
-                    existing.is_primary = False
-            
-            for field, value in update_data.items():
-                setattr(contact, field, value)
-            
-            await self.db.commit()
-            await self.db.refresh(contact)
-            
-            logger.info(f"Updated contact: {contact.full_name} (ID: {contact_id})")
-            return contact
-            
-        except ValueError:
-            raise
-        except Exception as e:
-            await self.db.rollback()
-            logger.error(f"Error updating contact: {str(e)}")
-            raise
-    
-    # ============================================================================
-    # CLIENT JOB OPERATIONS
-    # ============================================================================
-    
-    async def create_job(self, job_data: ClientJobCreate, created_by: str) -> ClientJob:
-        """Create a new client job"""
-        try:
-            # Verify client exists
-            client = await self.get_client(job_data.client_id)
-            if not client:
-                raise ValueError(f"Client not found: {job_data.client_id}")
-            
-            # Create job
-            job = ClientJob(
-                **job_data.model_dump(),
-                created_by=created_by,
-                status="open"
-            )
-            
-            self.db.add(job)
-            await self.db.commit()
-            await self.db.refresh(job)
-            
-            logger.info(f"Created job: {job.job_title} for client {job_data.client_id}")
-            return job
-            
-        except ValueError:
-            raise
-        except Exception as e:
-            await self.db.rollback()
-            logger.error(f"Error creating job: {str(e)}")
-            raise
-    
-    async def get_client_jobs(self, client_id: str, status: Optional[str] = None) -> List[ClientJob]:
-        """Get all jobs for a client"""
-        try:
-            query = select(ClientJob).where(ClientJob.client_id == client_id)
-            
-            if status:
-                query = query.where(ClientJob.status == status)
-            
-            query = query.order_by(ClientJob.created_at.desc())
-            
-            result = await self.db.execute(query)
-            return result.scalars().all()
-        except Exception as e:
-            logger.error(f"Error getting client jobs: {str(e)}")
-            raise
-    
-    # ============================================================================
-    # CLIENT ACTIVITY OPERATIONS
-    # ============================================================================
-    
-    async def create_activity(
-        self,
-        activity_data: ClientActivityCreate,
-        performed_by: str
-    ) -> ClientActivity:
-        """Create a new client activity"""
-        try:
-            # Verify client exists
-            client = await self.get_client(activity_data.client_id)
-            if not client:
-                raise ValueError(f"Client not found: {activity_data.client_id}")
-            
-            # Create activity
-            activity = ClientActivity(
-                **activity_data.model_dump(),
-                performed_by=performed_by,
-                status="completed" if not activity_data.scheduled_date else "scheduled"
-            )
-            
-            self.db.add(activity)
-            await self.db.commit()
-            await self.db.refresh(activity)
-            
-            logger.info(f"Created activity: {activity.activity_title} for client {activity_data.client_id}")
-            return activity
-            
-        except ValueError:
-            raise
-        except Exception as e:
-            await self.db.rollback()
-            logger.error(f"Error creating activity: {str(e)}")
-            raise
-    
-    async def get_client_activities(
-        self,
-        client_id: str,
-        limit: int = 50
-    ) -> List[ClientActivity]:
-        """Get recent activities for a client"""
-        try:
-            result = await self.db.execute(
-                select(ClientActivity)
-                .where(ClientActivity.client_id == client_id)
-                .order_by(ClientActivity.activity_date.desc())
-                .limit(limit)
-            )
-            return result.scalars().all()
-        except Exception as e:
-            logger.error(f"Error getting client activities: {str(e)}")
-            raise
-    
-    # ============================================================================
-    # STATISTICS & ANALYTICS
-    # ============================================================================
-    
-    async def get_client_statistics(self) -> Dict[str, Any]:
-        """Get overall client statistics"""
-        try:
-            # Total clients
-            total_result = await self.db.execute(select(func.count(Client.id)))
-            total_clients = total_result.scalar() or 0
-            
-            # Active clients
-            active_result = await self.db.execute(
-                select(func.count(Client.id)).where(Client.status == 'active')
-            )
-            active_clients = active_result.scalar() or 0
-            
-            # Clients with active jobs
-            clients_with_jobs = await self.db.execute(
-                select(func.count(func.distinct(ClientJob.client_id)))
-                .where(ClientJob.status == 'open')
-            )
-            clients_with_active_jobs = clients_with_jobs.scalar() or 0
-            
-            return {
-                "total_clients": total_clients,
-                "active_clients": active_clients,
-                "inactive_clients": total_clients - active_clients,
-                "clients_with_active_jobs": clients_with_active_jobs
-            }
-            
-        except Exception as e:
-            logger.error(f"Error getting client statistics: {str(e)}")
-            raise
+    # NOTE: Methods for client_contacts, client_jobs, and client_activities tables
+    # are not implemented because those tables don't exist in the current schema.
+    # Only the main 'clients' table was created by the migration.
+    # To enable these features, run the add_client_management_tables.py migration.

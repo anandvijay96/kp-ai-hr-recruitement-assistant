@@ -20,6 +20,8 @@ def _import_models():
             Resume, Candidate, Education, WorkExperience,
             Skill, Certification, DuplicateCheck
         )
+        from models import client_models  # Client management models
+        from models import vendor_models  # Vendor management models
         logger.info("All models imported successfully")
     except ImportError as e:
         logger.warning(f"Some models could not be imported: {e}")

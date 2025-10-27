@@ -137,3 +137,17 @@ LLM_*.md
 *_SESSION_*.md
 organize_docs.ps1
 docs/archive/
+
+# Ignore AI agent configuration and session docs
+AGENTS.md
+*_FIXES_*.md
+*_APPLIED.md
+ADDITIONAL_*.md
+ALL_DONE_*.md
+CRITICAL_*.md
+DEPLOY_*.md
+FIXES_*.md
+READY_*.md
+START_HERE.md
+VENDOR_MANAGEMENT_SPEC.md
+DEPLOYED_*.md

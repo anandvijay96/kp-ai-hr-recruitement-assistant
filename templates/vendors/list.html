@@ -3,235 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vendor Management - KloudifyHR</title>
+    <title>Vendors - KloudifyHR</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/static/css/unified_styles.css">
     <style>
-        .coming-soon-overlay {
-            position: relative;
-        }
-        .coming-soon-badge {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1000;
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            padding: 30px 50px;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-        .coming-soon-badge.hidden {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.8);
-            pointer-events: none;
-        }
-        .close-preview-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 1.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-        }
-        .close-preview-btn:hover {
-            background: rgba(255,255,255,0.3);
-            transform: rotate(90deg);
-        }
-        .blurred-content {
-            filter: blur(3px);
-            pointer-events: none;
-            user-select: none;
-            transition: filter 0.3s ease;
-        }
-        .blurred-content.active {
-            filter: blur(0);
-            pointer-events: auto;
-            user-select: auto;
-        }
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .page-header { background: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .filters-card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .table-card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
+        .status-badge { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+        .status-active { background: #d4edda; color: #155724; }
+        .status-inactive { background: #f8d7da; color: #721c24; }
+        .status-suspended { background: #fff3cd; color: #856404; }
+        .action-buttons { display: flex; gap: 8px; }
+        .action-buttons .btn { padding: 6px 12px; font-size: 12px; }
+        .loading-spinner { display: flex; justify-content: center; align-items: center; height: 400px; }
+        .empty-state { text-align: center; padding: 60px 20px; color: #6c757d; }
+        .empty-state i { font-size: 48px; color: #dee2e6; margin-bottom: 16px; }
+        .rating-stars { color: #ffc107; }
     </style>
 </head>
 <body>
     {% include 'components/unified_navbar.html' %}
 
-    <div class="container-fluid mt-4 coming-soon-overlay">
-        <!-- Coming Soon Badge -->
-        <div class="coming-soon-badge text-center text-white" id="comingSoonBadge">
-            <button class="close-preview-btn" onclick="closePreview()" title="Preview UI">
-                <i class="bi bi-x-lg"></i>
-            </button>
-            <i class="bi bi-briefcase fs-1 d-block mb-3"></i>
-            <h2 class="mb-2">Coming Soon!</h2>
-            <p class="mb-0">Vendor Management Feature</p>
-        </div>
-
-        <!-- Blurred Preview Content -->
-        <div class="blurred-content" id="previewContent">
-            <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="container-fluid mt-4">
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h2><i class="bi bi-briefcase me-2"></i>Vendor Management</h2>
-                    <p class="text-muted">Manage recruitment agencies and track performance</p>
+                    <h3 class="mb-1"><i class="bi bi-briefcase me-2"></i>Vendor Management</h3>
+                    <p class="text-muted mb-0">Manage recruitment vendors and track performance</p>
                 </div>
-                <button class="btn btn-primary">
-                    <i class="bi bi-plus-circle me-2"></i>New Vendor
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#vendorModal" onclick="openAddVendor()">
+                    <i class="bi bi-plus-circle me-2"></i>Add New Vendor
                 </button>
             </div>
+        </div>
 
-            <!-- Filters -->
-            <div class="card mb-4">
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <input type="text" class="form-control" placeholder="Search vendors...">
-                        </div>
-                        <div class="col-md-2">
-                            <select class="form-select">
-                                <option>All Status</option>
-                                <option>Active</option>
-                                <option>Inactive</option>
-                                <option>Blacklisted</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <select class="form-select">
-                                <option>All Categories</option>
-                                <option>Recruitment Agency</option>
-                                <option>Staffing Solutions</option>
-                                <option>Consulting</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <select class="form-select">
-                                <option>All Ratings</option>
-                                <option>⭐⭐⭐⭐⭐ 5 Stars</option>
-                                <option>⭐⭐⭐⭐ 4+ Stars</option>
-                                <option>⭐⭐⭐ 3+ Stars</option>
-                            </select>
-                        </div>
-                        <div class="col-md-1">
-                            <button class="btn btn-secondary w-100">
-                                <i class="bi bi-x-circle"></i>
-                            </button>
-                        </div>
-                    </div>
+        <div class="filters-card">
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search vendors...">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="statusFilter"><option value="">All Status</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option></select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="typeFilter"><option value="">All Types</option><option value="agency">Agency</option><option value="freelancer">Freelancer</option><option value="consultant">Consultant</option><option value="other">Other</option></select>
+                </div>
+                <div class="col-md-1">
+                    <button class="btn btn-secondary w-100" onclick="resetFilters()"><i class="bi bi-x-circle"></i></button>
                 </div>
             </div>
+        </div>
 
-            <!-- Vendor List -->
-            <div class="card">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Vendor Code</th>
-                                    <th>Name</th>
-                                    <th>Category</th>
-                                    <th>Rating</th>
-                                    <th>Active Jobs</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>VND-2025-0001</code></td>
-                                    <td>Elite Recruiters</td>
-                                    <td><span class="badge bg-info">Recruitment</span></td>
-                                    <td>
-                                        <span class="text-warning">⭐⭐⭐⭐⭐</span>
-                                        <small class="text-muted">(4.8)</small>
-                                    </td>
-                                    <td><span class="badge bg-primary">7</span></td>
-                                    <td><span class="badge bg-success">Active</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">View</button>
-                                        <button class="btn btn-sm btn-outline-secondary">Edit</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><code>VND-2025-0002</code></td>
-                                    <td>TechStaff Pro</td>
-                                    <td><span class="badge bg-success">Staffing</span></td>
-                                    <td>
-                                        <span class="text-warning">⭐⭐⭐⭐☆</span>
-                                        <small class="text-muted">(4.2)</small>
-                                    </td>
-                                    <td><span class="badge bg-primary">4</span></td>
-                                    <td><span class="badge bg-success">Active</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">View</button>
-                                        <button class="btn btn-sm btn-outline-secondary">Edit</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><code>VND-2025-0003</code></td>
-                                    <td>QuickHire Solutions</td>
-                                    <td><span class="badge bg-warning">Consulting</span></td>
-                                    <td>
-                                        <span class="text-warning">⭐⭐⭐☆☆</span>
-                                        <small class="text-muted">(3.5)</small>
-                                    </td>
-                                    <td><span class="badge bg-primary">2</span></td>
-                                    <td><span class="badge bg-secondary">Inactive</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">View</button>
-                                        <button class="btn btn-sm btn-outline-secondary">Edit</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><code>VND-2025-0004</code></td>
-                                    <td>BadVendor Inc.</td>
-                                    <td><span class="badge bg-info">Recruitment</span></td>
-                                    <td>
-                                        <span class="text-warning">⭐⭐☆☆☆</span>
-                                        <small class="text-muted">(2.1)</small>
-                                    </td>
-                                    <td><span class="badge bg-secondary">0</span></td>
-                                    <td><span class="badge bg-danger">Blacklisted</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">View</button>
-                                        <button class="btn btn-sm btn-outline-danger">Restore</button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Pagination -->
-                    <nav>
-                        <ul class="pagination justify-content-center mb-0">
-                            <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
-                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                            <li class="page-item"><a class="page-link" href="#">2</a></li>
-                            <li class="page-item"><a class="page-link" href="#">Next</a></li>
-                        </ul>
-                    </nav>
-                </div>
+        <div class="table-card">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr><th>Company</th><th>Contact</th><th>Type</th><th>Commission</th><th>Referred</th><th>Hired</th><th>Success Rate</th><th>Rating</th><th>Status</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody id="vendorsTableBody"><tr><td colspan="10" class="text-center"><div class="loading-spinner"><div class="spinner-border text-primary"></div></div></td></tr></tbody>
+                </table>
             </div>
+            <div id="emptyState" class="empty-state" style="display:none;"><i class="bi bi-briefcase"></i><h5>No Vendors Found</h5><p>Start by adding your first vendor</p></div>
+            <nav id="paginationNav" style="display:none;" class="p-3"></nav>
         </div>
     </div>
 
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:9999">
+        <div id="notificationToast" class="toast" role="alert">
+            <div class="toast-header">
+                <i class="bi me-2" id="toastIcon"></i>
+                <strong class="me-auto" id="toastTitle">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastMessage"></div>
+        </div>
+    </div>
+
+    <!-- Vendor Modal -->
+    <div class="modal fade" id="vendorModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="vendorModalTitle">Add New Vendor</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form id="vendorForm"><input type="hidden" id="vendorId"><div class="row mb-3"><div class="col-md-6"><label class="form-label">Company Name *</label><input type="text" class="form-control" id="companyName" required></div><div class="col-md-6"><label class="form-label">Vendor Type *</label><select class="form-select" id="vendorType" required><option value="agency">Agency</option><option value="freelancer">Freelancer</option><option value="consultant">Consultant</option><option value="other">Other</option></select></div></div><div class="row mb-3"><div class="col-md-6"><label class="form-label">Industry Specialization</label><input type="text" class="form-control" id="industrySpec" placeholder="e.g., Technology, Finance"></div><div class="col-md-6"><label class="form-label">Website</label><input type="url" class="form-control" id="website" placeholder="https://example.com"></div></div><div class="mb-3"><label class="form-label">Description</label><textarea class="form-control" id="description" rows="2"></textarea></div><hr><h6 class="mb-3">Contact Information</h6><div class="row mb-3"><div class="col-md-6"><label class="form-label">Contact Person *</label><input type="text" class="form-control" id="contactPerson" required></div><div class="col-md-6"><label class="form-label">Email *</label><input type="email" class="form-control" id="contactEmail" required></div></div><div class="row mb-3"><div class="col-md-6"><label class="form-label">Phone</label><input type="tel" class="form-control" id="contactPhone"></div><div class="col-md-6"><label class="form-label">Status</label><select class="form-select" id="status"><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option></select></div></div><hr><h6 class="mb-3">Business Terms</h6><div class="row mb-3"><div class="col-md-6"><label class="form-label">Commission Rate (%)</label><input type="number" class="form-control" id="commissionRate" step="0.01" min="0" max="100"></div><div class="col-md-6"><label class="form-label">Payment Terms</label><input type="text" class="form-control" id="paymentTerms" placeholder="e.g., Net 30"></div></div><div class="mb-3"><label class="form-label">Notes</label><textarea class="form-control" id="notes" rows="2"></textarea></div></form></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="button" class="btn btn-primary" onclick="saveVendor()">Save Vendor</button></div></div></div></div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function closePreview() {
-            const badge = document.getElementById('comingSoonBadge');
-            const content = document.getElementById('previewContent');
-            
-            badge.classList.add('hidden');
-            content.classList.add('active');
-        }
+        let currentPage=1,currentVendorId=null;const vendorModal=new bootstrap.Modal(document.getElementById('vendorModal'));
+        document.addEventListener('DOMContentLoaded',()=>{loadVendors();setupEventListeners();});
+        function setupEventListeners(){document.getElementById('searchInput').addEventListener('keyup',debounce(loadVendors,300));document.getElementById('statusFilter').addEventListener('change',loadVendors);document.getElementById('typeFilter').addEventListener('change',loadVendors);}
+        function debounce(func,wait){let timeout;return function(...args){clearTimeout(timeout);timeout=setTimeout(()=>func(...args),wait);};}
+        async function loadVendors(){try{currentPage=1;const search=document.getElementById('searchInput').value,status=document.getElementById('statusFilter').value,type=document.getElementById('typeFilter').value,params=new URLSearchParams();if(search)params.append('search',search);if(status)params.append('status',status);if(type)params.append('vendor_type',type);params.append('page',currentPage);params.append('page_size',20);const response=await fetch(`/api/v1/vendors?${params}`),data=await response.json();if(data.vendors&&data.vendors.length>0){displayVendors(data.vendors);updatePagination(data);document.getElementById('emptyState').style.display='none';}else{document.getElementById('vendorsTableBody').innerHTML='';document.getElementById('emptyState').style.display='block';document.getElementById('paginationNav').style.display='none';}}catch(error){console.error('Error loading vendors:',error);showError('Failed to load vendors');}}
+        function displayVendors(vendors){const tbody=document.getElementById('vendorsTableBody');tbody.innerHTML=vendors.map(v=>`<tr><td><strong>${v.company_name||'-'}</strong></td><td>${v.contact_person||'-'}<br><small class="text-muted">${v.contact_email||'-'}</small></td><td><span class="badge bg-info">${v.vendor_type||'-'}</span></td><td>${v.commission_rate?v.commission_rate+'%':'-'}</td><td>${v.total_candidates_referred||0}</td><td>${v.candidates_hired||0}</td><td>${v.success_rate?v.success_rate+'%':'-'}</td><td><span class="rating-stars">${getRatingStars(v.average_rating)}</span><br><small class="text-muted">${v.average_rating?'('+v.average_rating+')':''}</small></td><td><span class="status-badge status-${v.status}">${v.status}</span></td><td><div class="action-buttons"><button class="btn btn-sm btn-outline-primary" onclick="editVendor('${v.id}')"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" onclick="deleteVendor('${v.id}')"><i class="bi bi-trash"></i></button></div></td></tr>`).join('');}
+        function getRatingStars(rating){if(!rating)return'-';const stars=Math.round(rating);return'★'.repeat(stars)+'☆'.repeat(5-stars);}
+        function updatePagination(data){const nav=document.getElementById('paginationNav');if(data.total_pages<=1){nav.style.display='none';return;}nav.style.display='block';nav.innerHTML=`<ul class="pagination justify-content-center mb-0"><li class="page-item ${currentPage<=1?'disabled':''}"><a class="page-link" href="#" onclick="changePage(${currentPage-1})">Previous</a></li>${Array.from({length:data.total_pages},(_,i)=>`<li class="page-item ${i+1===currentPage?'active':''}"><a class="page-link" href="#" onclick="changePage(${i+1})">${i+1}</a></li>`).join('')}<li class="page-item ${currentPage>=data.total_pages?'disabled':''}"><a class="page-link" href="#" onclick="changePage(${currentPage+1})">Next</a></li></ul>`;}
+        function changePage(page){currentPage=page;loadVendors();}
+        function openAddVendor(){currentVendorId=null;document.getElementById('vendorModalTitle').textContent='Add New Vendor';document.getElementById('vendorForm').reset();vendorModal.show();}
+        async function editVendor(id){try{const response=await fetch(`/api/v1/vendors/${id}`),vendor=await response.json();currentVendorId=id;document.getElementById('vendorModalTitle').textContent='Edit Vendor';document.getElementById('vendorId').value=id;document.getElementById('companyName').value=vendor.company_name||'';document.getElementById('vendorType').value=vendor.vendor_type||'agency';document.getElementById('industrySpec').value=vendor.industry_specialization||'';document.getElementById('website').value=vendor.website||'';document.getElementById('description').value=vendor.description||'';document.getElementById('contactPerson').value=vendor.contact_person||'';document.getElementById('contactEmail').value=vendor.contact_email||'';document.getElementById('contactPhone').value=vendor.contact_phone||'';document.getElementById('status').value=vendor.status||'active';document.getElementById('commissionRate').value=vendor.commission_rate||'';document.getElementById('paymentTerms').value=vendor.payment_terms||'';document.getElementById('notes').value=vendor.notes||'';vendorModal.show();}catch(error){showError('Failed to load vendor details');}}
+        async function saveVendor(){try{const data={company_name:document.getElementById('companyName').value,vendor_type:document.getElementById('vendorType').value,industry_specialization:document.getElementById('industrySpec').value,website:document.getElementById('website').value,description:document.getElementById('description').value,contact_person:document.getElementById('contactPerson').value,contact_email:document.getElementById('contactEmail').value,contact_phone:document.getElementById('contactPhone').value,commission_rate:document.getElementById('commissionRate').value?parseFloat(document.getElementById('commissionRate').value):null,payment_terms:document.getElementById('paymentTerms').value,notes:document.getElementById('notes').value};if(currentVendorId){data.status=document.getElementById('status').value;const response=await fetch(`/api/v1/vendors/${currentVendorId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!response.ok)throw new Error('Failed to update vendor');}else{const response=await fetch('/api/v1/vendors',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!response.ok)throw new Error('Failed to create vendor');}vendorModal.hide();loadVendors();showSuccess(currentVendorId?'Vendor updated successfully':'Vendor created successfully');}catch(error){showError(error.message);}}
+        async function deleteVendor(id){if(!confirm('Are you sure you want to delete this vendor?'))return;try{const response=await fetch(`/api/v1/vendors/${id}`,{method:'DELETE'});if(!response.ok)throw new Error('Failed to delete vendor');loadVendors();showSuccess('Vendor deleted successfully');}catch(error){showError(error.message);}}
+        function resetFilters(){document.getElementById('searchInput').value='';document.getElementById('statusFilter').value='';document.getElementById('typeFilter').value='';loadVendors();}
+        function showToast(message,type='info'){const toast=document.getElementById('notificationToast');const toastIcon=document.getElementById('toastIcon');const toastTitle=document.getElementById('toastTitle');const toastMessage=document.getElementById('toastMessage');const header=toast.querySelector('.toast-header');header.className='toast-header';toastIcon.className='bi me-2';if(type==='success'){header.classList.add('bg-success','text-white');toastIcon.classList.add('bi-check-circle-fill');toastTitle.textContent='Success';}else if(type==='error'){header.classList.add('bg-danger','text-white');toastIcon.classList.add('bi-x-circle-fill');toastTitle.textContent='Error';}else{header.classList.add('bg-info','text-white');toastIcon.classList.add('bi-info-circle-fill');toastTitle.textContent='Info';}toastMessage.textContent=message;new bootstrap.Toast(toast).show();}
+        function showSuccess(msg){showToast(msg,'success');}
+        function showError(msg){showToast(msg,'error');}
     </script>
 </body>
 </html>

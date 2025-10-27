@@ -10,30 +10,36 @@ from datetime import datetime
 
 class ClientBase(BaseModel):
     """Base client schema"""
-    company_name: str = Field(..., min_length=2, max_length=200)
-    company_email: EmailStr
-    company_phone: Optional[str] = Field(None, max_length=20)
-    company_website: Optional[str] = Field(None, max_length=255)
+    company_name: str = Field(..., min_length=2, max_length=255)
+    industry: Optional[str] = Field(None, max_length=100)
+    website: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = None
+    
+    # Contact Information
+    contact_person: str = Field(..., min_length=2, max_length=100)
+    contact_email: EmailStr
+    contact_phone: Optional[str] = Field(None, max_length=20)
     
     # Address
-    address_line1: Optional[str] = Field(None, max_length=255)
-    address_line2: Optional[str] = Field(None, max_length=255)
+    address: Optional[str] = Field(None, max_length=255)
     city: Optional[str] = Field(None, max_length=100)
     state: Optional[str] = Field(None, max_length=100)
     country: Optional[str] = Field(None, max_length=100)
     postal_code: Optional[str] = Field(None, max_length=20)
     
-    # Business details
-    industry: Optional[str] = Field(None, max_length=100)
-    company_size: Optional[str] = Field(None, pattern="^(1-10|11-50|51-200|201-500|501-1000|1000\\+)$")
-    tax_id: Optional[str] = Field(None, max_length=50)
+    # Business Details
+    client_type: Optional[str] = Field(None, pattern="^(direct|agency|partner)$")
+    priority: Optional[str] = Field(None, pattern="^(low|medium|high)$")
     
-    # Contract details
-    contract_type: Optional[str] = Field(None, pattern="^(monthly|annual|project-based)$")
-    billing_cycle: Optional[str] = Field(None, pattern="^(monthly|quarterly|annual)$")
+    # Contract/Agreement
+    contract_start_date: Optional[str] = Field(None, max_length=50)
+    contract_end_date: Optional[str] = Field(None, max_length=50)
+    contract_value: Optional[str] = Field(None, max_length=50)
+    payment_terms: Optional[str] = Field(None, max_length=255)
     
-    # Notes
+    # Notes & Tags
     notes: Optional[str] = None
+    tags: Optional[str] = None
 
 
 class ClientCreate(ClientBase):
@@ -43,49 +49,52 @@ class ClientCreate(ClientBase):
 
 class ClientUpdate(BaseModel):
     """Schema for updating a client"""
-    company_name: Optional[str] = Field(None, min_length=2, max_length=200)
-    company_email: Optional[EmailStr] = None
-    company_phone: Optional[str] = Field(None, max_length=20)
-    company_website: Optional[str] = Field(None, max_length=255)
+    company_name: Optional[str] = Field(None, min_length=2, max_length=255)
+    industry: Optional[str] = Field(None, max_length=100)
+    website: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = None
+    
+    # Contact Information
+    contact_person: Optional[str] = Field(None, max_length=100)
+    contact_email: Optional[EmailStr] = None
+    contact_phone: Optional[str] = Field(None, max_length=20)
     
     # Address
-    address_line1: Optional[str] = Field(None, max_length=255)
-    address_line2: Optional[str] = Field(None, max_length=255)
+    address: Optional[str] = Field(None, max_length=255)
     city: Optional[str] = Field(None, max_length=100)
     state: Optional[str] = Field(None, max_length=100)
     country: Optional[str] = Field(None, max_length=100)
     postal_code: Optional[str] = Field(None, max_length=20)
     
-    # Business details
-    industry: Optional[str] = Field(None, max_length=100)
-    company_size: Optional[str] = None
-    tax_id: Optional[str] = Field(None, max_length=50)
+    # Business Details
+    status: Optional[str] = Field(None, pattern="^(active|inactive|on_hold)$")
+    client_type: Optional[str] = Field(None, pattern="^(direct|agency|partner)$")
+    priority: Optional[str] = Field(None, pattern="^(low|medium|high)$")
     
-    # Status
-    status: Optional[str] = Field(None, pattern="^(active|inactive|suspended|pending)$")
+    # Contract/Agreement
+    contract_start_date: Optional[str] = Field(None, max_length=50)
+    contract_end_date: Optional[str] = Field(None, max_length=50)
+    contract_value: Optional[str] = Field(None, max_length=50)
+    payment_terms: Optional[str] = Field(None, max_length=255)
     
-    # Contract details
-    contract_type: Optional[str] = None
-    billing_cycle: Optional[str] = None
-    contract_start_date: Optional[datetime] = None
-    contract_end_date: Optional[datetime] = None
-    
-    # Notes
+    # Notes & Tags
     notes: Optional[str] = None
+    tags: Optional[str] = None
 
 
 class ClientResponse(ClientBase):
     """Schema for client response"""
     id: str
     status: str
-    is_active: bool
-    contract_start_date: Optional[datetime] = None
-    contract_end_date: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
-    deactivated_at: Optional[datetime] = None
+    created_by: Optional[str] = None
+    updated_by: Optional[str] = None
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[str] = None
     
-    # Counts
+    # Counts (optional for list views)
     contacts_count: Optional[int] = 0
     jobs_count: Optional[int] = 0
     active_jobs_count: Optional[int] = 0
@@ -259,11 +268,10 @@ class ClientFilter(BaseModel):
     """Schema for filtering clients"""
     search_query: Optional[str] = None
     status: Optional[List[str]] = None
+    client_type: Optional[List[str]] = None
     industry: Optional[str] = None
-    company_size: Optional[List[str]] = None
     city: Optional[str] = None
     country: Optional[str] = None
-    has_active_jobs: Optional[bool] = None
     sort_by: str = "created_at"
     sort_order: str = "desc"
 

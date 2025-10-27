@@ -8,7 +8,8 @@ import logging
 
 from core.database import get_db
 from core.auth import get_current_user
-from models.database import Client, User, Job
+from models.database import User, Job
+from models.client_models import Client
 from models.client_schemas import (
     ClientCreate, ClientUpdate, ClientResponse, ClientListResponse,
     ClientFilter
@@ -144,7 +145,12 @@ async def create_client(
             status="active",
             client_type=client_data.client_type or "direct",
             priority=client_data.priority or "medium",
+            contract_start_date=client_data.contract_start_date,
+            contract_end_date=client_data.contract_end_date,
+            contract_value=client_data.contract_value,
+            payment_terms=client_data.payment_terms,
             notes=client_data.notes,
+            tags=client_data.tags,
             created_by=current_user.id
         )
         
