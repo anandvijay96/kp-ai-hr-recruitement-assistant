@@ -140,6 +140,7 @@ docs/archive/
 
 # Ignore AI agent configuration and session docs
 AGENTS.md
+PROGRESS_TRACKER.md
 *_FIXES_*.md
 *_APPLIED.md
 ADDITIONAL_*.md
@@ -151,3 +152,5 @@ READY_*.md
 START_HERE.md
 VENDOR_MANAGEMENT_SPEC.md
 DEPLOYED_*.md
+FIX_RESUMES_NOW.md
+SESSION_SUMMARY_*.md
