@@ -169,6 +169,10 @@ async def get_db():
     async with session_maker() as session:
         try:
             yield session
+        except Exception:
+            # Rollback on any error to prevent failed transaction state
+            await session.rollback()
+            raise
         finally:
             await session.close()
 

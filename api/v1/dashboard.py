@@ -53,6 +53,9 @@ async def get_hr_dashboard_data(
         }
     
     except Exception as e:
+        # Rollback the transaction to clear failed state
+        await db.rollback()
+        
         import traceback
         logger.error(f"Error fetching dashboard data: {str(e)}")
         logger.error(traceback.format_exc())
