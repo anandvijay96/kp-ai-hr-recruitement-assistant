@@ -250,10 +250,31 @@ class FilterService:
             
             logger.info(f"Sorting by {sort_by} {sort_order}")
             
-            # Get total count before pagination
-            count_stmt = select(func.count(Candidate.id)).select_from(Candidate)
+            # Get total count before pagination - rebuild count query with same joins
+            count_stmt = select(func.count(func.distinct(Candidate.id))).select_from(Candidate)
+            
+            # Apply same joins as main query
+            if needs_skill_join:
+                count_stmt = count_stmt.outerjoin(CandidateSkill, Candidate.id == CandidateSkill.candidate_id)
+                count_stmt = count_stmt.outerjoin(Skill, CandidateSkill.skill_id == Skill.id)
+            
+            if needs_education_join:
+                count_stmt = count_stmt.outerjoin(Education, Candidate.id == Education.candidate_id)
+            
+            if needs_experience_join:
+                exp_subquery = (
+                    select(
+                        WorkExperience.candidate_id,
+                        func.sum(WorkExperience.duration_months).label('total_months')
+                    )
+                    .group_by(WorkExperience.candidate_id)
+                    .subquery()
+                )
+                count_stmt = count_stmt.outerjoin(exp_subquery, Candidate.id == exp_subquery.c.candidate_id)
+            
             if filter_conditions:
                 count_stmt = count_stmt.filter(and_(*filter_conditions))
+            
             count_result = await db.execute(count_stmt)
             total_count = count_result.scalar() or 0
             

@@ -132,3 +132,69 @@ async def list_feedback():
     except Exception as e:
         logger.error(f"Error listing feedback: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to list feedback")
+
+
+@router.patch("/{feedback_id}/status")
+async def update_feedback_status(
+    feedback_id: str,
+    status: str = Form(...)
+):
+    """
+    Update feedback status
+    
+    Args:
+        feedback_id: Feedback ID
+        status: New status (new, in_progress, resolved, dismissed)
+    """
+    try:
+        # Validate status
+        valid_statuses = ["new", "in_progress", "resolved", "dismissed"]
+        if status not in valid_statuses:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+            )
+        
+        # Find feedback folder
+        feedback_folder = None
+        if os.path.exists(FEEDBACK_DIR):
+            for folder in os.listdir(FEEDBACK_DIR):
+                feedback_path = os.path.join(FEEDBACK_DIR, folder, "feedback.json")
+                if os.path.exists(feedback_path):
+                    with open(feedback_path, "r") as f:
+                        feedback = json.load(f)
+                        if feedback.get("id") == feedback_id:
+                            feedback_folder = os.path.join(FEEDBACK_DIR, folder)
+                            break
+        
+        if not feedback_folder:
+            raise HTTPException(status_code=404, detail="Feedback not found")
+        
+        # Update feedback status
+        feedback_file = os.path.join(feedback_folder, "feedback.json")
+        with open(feedback_file, "r") as f:
+            feedback_data = json.load(f)
+        
+        old_status = feedback_data.get("status", "new")
+        feedback_data["status"] = status
+        feedback_data["status_updated_at"] = datetime.now().isoformat()
+        
+        # Save updated feedback
+        with open(feedback_file, "w") as f:
+            json.dump(feedback_data, f, indent=2)
+        
+        logger.info(f"Feedback {feedback_id} status updated: {old_status} -> {status}")
+        
+        return {
+            "success": True,
+            "message": f"Feedback status updated to {status}",
+            "feedback_id": feedback_id,
+            "old_status": old_status,
+            "new_status": status
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating feedback status: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to update feedback status")

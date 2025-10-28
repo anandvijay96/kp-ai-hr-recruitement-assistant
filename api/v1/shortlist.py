@@ -24,14 +24,19 @@ async def add_to_shortlist(
 ):
     """Add candidate to shortlist"""
     try:
-        # Verify candidate exists
+        # Verify candidate exists - check both uuid and id fields
         result = await db.execute(
-            select(Candidate).where(Candidate.uuid == candidate_id)
+            select(Candidate).where(
+                (Candidate.uuid == candidate_id) | (Candidate.id == candidate_id)
+            )
         )
         candidate = result.scalar_one_or_none()
         
         if not candidate:
             raise HTTPException(status_code=404, detail="Candidate not found")
+        
+        # Use UUID for consistent storage
+        uuid_to_store = candidate.uuid
         
         # For now, use a global shortlist (in production, this would be per-user)
         user_id = "global"  # In production: get from session
@@ -39,9 +44,11 @@ async def add_to_shortlist(
         if user_id not in shortlist_store:
             shortlist_store[user_id] = []
         
-        if candidate_id not in shortlist_store[user_id]:
-            shortlist_store[user_id].append(candidate_id)
-            logger.info(f"Added candidate {candidate_id} to shortlist")
+        if uuid_to_store not in shortlist_store[user_id]:
+            shortlist_store[user_id].append(uuid_to_store)
+            logger.info(f"Added candidate {candidate.full_name} (UUID: {uuid_to_store}) to shortlist")
+        else:
+            logger.info(f"Candidate {candidate.full_name} already in shortlist")
         
         return {
             "success": True,
@@ -52,7 +59,7 @@ async def add_to_shortlist(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error adding to shortlist: {str(e)}")
+        logger.error(f"Error adding to shortlist: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -63,11 +70,25 @@ async def remove_from_shortlist(
 ):
     """Remove candidate from shortlist"""
     try:
+        # Get candidate UUID if ID is provided
+        result = await db.execute(
+            select(Candidate).where(
+                (Candidate.uuid == candidate_id) | (Candidate.id == candidate_id)
+            )
+        )
+        candidate = result.scalar_one_or_none()
+        
+        if candidate:
+            uuid_to_remove = candidate.uuid
+        else:
+            # Try to remove whatever was passed
+            uuid_to_remove = candidate_id
+        
         user_id = "global"  # In production: get from session
         
-        if user_id in shortlist_store and candidate_id in shortlist_store[user_id]:
-            shortlist_store[user_id].remove(candidate_id)
-            logger.info(f"Removed candidate {candidate_id} from shortlist")
+        if user_id in shortlist_store and uuid_to_remove in shortlist_store[user_id]:
+            shortlist_store[user_id].remove(uuid_to_remove)
+            logger.info(f"Removed candidate {uuid_to_remove} from shortlist")
         
         return {
             "success": True,
@@ -76,18 +97,32 @@ async def remove_from_shortlist(
         }
         
     except Exception as e:
-        logger.error(f"Error removing from shortlist: {str(e)}")
+        logger.error(f"Error removing from shortlist: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/candidates/{candidate_id}/shortlist/status")
 async def check_shortlist_status(
-    candidate_id: str
+    candidate_id: str,
+    db: AsyncSession = Depends(get_db)
 ):
     """Check if candidate is in shortlist"""
     try:
+        # Get candidate UUID if ID is provided
+        result = await db.execute(
+            select(Candidate).where(
+                (Candidate.uuid == candidate_id) | (Candidate.id == candidate_id)
+            )
+        )
+        candidate = result.scalar_one_or_none()
+        
+        if candidate:
+            uuid_to_check = candidate.uuid
+        else:
+            uuid_to_check = candidate_id
+        
         user_id = "global"  # In production: get from session
-        is_shortlisted = candidate_id in shortlist_store.get(user_id, [])
+        is_shortlisted = uuid_to_check in shortlist_store.get(user_id, [])
         
         return {
             "is_shortlisted": is_shortlisted,
@@ -95,7 +130,7 @@ async def check_shortlist_status(
         }
         
     except Exception as e:
-        logger.error(f"Error checking shortlist status: {str(e)}")
+        logger.error(f"Error checking shortlist status: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
