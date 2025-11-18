@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Resume - HR Recruitment System</title>
+    <title>Upload Resume - KloudifyHR</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/unified_styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .upload-zone {
@@ -41,19 +43,8 @@
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">
-                <i class="fas fa-briefcase"></i> HR Recruitment System
-            </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/">Home</a>
-                <a class="nav-link" href="/resumes">Resumes</a>
-                <a class="nav-link active" href="/resumes/upload-new">Upload</a>
-            </div>
-        </div>
-    </nav>
+    <!-- Unified Navigation -->
+    {% include 'components/unified_navbar.html' %}
 
     <!-- Main Content -->
     <div class="container mt-5">

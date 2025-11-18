@@ -2,6 +2,10 @@
 
 {% block title %}Activity Logs - Admin{% endblock %}
 
+{% block navbar %}
+    {% include 'components/unified_navbar.html' %}
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .activity-logs {
@@ -17,6 +21,11 @@
         border-radius: 12px;
         margin-bottom: 2rem;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .page-header h1,
+    .page-header p {
+        color: #ffffff;
     }
     
     .filters-card {
