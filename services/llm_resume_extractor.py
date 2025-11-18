@@ -210,8 +210,9 @@ IMPORTANT RULES:
 8. For gaps (e.g., "Family Responsibilities"), create an entry with company as the gap reason
 9. For responsibilities: Extract ACTUAL bullet points from resume, NOT placeholder text
 10. For description: Extract ACTUAL overview text from resume, NOT placeholder like "Company Description"
-11. INDIAN EDUCATION: Include Intermediate (+2/12th grade) and Secondary School (10th grade) as education entries
-12. Return ONLY the JSON object, nothing else
+11. For EACH work_experience entry, also extract a list field "technologies" with the technologies, tools, or platforms used in that role (e.g., ["C#", ".NET Core", "Angular", "SQL Server"]). Use an empty list [] if you truly cannot infer any.
+12. INDIAN EDUCATION: Include Intermediate (+2/12th grade) and Secondary School (10th grade) as education entries
+13. Return ONLY the JSON object, nothing else
 
 JSON Schema:
 {{
@@ -232,6 +233,7 @@ JSON Schema:
       "end_date": "MM/YYYY or Present",
       "duration_months": 12,
       "is_current": false,
+      "technologies": ["tech1", "tech2"],
       "responsibilities": ["ACTUAL bullet point 1 from resume", "ACTUAL bullet point 2 from resume", "ACTUAL bullet point 3 from resume"],
       "description": "ACTUAL overview text from resume or null (NOT placeholder text)"
     }},
@@ -243,6 +245,7 @@ JSON Schema:
       "end_date": "03/2021",
       "duration_months": 15,
       "is_current": false,
+      "technologies": ["tech1", "tech2"],
       "responsibilities": ["ACTUAL task 1 from resume", "ACTUAL task 2 from resume"],
       "description": "ACTUAL description from resume or null"
     }}
@@ -343,7 +346,24 @@ Return ONLY the JSON object:
             duration = exp.get("duration_months")
             if duration is not None and isinstance(duration, (int, float)):
                 total_months += int(duration)
-        
+
+            # Normalize technologies field so downstream consumers (like the
+            # eZest resume formatter) can rely on a list of strings.
+            techs = exp.get("technologies")
+            if techs is None:
+                exp["technologies"] = []
+            elif isinstance(techs, str):
+                exp["technologies"] = [t.strip() for t in techs.split(",") if t.strip()]
+            elif isinstance(techs, list):
+                cleaned = []
+                for t in techs:
+                    s = str(t).strip()
+                    if s:
+                        cleaned.append(s)
+                exp["technologies"] = cleaned
+            else:
+                exp["technologies"] = []
+
         data["total_experience_months"] = total_months
         data["total_experience_years"] = round(total_months / 12, 1) if total_months > 0 else 0
         

@@ -317,8 +317,20 @@ class DocumentProcessor:
                 from docx import Document
                 doc = Document(file_path)
                 text_content = []
+
+                # Top-level paragraphs
                 for paragraph in doc.paragraphs:
-                    text_content.append(paragraph.text)
+                    if paragraph.text:
+                        text_content.append(paragraph.text)
+
+                # Text inside tables (common for structured CV templates)
+                for table in doc.tables:
+                    for row in table.rows:
+                        for cell in row.cells:
+                            for p in cell.paragraphs:
+                                if p.text:
+                                    text_content.append(p.text)
+
                 return "\n".join(text_content)
             except ImportError:
                 logger.warning("python-docx not available, trying docx2txt")

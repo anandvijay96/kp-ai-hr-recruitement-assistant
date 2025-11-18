@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Resume Formatter - KloudifyHR{% endblock %}
+
+{% block navbar %}
+    {% include 'components/unified_navbar.html' %}
+{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Resume Formatter</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    #rfResults {
+        min-height: 200px;
+        background-color: #fafafa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-1">Resume Formatter</h5>
+                    <p class="text-muted mb-0 small">Upload resumes and select a template to generate client-ready formatted resumes.</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <form id="resumeFormatterForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">Client Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="client_name" id="rfClientName" placeholder="e.g. Bajaj Finserv" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Template <span class="text-danger">*</span></label>
+                        <select class="form-select" name="template_id" id="rfTemplateId" required>
+                            <option value="" selected disabled>Select a template...</option>
+                        </select>
+                        <div class="form-text" id="rfTemplateDescription"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Job Description (optional)</label>
+                        <textarea class="form-control mb-2" rows="4" name="jd_text" id="rfJdText" placeholder="Paste JD here (optional for MVP)..."></textarea>
+                        <input type="file" class="form-control" name="jd_file" id="rfJdFile" accept=".pdf,.doc,.docx,.txt">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Resumes <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" name="files" id="rfResumeFiles" multiple accept=".pdf,.doc,.docx">
+                        <div class="form-text">Select one or more candidate resumes.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Instructions (optional)</label>
+                        <textarea class="form-control" rows="3" name="instructions" id="rfInstructions" placeholder="Any specific formatting or style instructions..."></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted" id="rfFormStatus"></small>
+                        <button type="submit" class="btn btn-primary" id="rfSubmitBtn">
+                            <span class="spinner-border spinner-border-sm me-2 d-none" id="rfSpinner" role="status"></span>
+                            Generate Formatted Resumes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-1">Preview</h5>
+                    <p class="text-muted mb-0 small">Formatted resume download links will appear here after you run the formatter.</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="rfResults" class="border rounded p-3 d-flex align-items-center justify-content-center text-muted small">
+                    <span>No formatted resumes yet. Use the form on the left to generate client-ready resumes.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/custom-modals.js"></script>
+<script src="/static/js/resume_formatter.js"></script>
+{% endblock %}

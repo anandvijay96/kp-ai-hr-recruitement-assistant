@@ -59,6 +59,17 @@
                     </a>
                 </li>
                 {% endif %}
+
+                <!-- Resume Formatter (Recruiter, HR, Manager & Admin) -->
+                {% if user and user.role in ['recruiter', 'hr', 'manager', 'admin'] %}
+                <li class="nav-item">
+                    <a class="nav-link {% if 'resume-formatter' in request.url.path %}active{% endif %}"
+                       href="/resume-formatter">
+                        <i class="bi bi-file-earmark-richtext"></i>
+                        <span class="nav-text">Resume Formatter</span>
+                    </a>
+                </li>
+                {% endif %}
                 
                 <!-- Jobs (All Roles) -->
                 <li class="nav-item">
