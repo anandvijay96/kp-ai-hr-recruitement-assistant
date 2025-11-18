@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Email Assistant - KloudifyHR{% endblock %}
+
+{% block navbar %}
+    {% include 'components/unified_navbar.html' %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    #tablePreview table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    #tablePreview th,
+    #tablePreview td {
+        border: 1px solid #dee2e6;
+        padding: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    #tablePreview thead {
+        background-color: #f8f9fa;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Email Assistant</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-1">Compose Email Inputs</h5>
+                    <p class="text-muted mb-0 small">Upload resumes and provide JD to generate a client-ready email draft.</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <form id="emailAssistantForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">Client Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="client_name" id="clientName" placeholder="e.g. Bajaj Finserv" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Requirement Title</label>
+                        <input type="text" class="form-control" name="requirement_title" id="requirementTitle" placeholder="e.g. AEM Developer">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Job Code</label>
+                        <input type="text" class="form-control" name="job_code" id="jobCode" placeholder="e.g. AEM-001">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Job Description</label>
+                        <div class="form-text mb-1">Paste JD text or upload a JD document (PDF/DOCX). If both are provided, the uploaded file will be used.</div>
+                        <textarea class="form-control mb-2" rows="5" name="job_description_text" id="jobDescriptionText" placeholder="Paste JD here..."></textarea>
+                        <input type="file" class="form-control" name="job_description_file" id="jobDescriptionFile" accept=".pdf,.doc,.docx,.txt">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Resumes <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" name="files" id="resumeFiles" multiple accept=".pdf,.doc,.docx">
+                        <div class="form-text">Select one or more candidate resumes.</div>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="includeTableSingle" name="include_table_for_single" value="true">
+                        <label class="form-check-label" for="includeTableSingle">Include table even when there is a single candidate</label>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="detailedSummaries" name="detailed_summaries" value="true">
+                        <label class="form-check-label" for="detailedSummaries">Use detailed candidate summaries</label>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Rate Card (optional)</label>
+                            <input type="text" class="form-control" name="rate_card" id="rateCard" placeholder="e.g. 18 LPA">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Notice Period (optional)</label>
+                            <input type="text" class="form-control" name="notice_period" id="noticePeriod" placeholder="e.g. 30 days">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Location (optional)</label>
+                            <input type="text" class="form-control" name="location" id="location" placeholder="e.g. Hyderabad">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Signature (optional)</label>
+                        <textarea class="form-control" rows="3" name="signature" id="signature" placeholder="e.g. Regards,\nYour Name\nYour Company"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Prompt instructions (optional)</label>
+                        <textarea class="form-control" rows="3" name="prompt_hint" id="promptHint" placeholder="Add any specific instructions or tone preferences you want the AI to follow."></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted" id="formStatus"></small>
+                        <button type="submit" class="btn btn-primary" id="generateEmailBtn">
+                            <span class="spinner-border spinner-border-sm me-2 d-none" id="generateSpinner" role="status"></span>
+                            Generate Email Draft
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-1">Generated Email</h5>
+                    <p class="text-muted mb-0 small">Review and copy the subject, body, and optional candidate table.</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" type="button" id="copySubjectBtn">
+                        <i class="bi bi-clipboard"></i> Subject
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" type="button" id="copyBodyBtn">
+                        <i class="bi bi-clipboard"></i> Body
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" type="button" id="copyTableBtn">
+                        <i class="bi bi-clipboard"></i> Table
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" type="button" id="copyTableHtmlBtn">
+                        <i class="bi bi-code"></i> Table [HTML Code]
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label mb-1">Subject</label>
+                    <input type="text" class="form-control" id="subjectOutput" readonly>
+                </div>
+
+                <ul class="nav nav-tabs mb-3" id="previewTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="body-tab" data-bs-toggle="tab" data-bs-target="#bodyPreviewPane" type="button" role="tab">Email Body</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="table-tab" data-bs-toggle="tab" data-bs-target="#tablePreviewPane" type="button" role="tab">Candidate Table</button>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="bodyPreviewPane" role="tabpanel">
+                        <div class="border rounded p-3" id="bodyPreview" style="min-height: 200px; background-color: #fafafa;"></div>
+                    </div>
+                    <div class="tab-pane fade" id="tablePreviewPane" role="tabpanel">
+                        <div class="border rounded p-3" id="tablePreview" style="min-height: 160px; background-color: #fafafa;"></div>
+                    </div>
+                </div>
+
+                <textarea id="bodyTextRaw" class="d-none"></textarea>
+                <textarea id="tableHtmlRaw" class="d-none"></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/custom-modals.js"></script>
+<script src="/static/js/email_assistant.js"></script>
+{% endblock %}

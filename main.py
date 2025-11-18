@@ -34,6 +34,7 @@ from api.v1 import ratings as ratings_v1
 from api.v1 import shortlist as shortlist_v1
 from api.v1 import clients as clients_v1
 from api.v1 import vendors as vendors_v1
+from api.v1 import email_drafts as email_drafts_v1
 
 # Phase 3: Activity tracking and workflow
 from api.v1 import activity as activity_v1
@@ -104,6 +105,16 @@ app = FastAPI(
     title=settings.app_name,
     description="Resume authenticity scanning and JD matching system with OAuth",
     version="2.0.0"
+)
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # IMPORTANT: Middleware order matters! They execute in REVERSE order of addition.
@@ -182,6 +193,7 @@ app.include_router(matching_v1.router, prefix="/api/v1", tags=["matching"])
 app.include_router(ratings_v1.router, prefix="/api/v1", tags=["ratings"])
 app.include_router(clients_v1.router, tags=["clients"])
 app.include_router(vendors_v1.router, tags=["vendors"])
+app.include_router(email_drafts_v1.router, prefix="/api/v1", tags=["email-drafts"])
 if VETTING_ENABLED:
     app.include_router(vetting_v1.router, prefix="/api/v1/vetting", tags=["vetting"])
 app.include_router(shortlist_v1.router, prefix="/api/v1", tags=["shortlist"])
@@ -351,6 +363,14 @@ async def vet_resumes_page(request: Request):
     """Resume vetting page - requires authentication"""
     user = await get_current_user(request)
     return templates.TemplateResponse("vet_resumes.html", {"request": request, "user": user})
+
+
+@app.get("/email-assistant", response_class=HTMLResponse)
+@require_auth
+async def email_assistant_page(request: Request):
+    """Standalone email assistant page - requires authentication"""
+    user = await get_current_user(request)
+    return templates.TemplateResponse("email_assistant.html", {"request": request, "user": user})
 
 @app.get("/candidates")
 @require_auth

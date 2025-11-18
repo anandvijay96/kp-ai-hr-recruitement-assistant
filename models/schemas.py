@@ -3,6 +3,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
 
+
 class ResumeStatus(str, Enum):
     NEW = "new"
     SCREENED = "screened"
@@ -74,8 +75,29 @@ class BatchAnalysisResult(BaseModel):
     results: List[ResumeAnalysis] = Field(default_factory=list)
     errors: List[str] = Field(default_factory=list)
 
+
 class FilterPreset(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
     filters: Dict[str, Any]
+
+
+class EmailDraftRequest(BaseModel):
+    client_name: str
+    requirement_title: Optional[str] = None
+    job_code: Optional[str] = None
+    job_description: str
+    candidate_ids: List[str]
+    include_table_for_single: bool = False
+    signature: Optional[str] = None
+    email_tone: Optional[str] = "professional, friendly"
+
+
+class EmailDraftResponse(BaseModel):
+    subject: str
+    body_text: str
+    body_html: str
+    candidates_table_html: Optional[str] = None
+    has_table: bool = False
+    metadata: Dict[str, Any] = Field(default_factory=dict)

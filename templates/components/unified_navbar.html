@@ -49,6 +49,17 @@
                 </li>
                 {% endif %}
                 
+                <!-- Email Assistant (Recruiter, HR, Manager & Admin) -->
+                {% if user and user.role in ['recruiter', 'hr', 'manager', 'admin'] %}
+                <li class="nav-item">
+                    <a class="nav-link {% if 'email-assistant' in request.url.path %}active{% endif %}"
+                       href="/email-assistant">
+                        <i class="bi bi-envelope-open"></i>
+                        <span class="nav-text">Email Assistant</span>
+                    </a>
+                </li>
+                {% endif %}
+                
                 <!-- Jobs (All Roles) -->
                 <li class="nav-item">
                     <a class="nav-link {% if 'jobs' in request.url.path and 'jobs-management' not in request.url.path %}active{% endif %}" 
