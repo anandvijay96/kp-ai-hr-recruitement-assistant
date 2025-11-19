@@ -1,7 +1,11 @@
 """API endpoints for job management"""
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from typing import Optional
 import logging
+import os
+import uuid
+
+import aiofiles
 
 from models.job_schemas import (
     JobCreateRequest, JobUpdateRequest, JobPublishRequest, JobCloseRequest,
@@ -9,17 +13,111 @@ from models.job_schemas import (
     PaginatedJobsResponse, StandardJobResponse, JobStatus
 )
 from services.job_service import JobService
+from services.document_processor import DocumentProcessor
 from core.dependencies import get_current_user
 from core.database import get_db
+from core.config import settings
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
 
+document_processor = DocumentProcessor()
+
 
 def get_job_service(db: AsyncSession = Depends(get_db)) -> JobService:
     """Get job service instance"""
     return JobService(db_session=db)
+
+
+# ============================================================================
+# JD DOCUMENT UTILITIES
+# ============================================================================
+
+
+@router.post("/extract-jd")
+async def extract_job_description(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Extract plain text from an uploaded JD document (PDF/DOC/DOCX).
+
+    Used by the job creation UI to auto-fill the description field from
+    an attached JD file so that users can edit it before saving.
+    """
+
+    try:
+        if not file or not file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No file provided",
+            )
+
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in {".pdf", ".doc", ".docx"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unsupported JD file type. Please upload a PDF, DOC, or DOCX.",
+            )
+
+        content = await file.read()
+        if not content:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File is empty. Please upload a valid document.",
+            )
+
+        # Enforce the same 5MB limit as the frontend.
+        if len(content) > 5 * 1024 * 1024:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File size exceeds 5MB limit.",
+            )
+
+        os.makedirs(settings.temp_dir, exist_ok=True)
+        temp_name = f"jd_{uuid.uuid4().hex}{ext}"
+        temp_path = os.path.join(settings.temp_dir, temp_name)
+
+        try:
+            async with aiofiles.open(temp_path, "wb") as f:
+                await f.write(content)
+
+            text = document_processor.extract_text(temp_path)
+        finally:
+            try:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            except Exception:
+                logger.warning("Failed to clean up temp JD file %s", temp_path)
+
+        if not text or not text.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Could not extract text from JD document. Please type a short description instead.",
+            )
+
+        # Guard against library-not-available placeholder strings.
+        if "not available" in text.lower():
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Document processing libraries are not available on the server.",
+            )
+
+        return {
+            "success": True,
+            "data": {
+                "text": text,
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error extracting JD text: %s", str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to extract text from JD document.",
+        )
 
 
 # ============================================================================
