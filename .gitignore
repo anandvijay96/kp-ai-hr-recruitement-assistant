@@ -49,6 +49,7 @@ results/
 *.pdf
 *.doc
 *.docx
+!templates/resume_formatter/*.docx
 *.txt
 !requirements.txt
 !README.md
