@@ -163,6 +163,27 @@ async def run_migrations():
         
         for col_name, col_type, default in clients_columns:
             await add_column_if_not_exists(session, 'clients', col_name, col_type, default)
+
+        print("\n📋 Checking jobs table...")
+
+        # Add client_id to jobs table (nullable, no default)
+        await add_column_if_not_exists(
+            session, 'jobs', 'client_id', 'VARCHAR(36)'
+        )
+
+        # Add show_client_to_candidate to jobs table (BOOLEAN with default false)
+        await add_column_if_not_exists(
+            session, 'jobs', 'show_client_to_candidate', 'BOOLEAN', 'false'
+        )
+
+        # Ensure index exists for client_id to match ORM index=True
+        try:
+            await session.execute(text("CREATE INDEX IF NOT EXISTS idx_jobs_client_id ON jobs(client_id)"))
+            await session.commit()
+            print("✅ Ensured index idx_jobs_client_id on jobs(client_id)")
+        except Exception as e:
+            await session.rollback()
+            print(f"❌ Error creating index idx_jobs_client_id: {e}")
     
     await engine.dispose()
     
